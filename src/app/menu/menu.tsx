@@ -1,0 +1,117 @@
+"use client";
+
+import { useState } from "react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { CustomPopover } from "./menu-components/CustomPopover";
+import type { PopoverItem } from "./menu-components/CustomPopover";
+import { nativeLanguageData } from "./menu-data/nativeLanguageData";
+import { languageLearningData } from "./menu-data/languageLearningData";
+import type { LanguageOption } from "./menu-data/languageLearningData";
+import { levelsData } from "./menu-data/levelsData";
+
+export default function Menu() {
+  const [nativeLanguage, setNativeLanguage] = useState<PopoverItem | undefined>(
+    nativeLanguageData[0]
+  );
+  const [selectedLanguage, setSelectedLanguage] = useState<
+    LanguageOption | undefined
+  >(languageLearningData[0]);
+  const [selectedLevel, setSelectedLevel] = useState<PopoverItem | undefined>(
+    levelsData[0]
+  );
+  const [nativeLanguagePopoverOpen, setNativeLanguagePopoverOpen] =
+    useState(false);
+  const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
+  const [levelPopoverOpen, setLevelPopoverOpen] = useState(false);
+  const [interlocutorButton, setInterlocutorButton] = useState<string>("");
+
+  return (
+    <div className=" bg-slate-500 flex items-center justify-center sm:p-6 font-sans rounded-3xl shadow-blue-900">
+      <div className="bg-white p-6 sm:p-8 rounded-xl shadow-xl w-full max-w-lg text-slate-700 space-y-6">
+        <h1 className="text-4xl sm:text-5xl font-bold text-center text-sky-600 tracking-tight">
+          Malan
+        </h1>
+        <div>
+          <label className="block text-sm sm:text-base font-medium mb-2 text-slate-600">
+            I want to learn...
+          </label>
+          <CustomPopover<LanguageOption>
+            open={languagePopoverOpen}
+            onOpenChange={setLanguagePopoverOpen}
+            value={selectedLanguage}
+            onValueChange={setSelectedLanguage}
+            items={languageLearningData}
+            placeholder="Search language..."
+            buttonTextDefault="Select language..."
+          />
+        </div>
+        <div>
+          <label className="block text-sm sm:text-base font-medium mb-2 text-slate-600">
+            My native language is...
+          </label>
+          <CustomPopover<PopoverItem>
+            open={nativeLanguagePopoverOpen}
+            onOpenChange={setNativeLanguagePopoverOpen}
+            value={nativeLanguage}
+            onValueChange={setNativeLanguage}
+            items={nativeLanguageData}
+            placeholder="Search language..."
+            buttonTextDefault="Select language..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm sm:text-base font-medium mb-2 text-slate-600">
+            I am a...
+          </label>
+          <CustomPopover<PopoverItem>
+            open={levelPopoverOpen}
+            onOpenChange={setLevelPopoverOpen}
+            value={selectedLevel}
+            onValueChange={setSelectedLevel}
+            items={levelsData}
+            placeholder="Search level..."
+            buttonTextDefault="Select level..."
+          />
+        </div>
+
+        <div className="p-4 bg-sky-50 rounded-lg border border-sky-200">
+          <h2 className="text-base sm:text-lg font-medium mb-3 text-center text-sky-700">
+            Your Interlocutor:
+          </h2>
+          {selectedLanguage && (
+            <div className="flex justify-around text-center">
+              {selectedLanguage &&
+                selectedLanguage.interlocutors &&
+                Object.entries(selectedLanguage.interlocutors).map(
+                  ([gender, name]) => (
+                    <div key={gender}>
+                      <p className="text-xs sm:text-sm text-slate-500 capitalize">
+                        {gender}:
+                      </p>
+                      <p className="text-lg sm:text-xl font-semibold text-sky-600">
+                        <Button
+                          onClick={() => setInterlocutorButton(name)}
+                          className={cn(
+                            "!bg-white !text-sky-600 border border-sky-200",
+                            interlocutorButton === name &&
+                              "!bg-sky-500 !text-white"
+                          )}
+                        >
+                          {name}
+                        </Button>
+                      </p>
+                    </div>
+                  )
+                )}
+            </div>
+          )}
+        </div>
+        <button className="w-full bg-sky-500 text-white p-3 sm:p-4 rounded-lg text-base sm:text-lg font-semibold hover:animate-pulse transition-colors duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75">
+          Start Learning
+        </button>
+      </div>
+    </div>
+  );
+}
