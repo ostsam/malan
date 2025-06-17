@@ -2,6 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { CircleLoader } from "react-spinners";
+import UseRecorder from "./hooks/useRecorder";
 
 export default function Chat() {
   const {
