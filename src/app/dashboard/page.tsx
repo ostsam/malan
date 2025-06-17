@@ -24,7 +24,7 @@ export default function Menu() {
     useState(false);
   const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
   const [levelPopoverOpen, setLevelPopoverOpen] = useState(false);
-  const [interlocutorButton, setInterlocutorButton] = useState<string>("");
+  const [interlocutor, setInterlocutor] = useState<string>("");
 
   return (
     <div className=" bg-slate-500 flex items-center justify-center sm:p-6 font-sans rounded-3xl shadow-blue-900">
@@ -92,10 +92,10 @@ export default function Menu() {
                       </p>
                       <p className="text-lg sm:text-xl font-semibold text-sky-600">
                         <Button
-                          onClick={() => setInterlocutorButton(name)}
+                          onClick={() => setInterlocutor(name)}
                           className={cn(
                             "!bg-white !text-sky-600 border border-sky-200",
-                            interlocutorButton === name &&
+                            interlocutor === name &&
                               "!bg-sky-500 !text-white"
                           )}
                         >
