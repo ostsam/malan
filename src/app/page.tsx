@@ -4,21 +4,39 @@ import { useChat } from "@ai-sdk/react";
 import { CircleLoader } from "react-spinners";
 
 export default function Chat() {
-  const { messages, input, handleInputChange, handleSubmit, status, stop } =
-    useChat();
+  const {
+    messages,
+    setMessages,
+    input,
+    handleInputChange,
+    handleSubmit,
+    status,
+    stop,
+  } = useChat();
+
   return (
     <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
-      {messages.map((message) => (
-        <div key={message.id} className="whitespace-pre-wrap">
-          {message.role === "user" ? "User: " : "AI: "}
-          {message.parts.map((part, i) => {
-            switch (part.type) {
-              case "text":
-                return <div key={`${message.id}-${i}`}>{part.text}</div>;
-            }
-          })}
-        </div>
-      ))}
+      {messages.map((message) => {
+        const isUser = message.role === "user";
+        return (
+          <div
+            key={message.id}
+            className={`flex flex-col ${
+              isUser ? "items-end" : "items-start"
+            } space-y-1`}
+          >
+            <div
+              className={`relative max-w-[80%] rounded-3xl p-4 text-sm leading-relaxed break-words whitespace-pre-wrap shadow-lg ring-1 ring-white/10 ${
+                isUser
+                  ? "bg-gradient-to-br from-lime-400 to-lime-500 text-black"
+                  : "bg-gradient-to-br from-amber-400 to-amber-500 text-black"
+              }`}
+            >
+              {message.content}
+            </div>
+          </div>
+        );
+      })}
       <div className="fixed bottom-18">
         {(status === "submitted" || status === "streaming") && (
           <div>
