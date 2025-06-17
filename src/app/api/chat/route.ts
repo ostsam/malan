@@ -8,7 +8,7 @@ export async function POST(req: Request) {
   const { messages } = await req.json();
 
   const result = streamText({
-    model: openai("gpt-o4-mini"),
+    model: openai("o4-mini-2025-04-16"),
     messages,
   });
 
