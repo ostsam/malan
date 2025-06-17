@@ -3,6 +3,8 @@
 import { useChat } from "@ai-sdk/react";
 import { CircleLoader } from "react-spinners";
 import UseRecorder from "./hooks/useRecorder";
+import { useTranscription } from "./hooks/useTranscription";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
 
 export default function Chat() {
   const {
@@ -16,7 +18,7 @@ export default function Chat() {
   } = useChat();
 
   return (
-    <div className="flex flex-col w-full max-w-md py-24 mx-auto stretch">
+    <div className="flex flex-col w-full max-w-md py-5 mx-auto stretch">
       {messages.map((message) => {
         const isUser = message.role === "user";
         return (
@@ -27,10 +29,10 @@ export default function Chat() {
             } space-y-1`}
           >
             <div
-              className={`relative max-w-[80%] rounded-3xl p-4 text-sm leading-relaxed break-words whitespace-pre-wrap shadow-lg ring-1 ring-white/10 ${
+              className={`relative max-w-[85%] mb-1.75 rounded-lg p-3 text-med ${
                 isUser
-                  ? "bg-gradient-to-br from-lime-400 to-lime-500 text-black"
-                  : "bg-gradient-to-br from-amber-400 to-amber-500 text-black"
+                  ? "bg-gradient-to-br from-sky-500 to-sky-600 text-black"
+                  : "bg-gradient-to-bl from-lime-600 to-lime-500 text-black"
               }`}
             >
               {message.content}
@@ -57,6 +59,7 @@ export default function Chat() {
             onChange={handleInputChange}
             disabled={status !== "ready"}
           />
+          <DotLottieReact src="src/microphonebutton.json" loop autoplay />
           <button type="submit">Submit</button>
         </form>
       </div>
