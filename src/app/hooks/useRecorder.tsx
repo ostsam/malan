@@ -6,7 +6,7 @@ export interface UseAudioRecorderReturn {
   isRecording: boolean;
   audioBlob: Blob | null;
   recordingError: string | null;
-  startRecording: (timeSlice?: number) => Promise<void>;
+  startRecording: () => Promise<void>;
   stopRecording: () => void;
   clearAudioBlob: () => void;
 }
@@ -18,7 +18,7 @@ export default function useAudioRecorder(): UseAudioRecorderReturn {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
-  const startRecording = useCallback(async (timeSlice?: number) => {
+  const startRecording = useCallback(async () => {
     setAudioBlob(null);
     setRecordingError(null);
 
@@ -51,7 +51,7 @@ export default function useAudioRecorder(): UseAudioRecorderReturn {
         stream?.getTracks().forEach((track) => track.stop());
       };
 
-      recorder.start(timeSlice);
+      recorder.start();
       setIsRecording(true);
     } catch (err) {
       console.error("Error starting recording:", err);
