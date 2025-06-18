@@ -13,9 +13,6 @@ export default function Chat({
   initialMessages,
 }: { id?: string | undefined; initialMessages?: Message[] } = {}) {
   const {
-    input,
-    handleInputChange,
-    handleSubmit,
     messages,
     append,
     status,
