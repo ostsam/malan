@@ -59,7 +59,7 @@ export default function Chat() {
   }, [isRecording]);
 
   return (
-    <div className="flex flex-col w-full max-w-md py-12 mx-auto stretch min-h-screen items-center">
+    <div className="flex flex-col w-full max-w-xl py-8 mx-auto stretch min-h-screen items-center">
       <div className="flex-grow w-full overflow-y-auto mb-20">
         {messages.length > 0 ? (
           messages.map((m) => (
