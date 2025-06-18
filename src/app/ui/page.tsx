@@ -6,12 +6,19 @@ import UseAudioRecorder from "../hooks/useRecorder";
 import { useTranscription } from "../hooks/useTranscription";
 import { CircleLoader } from "react-spinners";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
-import { createIdGenerator, smoothStream } from "ai";
+import { createIdGenerator } from "ai";
+import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
+import { ChatSettings } from "../tools/chat-store";
 
 export default function Chat({
   id,
   initialMessages,
-}: { id?: string | undefined; initialMessages?: Message[] } = {}) {
+  settings,
+}: {
+  id?: string | undefined;
+  initialMessages?: Message[];
+  settings?: ChatSettings;
+}) {
   const {
     messages,
     append,
@@ -91,6 +98,15 @@ export default function Chat({
                     ? "bg-blue-100 dark:bg-blue-900 self-end"
                     : "bg-gray-100 dark:bg-gray-800 self-start"
                 }`}
+                style={{
+                  direction: languageLearningData.find(
+                    (lang) =>
+                      lang.label === settings?.selectedLanguage ||
+                      lang.value === settings?.nativeLanguage
+                  )?.rtl
+                    ? "rtl"
+                    : "ltr",
+                }}
               >
                 <strong>{m.role === "user" ? "You: " : "AI: "}</strong>
                 {m.content}
