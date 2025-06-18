@@ -3,10 +3,10 @@ import Link from "next/link";
 export default function Homepage() {
   return (
     <Link
-      href="/api/chat"
+      href="/dashboard"
       className="mt-3 align-center inline-block rounded-lg bg-sky-500 px-6 py-3 text-center font-semibold text-white shadow transition-colors hover:bg-sky-600"
     >
-      Create a New Chat
+      Go to Dashboard
     </Link>
   );
 }
