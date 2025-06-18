@@ -12,7 +12,7 @@ import { levelsData } from "./menu-data/levelsData";
 
 export default function Menu() {
   const [nativeLanguage, setNativeLanguage] = useState<PopoverItem | undefined>(
-    nativeLanguageData[0]
+    nativeLanguageData[13]
   );
   const [selectedLanguage, setSelectedLanguage] = useState<
     LanguageOption | undefined
@@ -95,8 +95,7 @@ export default function Menu() {
                           onClick={() => setInterlocutor(name)}
                           className={cn(
                             "!bg-white !text-sky-600 border border-sky-200",
-                            interlocutor === name &&
-                              "!bg-sky-500 !text-white"
+                            interlocutor === name && "!bg-sky-500 !text-white"
                           )}
                         >
                           {name}

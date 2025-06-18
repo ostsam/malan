@@ -23,9 +23,11 @@ export async function loadChat(id: string): Promise<Message[]> {
 export async function saveChat({
   id,
   messages,
+  role
 }: {
   id: string;
   messages: Message[];
+  role: string;
 }): Promise<void> {
   const content = JSON.stringify(messages, null, 2);
   await writeFile(getChatFile(id), content);
