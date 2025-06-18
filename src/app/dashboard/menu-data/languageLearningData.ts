@@ -1,6 +1,7 @@
 export interface LanguageOption {
   value: string;
   label: string;
+  rtl?: boolean;
   interlocutors: {
     male: string;
     female: string;
@@ -57,6 +58,7 @@ export const languageLearningData: LanguageOption[] = [
     value: "ar",
     label: "العربية / Arabic",
     interlocutors: { male: "خالد (Khaled)", female: "عائشة (Aisha)" },
+    rtl: true,
   },
   {
     value: "af",
@@ -147,6 +149,7 @@ export const languageLearningData: LanguageOption[] = [
     value: "he",
     label: "עברית / Hebrew",
     interlocutors: { male: "יוסף (Yosef)", female: "מאיה (Maya)" },
+    rtl: true,
   },
   {
     value: "hi",
@@ -222,6 +225,7 @@ export const languageLearningData: LanguageOption[] = [
     value: "fa",
     label: "فارسی / Persian",
     interlocutors: { male: "امیر (Amir)", female: "زهرا (Zahra)" },
+    rtl: true,
   },
   {
     value: "pl",
@@ -287,6 +291,7 @@ export const languageLearningData: LanguageOption[] = [
     value: "ur",
     label: "اردو / Urdu",
     interlocutors: { male: "علی (Ali)", female: "فاطمہ (Fatima)" },
+    rtl: true,
   },
   {
     value: "vi",

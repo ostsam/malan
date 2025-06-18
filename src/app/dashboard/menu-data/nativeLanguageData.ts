@@ -6,6 +6,7 @@ export const nativeLanguageData = [
   {
     value: "ar",
     label: "العربية / Arabic",
+    rtl: true,
   },
   {
     value: "hy",
@@ -82,6 +83,7 @@ export const nativeLanguageData = [
   {
     value: "he",
     label: "עברית / Hebrew",
+    rtl: true,
   },
   {
     value: "hi",
@@ -154,6 +156,7 @@ export const nativeLanguageData = [
   {
     value: "fa",
     label: "فارسی / Persian",
+    rtl: true,
   },
   {
     value: "pl",
@@ -218,6 +221,7 @@ export const nativeLanguageData = [
   {
     value: "ur",
     label: "اردو / Urdu",
+    rtl: true,
   },
   {
     value: "vi",
