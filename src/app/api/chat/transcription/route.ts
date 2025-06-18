@@ -6,19 +6,15 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-function base64ToBlob(base64: string, type = "audio/webm"): Blob {
-  const buffer = Buffer.from(base64, "base64");
-  return new Blob([buffer], { type });
-}
 
 export async function POST(req: Request) {
   try {
-    const requestBody = await req.json();
-    const audioBase64 = requestBody.audio;
+    const formData = await req.formData();
+    const audioFile = formData.get("audioFile");
 
-    if (!audioBase64 || typeof audioBase64 !== "string") {
+    if (!audioFile || !(audioFile instanceof File)) {
       return new Response(
-        JSON.stringify({ error: "Audio data (base64 string) is required" }),
+        JSON.stringify({ error: "Audio file is required" }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -26,10 +22,8 @@ export async function POST(req: Request) {
       );
     }
 
-    const audioBlob = await base64ToBlob(audioBase64);
-
     const transcription = await openai.audio.transcriptions.create({
-      file: new File([audioBlob], "audio.webm", { type: audioBlob.type }),
+      file: audioFile,
       model: "whisper-1",
     });
 

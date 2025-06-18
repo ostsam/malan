@@ -13,23 +13,7 @@ export interface UseTranscriptionReturn {
   clearTranscriptionError: () => void;
 }
 
-const blobToBase64 = (blob: Blob): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(blob);
-    reader.onloadend = () => {
-      if (typeof reader.result === "string") {
-        resolve(reader.result.split(",")[1]);
-      } else {
-        reject(new Error("Failed to read blob as base64 string."));
-      }
-    };
-    reader.onerror = (error) => {
-      console.error("FileReader error:", error);
-      reject(new Error("Error converting blob to base64."));
-    };
-  });
-};
+
 
 export function useTranscription({
   onTranscriptionSuccess,
@@ -51,11 +35,12 @@ export function useTranscription({
       setTranscriptionError(null);
 
       try {
-        const base64Audio = await blobToBase64(audioBlob);
+        const formData = new FormData();
+        formData.append("audioFile", audioBlob, "audio.webm"); // Added filename
+
         const response = await fetch("/api/chat/transcription", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ audio: base64Audio }),
+          body: formData,
         });
 
         if (!response.ok) {

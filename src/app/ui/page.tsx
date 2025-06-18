@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { useChat, Message } from "@ai-sdk/react";
 import UseAudioRecorder from "../hooks/useRecorder";
 import { useTranscription } from "../hooks/useTranscription";
-import { CircleLoader } from "react-spinners";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
@@ -40,9 +39,11 @@ export default function Chat({
   {
     const errorMessageStyling =
       "fixed bottom-32 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg";
-
+    const micCaptionStyling = "text-md text-gray-600 dark:text-gray-400 mb-1"
     const submissionRef = useRef(false);
     const dotLottiePlayerRef = useRef<DotLottie | null>(null);
+    const messagesContainerRef = useRef<HTMLDivElement>(null);
+    const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
     const {
       isRecording,
@@ -86,30 +87,38 @@ export default function Chat({
       }
     }, [isRecording]);
 
+    useEffect(() => {
+      if (endOfMessagesRef.current) {
+        endOfMessagesRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, [messages]);
+
     return (
       <div className="flex flex-col w-full max-w-xl py-8 mx-auto stretch min-h-screen items-center">
-        <div className="flex-grow w-full overflow-y-auto mb-20">
+        <div ref={messagesContainerRef} className="flex-grow w-full overflow-y-auto pb-32">
           {messages.length > 0 ? (
             messages.map((m) => (
               <div
                 key={m.id}
-                className={`whitespace-pre-wrap p-2 my-2 rounded-lg ${
-                  m.role === "user"
-                    ? "bg-blue-100 dark:bg-blue-900 self-end"
-                    : "bg-gray-100 dark:bg-gray-800 self-start"
-                }`}
-                style={{
-                  direction: languageLearningData.find(
-                    (lang) =>
-                      lang.label === settings?.selectedLanguage ||
-                      lang.value === settings?.nativeLanguage
-                  )?.rtl
-                    ? "rtl"
-                    : "ltr",
-                }}
               >
-                <strong>{m.role === "user" ? "You: " : "AI: "}</strong>
-                {m.content}
+                <div
+                  className={`whitespace-pre-wrap p-2 mb-1 rounded-lg max-w-[100%] ${
+                    m.role === "user"
+                      ? "bg-blue-100 dark:bg-blue-900"
+                      : "bg-gray-100 dark:bg-gray-800"
+                  }`}
+                  style={{
+                    direction: languageLearningData.find(
+                      (lang) =>
+                        lang.label === settings?.selectedLanguage ||
+                        lang.value === settings?.nativeLanguage
+                    )?.rtl
+                      ? "rtl"
+                      : "ltr",
+                  }}
+                >
+                  {m.content}
+                </div>
               </div>
             ))
           ) : (
@@ -118,26 +127,7 @@ export default function Chat({
               Press the button again to end transmission.
             </div>
           )}
-
-          {(isTranscribing || status == "submitted") && (
-            <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 flex items-center space-x-2 p-2 bg-white dark:bg-zinc-800 rounded-lg shadow-md">
-              <CircleLoader color="#1E88E5" size={20} />
-              <span>
-                {isTranscribing ? "Transcribing..." : "System Processing..."}
-              </span>
-              {status == "submitted" &&
-                messages.length > 0 &&
-                messages[messages.length - 1].role === "assistant" && (
-                  <button
-                    type="button"
-                    onClick={() => stop()}
-                    className="ml-2 p-1 bg-red-500 text-white rounded text-xs"
-                  >
-                    Stop
-                  </button>
-                )}
-            </div>
-          )}
+          <div ref={endOfMessagesRef} />
           {recordingError && (
             <div className={errorMessageStyling}>
               Recording Error: {recordingError}
@@ -155,7 +145,7 @@ export default function Chat({
           )}
         </div>
 
-        <div className="fixed bottom-0 left-0 right-0 flex justify-center bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800">
+        <div className="fixed bottom-0 left-0 right-0 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800">
           <DotLottieReact
             dotLottieRefCallback={(playerInstance) => {
               dotLottiePlayerRef.current = playerInstance;
@@ -168,12 +158,13 @@ export default function Chat({
                 isRecording ? stopRecording() : startRecording();
               }
             }}
-            className={`w-30 h-30 ${
+            className={`w-25 h-25 ${
               isTranscribing || status == "submitted"
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
             }`}
           />
+          {isRecording ? <p className={micCaptionStyling}>Recording</p> : <p className={micCaptionStyling}>Press to Record</p>}
         </div>
       </div>
     );
