@@ -5,11 +5,11 @@ import path from "path";
 import { Message } from "ai";
 
 export interface ChatSettings {
-  nativeLanguage: string;
-  selectedLanguage: string;
-  selectedLevel: string;
-  interlocutor: string;
-  name?: string; 
+  nativeLanguage: string | undefined;
+  selectedLanguage: string | undefined;
+  selectedLevel: string | undefined;
+  interlocutor: string | undefined;
+  name?: string;
 }
 
 export interface ChatData {
@@ -37,7 +37,12 @@ export async function loadChat(id: string): Promise<ChatData> {
   const fileContent = await readFile(getChatFile(id), "utf8");
   const chatData: ChatData = JSON.parse(fileContent);
   if (!chatData.settings) {
-    chatData.settings = {};
+    chatData.settings = {
+      nativeLanguage: undefined,
+      selectedLanguage: undefined,
+      selectedLevel: undefined,
+      interlocutor: undefined,
+    };
   }
   return chatData;
 }
@@ -49,7 +54,7 @@ export async function saveChat({
 {
   id: string;
   messages: Message[];
-  // role: string; 
+  // role: string;
 }): Promise<void> {
   const chatData = await loadChat(id); // Load existing data to preserve settings
   chatData.messages = messages; // Update only the messages

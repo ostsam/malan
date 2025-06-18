@@ -18,8 +18,8 @@ export const maxDuration = 30;
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const settings: ChatSettings = {
-    nativeLanguage: searchParams.get("nativeLanguage") ?? undefined,
-    selectedLanguage: searchParams.get("selectedLanguage") ?? undefined,
+    nativeLanguage: searchParams.get("nativeLanguage") || undefined,
+    selectedLanguage: searchParams.get("selectedLanguage") || undefined,
     selectedLevel: searchParams.get("selectedLevel") ?? undefined,
     interlocutor: searchParams.get("interlocutor") ?? undefined,
     name: searchParams.get("userName") ?? "the student", // Default user name if not provided
