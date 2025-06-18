@@ -8,6 +8,9 @@ import { CircleLoader } from "react-spinners";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 
 export default function Chat() {
+  const errorMessageStyling =
+    "fixed bottom-32 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg";
+
   const {
     messages,
     append,
@@ -77,7 +80,8 @@ export default function Chat() {
           ))
         ) : (
           <div className="text-center text-gray-500 dark:text-gray-400 mt-10">
-            Press the record button and speak to start the chat.
+            Press the record button and speak to start the chat. <br></br>Press
+            the button again to end transmission.
           </div>
         )}
 
@@ -102,28 +106,28 @@ export default function Chat() {
         )}
 
         {recordingError && (
-          <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-md">
+          <div className={errorMessageStyling}>
             Recording Error: {recordingError}
           </div>
         )}
         {transcriptionHookError && (
-          <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 p-2 bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300 rounded-lg shadow-md">
+          <div className={errorMessageStyling}>
             Transcription Error: {transcriptionHookError}
           </div>
         )}
         {chatError && (
-          <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 p-2 bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 rounded-lg shadow-md">
+          <div className={errorMessageStyling}>
             Chat Error: {chatError.message}
           </div>
         )}
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 flex justify-center p-4 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800">
+      <div className="fixed bottom-0 left-0 right-0 flex justify-center bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800">
         <DotLottieReact
           dotLottieRefCallback={(playerInstance) => {
             dotLottiePlayerRef.current = playerInstance;
           }}
-          src="/microphonebutton.json" // Ensure microphonebutton.json is in /public
+          src="/microphonebutton.json"
           loop={true}
           autoplay={false}
           onClick={() => {
@@ -131,8 +135,10 @@ export default function Chat() {
               isRecording ? stopRecording() : startRecording();
             }
           }}
-          className={`w-20 h-20 ${ // Adjust size as needed
-            (isTranscribing || isChatLoading) ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+          className={`w-30 h-30 ${
+            isTranscribing || isChatLoading
+              ? "opacity-50 cursor-not-allowed"
+              : "cursor-pointer"
           }`}
         />
       </div>
