@@ -5,6 +5,8 @@ export default async function Page({ params: paramsPromise }: { params: Promise<
   const params = await paramsPromise;
   const { id } = params;
 
-  const messages = await loadChat(id);
-  return <Chat id={id} initialMessages={messages} />;
+  const chatData = await loadChat(id);
+  // The Chat component expects initialMessages to be Message[]
+  // chatData contains { settings: ChatSettings, messages: Message[] }
+  return <Chat id={id} initialMessages={chatData.messages} />;
 }

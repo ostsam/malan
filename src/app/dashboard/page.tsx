@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from 'next/navigation';
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CustomPopover } from "./menu-components/CustomPopover";
@@ -25,6 +26,21 @@ export default function Menu() {
   const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
   const [levelPopoverOpen, setLevelPopoverOpen] = useState(false);
   const [interlocutor, setInterlocutor] = useState<string>("");
+  const router = useRouter();
+
+  const handleStartLearning = () => {
+    const params = new URLSearchParams();
+    if (nativeLanguage?.value) params.append("nativeLanguage", nativeLanguage.value);
+    if (selectedLanguage?.label) params.append("selectedLanguage", selectedLanguage.value);
+    if (selectedLevel?.value) params.append("selectedLevel", selectedLevel.value);
+    if (interlocutor) params.append("interlocutor", interlocutor);
+    ///add name/username!
+
+    router.push(`/api/chat?${params.toString()}`);
+  };
+
+  const isFormComplete =
+    !!nativeLanguage && !!selectedLanguage && !!selectedLevel && !!interlocutor;
 
   return (
     <div className=" bg-slate-500 flex items-center justify-center sm:p-6 font-sans rounded-3xl shadow-blue-900">
@@ -107,7 +123,16 @@ export default function Menu() {
             </div>
           )}
         </div>
-        <button className="w-full bg-sky-500 text-white p-3 sm:p-4 rounded-lg text-base sm:text-lg font-semibold hover:animate-pulse transition-colors duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75">
+        <button
+          onClick={handleStartLearning}
+          disabled={!isFormComplete}
+          className={cn(
+            "w-full text-white p-3 sm:p-4 rounded-lg text-base sm:text-lg font-semibold transition-colors duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75",
+            isFormComplete
+              ? "bg-sky-500 hover:animate-pulse"
+              : "bg-slate-400 cursor-not-allowed"
+          )}
+        >
           Start Learning
         </button>
       </div>

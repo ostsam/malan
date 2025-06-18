@@ -5,36 +5,48 @@ import {
   createIdGenerator,
   appendClientMessage,
 } from "ai";
-import { loadChat, saveChat, createChat } from "@/app/tools/chat-store";
+import { loadChat, saveChat, createChat, type ChatSettings } from "@/app/tools/chat-store";
 import { redirect } from "next/navigation";
+import { formatSystemPrompt } from "@/app/lib/prompt-templates";
+import { NextRequest } from "next/server";
 
-const prompt =
-  "You are ${interlocutor}, a ${selectedLanguage} tutor with many decades of experience and a penchant for teaching your students in a memorable way, they leave your sessions truly having learned a lot of ${selectedLanguage} as used by contemporary native speakers. Always transcribe things said by the user word for word and *DO NOT* translate the user input no matter what! Your current student is ${name} and they speak ${nativeLanguage} natively. They report that they speak ${selectedLanguage} at a ${selectedLevel} level. Seeing as this is your first conversation, first gauge their level of ${selectedLanguage}. Start by making small talk about who they are and their interests and depending on their grammar, knowledge of vocabulary, and pronunciation, either raise the complexity of your conversation or keep it at the same level. Ask them about their interests, daily life, and encourage them to express themselves fully. You are very easygoing and easy to talk to in a way that allows students to open up without feeling like they will be castigated for making a mistake. Have asides where you introduce new vocabulary that you believe your student would benefit from learning given the context of the conversation. If they struggle, help them find the right words and gently correct errors. You can explain grammar when relevant, but focus more on keeping the conversation flowing naturally while providing support. Always check for understanding. If ${name} struggles to understand the concept when you try to explain it to them, briefly switch over to ${nativeLanguage}. Show interest in their responses and ask follow-up questions.";
+
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
-export async function GET() {
-  const id = await createChat();
+export async function GET(req: NextRequest) {
+  const searchParams = req.nextUrl.searchParams;
+  const settings: ChatSettings = {
+    nativeLanguage: searchParams.get("nativeLanguage") ?? undefined,
+    selectedLanguage: searchParams.get("selectedLanguage") ?? undefined,
+    selectedLevel: searchParams.get("selectedLevel") ?? undefined,
+    interlocutor: searchParams.get("interlocutor") ?? undefined,
+    name: searchParams.get("userName") ?? "the student", // Default user name if not provided
+  };
+
+  const id = await createChat(settings);
   redirect(`/chat/${id}`);
 }
 
 export async function POST(req: Request) {
   const { message: userMessage, id: chatId } = await req.json();
 
-  const capturedUserRole = userMessage.role;
-  const previousMessages = await loadChat(chatId);
+  const { settings, messages: previousMessages } = await loadChat(chatId);
 
+  const systemPrompt = formatSystemPrompt(settings);
+  
   // Message history
   const historyWithUserMsg = appendClientMessage({
-    messages: previousMessages,
-    message: userMessage, // the current message from the client
+    messages: previousMessages, 
+    message: userMessage, //current message from user
   });
 
+  console.log(systemPrompt)
   const result = streamText({
     model: openai("o4-mini-2025-04-16"),
-    messages: historyWithUserMsg, // Pass the history including the user's message to the AI
-    system: prompt,
+    messages: historyWithUserMsg, 
+    system: systemPrompt,
     experimental_generateMessageId: createIdGenerator({
       prefix: "msgs",
       size: 16,
@@ -48,7 +60,6 @@ export async function POST(req: Request) {
       await saveChat({
         id: chatId,
         messages: finalMessagesToSave,
-        role: capturedUserRole,
       });
     },
   });
