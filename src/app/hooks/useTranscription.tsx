@@ -52,7 +52,7 @@ export function useTranscription({
 
       try {
         const base64Audio = await blobToBase64(audioBlob);
-        const response = await fetch("/api/transcribe", {
+        const response = await fetch("/api/chat/transcription", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ audio: base64Audio }),

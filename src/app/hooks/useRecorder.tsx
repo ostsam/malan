@@ -11,7 +11,7 @@ export interface UseAudioRecorderReturn {
   clearAudioBlob: () => void;
 }
 
-export default function useAudioRecorder(): UseAudioRecorderReturn {
+export default function UseAudioRecorder(): UseAudioRecorderReturn {
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [recordingError, setRecordingError] = useState<string | null>(null);
