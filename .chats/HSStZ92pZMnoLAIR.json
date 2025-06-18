@@ -1,0 +1,86 @@
+[
+  {
+    "role": "user",
+    "content": "¿Qué tal estás? Yo quiero aprender español.",
+    "id": "msgc-wxGt6C3K6K1oxYZG",
+    "createdAt": "2025-06-18T15:40:44.897Z",
+    "parts": [
+      {
+        "type": "text",
+        "text": "¿Qué tal estás? Yo quiero aprender español."
+      }
+    ]
+  },
+  {
+    "role": "assistant",
+    "id": "msgs-A5MXPr5GGTkK4mHY",
+    "createdAt": "2025-06-18T15:40:55.431Z",
+    "content": "¡Hola! Estoy muy bien, gracias. ¿Y tú? Me alegra mucho que quieras aprender español.\n\nPara conocerte mejor, cuéntame un poco sobre ti:\n1. ¿De dónde eres y cuál es tu lengua materna?  \n2. ¿Qué te gusta hacer en tu tiempo libre?  \n\n(Tiempo libre = free time; afición = hobby)\n\nCon lo que me digas, podré adaptar las clases a tus intereses y practicar vocabulario útil. Si algo no te queda claro, dímelo y lo explico con más detalle.",
+    "toolInvocations": [],
+    "parts": [
+      {
+        "type": "step-start"
+      },
+      {
+        "type": "text",
+        "text": "¡Hola! Estoy muy bien, gracias. ¿Y tú? Me alegra mucho que quieras aprender español.\n\nPara conocerte mejor, cuéntame un poco sobre ti:\n1. ¿De dónde eres y cuál es tu lengua materna?  \n2. ¿Qué te gusta hacer en tu tiempo libre?  \n\n(Tiempo libre = free time; afición = hobby)\n\nCon lo que me digas, podré adaptar las clases a tus intereses y practicar vocabulario útil. Si algo no te queda claro, dímelo y lo explico con más detalle."
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "content": "En Nueva York y en mi tiempo libre, yo quiero leer.",
+    "id": "msgc-F024VqVT6qVkKIZq",
+    "createdAt": "2025-06-18T15:41:11.007Z",
+    "parts": [
+      {
+        "type": "text",
+        "text": "En Nueva York y en mi tiempo libre, yo quiero leer."
+      }
+    ]
+  },
+  {
+    "role": "assistant",
+    "id": "msgs-LSF4mJWVrxmOQxbs",
+    "createdAt": "2025-06-18T15:41:18.391Z",
+    "content": "¡Muy bien! Gracias por contarme. Solo dos detalles de redacción:\n\n1. En lugar de “En Nueva York…” suele decirse:  \n   “Vivo en Nueva York…”  \n2. Para hablar de hábitos mejor “me gusta leer” en vez de “quiero leer”, porque “me gusta” indica algo que disfrutas hacer regularmente.  \n\nAsí que podrías decir:  \n“Vivo en Nueva York y en mi tiempo libre me gusta leer.”  \n\n¿Ves la diferencia entre “me gusta” (I like) y “quiero” (I want)? ¿Todo claro?\n\nAhora, cuéntame más sobre tu afición por la lectura:  \n• ¿Qué tipo de libros te gusta leer? (géneros literarios como novela, poesía, ensayo, cómic…)  \n• ¿Lees más en papel o en formato digital?  \n• ¿Tienes algún autor o autora favorito/a?\n\nVocabulario útil:  \n- género literario = literary genre  \n- novela = novel  \n- poesía = poetry  \n- ensayo = essay  \n- cómic = comic book  \n\nEspero tu respuesta para seguir practicando.",
+    "toolInvocations": [],
+    "parts": [
+      {
+        "type": "step-start"
+      },
+      {
+        "type": "text",
+        "text": "¡Muy bien! Gracias por contarme. Solo dos detalles de redacción:\n\n1. En lugar de “En Nueva York…” suele decirse:  \n   “Vivo en Nueva York…”  \n2. Para hablar de hábitos mejor “me gusta leer” en vez de “quiero leer”, porque “me gusta” indica algo que disfrutas hacer regularmente.  \n\nAsí que podrías decir:  \n“Vivo en Nueva York y en mi tiempo libre me gusta leer.”  \n\n¿Ves la diferencia entre “me gusta” (I like) y “quiero” (I want)? ¿Todo claro?\n\nAhora, cuéntame más sobre tu afición por la lectura:  \n• ¿Qué tipo de libros te gusta leer? (géneros literarios como novela, poesía, ensayo, cómic…)  \n• ¿Lees más en papel o en formato digital?  \n• ¿Tienes algún autor o autora favorito/a?\n\nVocabulario útil:  \n- género literario = literary genre  \n- novela = novel  \n- poesía = poetry  \n- ensayo = essay  \n- cómic = comic book  \n\nEspero tu respuesta para seguir practicando."
+      }
+    ]
+  },
+  {
+    "role": "user",
+    "content": "Quiero leer los libros de historia, de teoría del marxismo.",
+    "id": "msgc-Aef02vT6hyk80qv6",
+    "createdAt": "2025-06-18T15:42:04.550Z",
+    "parts": [
+      {
+        "type": "text",
+        "text": "Quiero leer los libros de historia, de teoría del marxismo."
+      }
+    ]
+  },
+  {
+    "role": "assistant",
+    "id": "msgs-8bVNrYuXqkruxv1E",
+    "createdAt": "2025-06-18T15:42:15.287Z",
+    "content": "Muy bien, veo que te interesan los libros de historia y teoría marxista. Te ayudo con la formulación:\n\nOpción A (hábito):  \n“Me gusta leer libros de historia y sobre teoría marxista.”  \n\nOpción B (proyecto):  \n“Quiero leer libros de historia y teoría marxista.”  \n\nFíjate que usamos “sobre” cuando hablamos del tema de un libro, y decimos “teoría marxista” más que “teoría del marxismo” para sonar más natural. ¿Lo ves?\n\nPara personalizar mejor las recomendaciones, cuéntame:\n\n1. ¿Qué periodo histórico te interesa más? (Edad Media, Revolución Francesa, siglo XX…)  \n2. ¿Lees estos libros en español o en tu lengua materna?  \n3. ¿Prefieres textos adaptados (más sencillos) o vas directo a los originales?\n\nAlgunas sugerencias en español:  \n- El Manifiesto Comunista (Marx y Engels)  \n- El Estado y la Revolución (Lenin)  \n- Historia de la Revolución Rusa (Trotsky)  \n- El 18 Brumario de Luis Bonaparte (Marx)  \n\nVocabulario útil:  \n- bibliografía = bibliography  \n- fuente primaria = primary source  \n- fuente secundaria = secondary source  \n- prefacio = preface  \n- índice = index  \n\n¿Te interesa alguna de estas lecturas o tienes otro autor en mente? ¡Dime y seguimos!",
+    "toolInvocations": [],
+    "parts": [
+      {
+        "type": "step-start"
+      },
+      {
+        "type": "text",
+        "text": "Muy bien, veo que te interesan los libros de historia y teoría marxista. Te ayudo con la formulación:\n\nOpción A (hábito):  \n“Me gusta leer libros de historia y sobre teoría marxista.”  \n\nOpción B (proyecto):  \n“Quiero leer libros de historia y teoría marxista.”  \n\nFíjate que usamos “sobre” cuando hablamos del tema de un libro, y decimos “teoría marxista” más que “teoría del marxismo” para sonar más natural. ¿Lo ves?\n\nPara personalizar mejor las recomendaciones, cuéntame:\n\n1. ¿Qué periodo histórico te interesa más? (Edad Media, Revolución Francesa, siglo XX…)  \n2. ¿Lees estos libros en español o en tu lengua materna?  \n3. ¿Prefieres textos adaptados (más sencillos) o vas directo a los originales?\n\nAlgunas sugerencias en español:  \n- El Manifiesto Comunista (Marx y Engels)  \n- El Estado y la Revolución (Lenin)  \n- Historia de la Revolución Rusa (Trotsky)  \n- El 18 Brumario de Luis Bonaparte (Marx)  \n\nVocabulario útil:  \n- bibliografía = bibliography  \n- fuente primaria = primary source  \n- fuente secundaria = secondary source  \n- prefacio = preface  \n- índice = index  \n\n¿Te interesa alguna de estas lecturas o tienes otro autor en mente? ¡Dime y seguimos!"
+      }
+    ]
+  }
+]
