@@ -104,7 +104,6 @@ export default function Chat() {
               )}
           </div>
         )}
-
         {recordingError && (
           <div className={errorMessageStyling}>
             Recording Error: {recordingError}
