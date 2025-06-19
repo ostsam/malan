@@ -46,7 +46,6 @@ export async function POST(req: Request) {
     message: userMessage, //current message from user
   });
 
-  console.log(systemPrompt);
   const result = streamText({
     model: openai("o4-mini-2025-04-16"),
     messages: historyWithUserMsg,
