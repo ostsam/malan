@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { signIn } from "@/lib/server/users"
+import { signIn, signUp } from "@/lib/server/users"
 import {
   Form,
   FormControl,
@@ -29,9 +29,10 @@ import { useRouter } from "next/navigation"
 const formSchema = z.object({
   email: z.string().min(6).max(50),
   password: z.string().min(8).max(50),
+  username: z.string().min(6).max(50),
 })
 
-export function LoginForm({
+export function SignUpForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
@@ -40,6 +41,7 @@ export function LoginForm({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+    username: "",
       email: "",
       password: "",
     },
@@ -47,13 +49,13 @@ export function LoginForm({
  
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true)
-    const {success} = await signIn(values.email, values.password);
+    const {success} = await signUp(values.email, values.username, values.password);
     console.log(values)
     if (success) {
-      toast.success("User signed in successfully")
+      toast.success("User signed up successfully")
       router.push("/dashboard")
     } else {
-      toast.error("User not found")
+      toast.error("Signup failed")
     }
     setLoading(false)
   }
@@ -70,7 +72,7 @@ export function LoginForm({
         <CardContent>
         <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="grid gap-6">
+            <div className="grid gap-4">
               <div className="flex flex-col gap-4">
                 <Button variant="outline" className="w-full">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -112,6 +114,20 @@ export function LoginForm({
         />
         </div>
                 </div>
+                <div>
+                  <FormField
+          control={form.control}
+          name="username"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Username:</FormLabel>
+              <FormControl>
+                <Input type="text" placeholder="username" {...field} />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+        </div>
                 <div className="grid gap-3">
                   <div>
                   <FormField
@@ -127,17 +143,14 @@ export function LoginForm({
           )}
         />
         </div>
-        <a href="#" className="ml-auto text-sm underline-offset-4 hover:underline">
-            Forgot your password?
-            </a>
         <Button type="submit" disabled={loading}>Submit
           {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         </Button>
               </div>
               <div className="text-center text-sm">
-                Don't have an account?{" "}
-                <a href="/signup" className="underline underline-offset-4">
-                  Sign up
+                Already have an account?{" "}
+                <a href="/login" className="underline underline-offset-4">
+                  Sign in
                 </a>
               </div>
             </div>
