@@ -5,12 +5,15 @@ import {
   createIdGenerator,
   appendClientMessage,
 } from "ai";
-import { loadChat, saveChat, createChat, type ChatSettings } from "@/app/tools/chat-store";
+import {
+  loadChat,
+  saveChat,
+  createChat,
+  type ChatSettings,
+} from "@/app/tools/chat-store";
 import { redirect } from "next/navigation";
 import { formatSystemPrompt } from "@/app/lib/prompt-templates";
 import { NextRequest } from "next/server";
-
-
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
@@ -18,11 +21,11 @@ export const maxDuration = 30;
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const settings: ChatSettings = {
-    nativeLanguage: searchParams.get("nativeLanguage") || undefined,
-    selectedLanguage: searchParams.get("selectedLanguage") || undefined,
-    selectedLevel: searchParams.get("selectedLevel") ?? undefined,
-    interlocutor: searchParams.get("interlocutor") ?? undefined,
-    name: searchParams.get("userName") ?? "the student", // Default user name if not provided
+    nativeLanguage: searchParams.get("nativeLanguage"),
+    selectedLanguage: searchParams.get("selectedLanguage"),
+    selectedLevel: searchParams.get("selectedLevel"),
+    interlocutor: searchParams.get("interlocutor"),
+    // name: searchParams.get("userName") ?? "the student", // Default user name if not provided
   };
 
   const id = await createChat(settings);
@@ -32,20 +35,20 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   const { message: userMessage, id: chatId } = await req.json();
 
-  const { settings, messages: previousMessages } = await loadChat(chatId);
+  const { settings, messages } = await loadChat(chatId);
 
   const systemPrompt = formatSystemPrompt(settings);
-  
+
   // Message history
   const historyWithUserMsg = appendClientMessage({
-    messages: previousMessages, 
+    messages,
     message: userMessage, //current message from user
   });
 
-  console.log(systemPrompt)
+  console.log(systemPrompt);
   const result = streamText({
     model: openai("o4-mini-2025-04-16"),
-    messages: historyWithUserMsg, 
+    messages: historyWithUserMsg,
     system: systemPrompt,
     temperature: 0.4,
     experimental_generateMessageId: createIdGenerator({

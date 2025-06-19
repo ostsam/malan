@@ -1,10 +1,15 @@
 import { authClient } from "@/lib/auth-client";
- 
+import { useState } from "react";
+
+const [email, setEmail] = useState("")
+const [password, setPassword] = useState("");
+const [name, setName] = useState("");
+
 const { data, error } = await authClient.signUp.email({
-        email, // user email address
-        password, // user password -> min 8 characters by default
-        name, // user display name
-        callbackURL: "/dashboard" // A URL to redirect to after the user verifies their email (optional)
+        email, 
+        password, 
+        name, 
+        callbackURL: "/dashboard" 
     }, {
         onRequest: (ctx) => {
             //show loading

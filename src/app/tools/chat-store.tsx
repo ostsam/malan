@@ -5,18 +5,18 @@ import path from "path";
 import { Message } from "ai";
 
 export interface ChatSettings {
-  nativeLanguage: string | undefined;
-  selectedLanguage: string | undefined;
-  selectedLevel: string | undefined;
-  interlocutor: string | undefined;
-  name?: string;
+  nativeLanguage: string | null;
+  selectedLanguage: string | null;
+  selectedLevel: string | null;
+  interlocutor: string | null;
+  name?: string | null;
 }
 
 export interface ChatData {
   settings: ChatSettings;
   messages: Message[];
 }
-const chatId = generateId()
+const chatId = generateId();
 
 export async function createChat(settings: ChatSettings): Promise<string> {
   const id = chatId;
@@ -37,23 +37,13 @@ function getChatFile(id: string): string {
 export async function loadChat(id: string): Promise<ChatData> {
   const fileContent = await readFile(getChatFile(id), "utf8");
   const chatData: ChatData = JSON.parse(fileContent);
-  if (!chatData.settings) {
-    chatData.settings = {
-      nativeLanguage: undefined,
-      selectedLanguage: undefined,
-      selectedLevel: undefined,
-      interlocutor: undefined,
-      name: undefined,
-    };
-  }
   return chatData;
 }
 
 export async function saveChat({
   id,
   messages,
-}: 
-{
+}: {
   id: string;
   messages: Message[];
 }): Promise<void> {
