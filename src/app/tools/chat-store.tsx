@@ -42,6 +42,7 @@ export async function loadChat(id: string): Promise<ChatData> {
       selectedLanguage: undefined,
       selectedLevel: undefined,
       interlocutor: undefined,
+      name: undefined,
     };
   }
   return chatData;
@@ -50,11 +51,10 @@ export async function loadChat(id: string): Promise<ChatData> {
 export async function saveChat({
   id,
   messages,
-}: // role is not used here anymore, consider removing if not needed elsewhere
+}: 
 {
   id: string;
   messages: Message[];
-  // role: string;
 }): Promise<void> {
   const chatData = await loadChat(id); // Load existing data to preserve settings
   chatData.messages = messages; // Update only the messages

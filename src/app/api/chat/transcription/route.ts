@@ -22,9 +22,14 @@ export async function POST(req: Request) {
       );
     }
 
+    const nativeLanguageValue = formData.get("nativeLanguage");
+    const selectedLanguageValue = formData.get("selectedLanguageValue");
+
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
       model: "whisper-1",
+      temperature: 0,
+      prompt: "Transcribe what the user says word for word in the original language.",
     });
 
     return new Response(transcription.text, {
