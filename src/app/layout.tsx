@@ -8,8 +8,9 @@ export default function DashboardLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>{children}
       <Toaster />
+      </body>
     </html>
   );
 }
