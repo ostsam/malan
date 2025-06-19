@@ -30,7 +30,8 @@ export default function Menu() {
 
   const handleStartLearning = () => {
     const params = new URLSearchParams();
-    if (nativeLanguage?.value) params.append("nativeLanguage", nativeLanguage.value);
+    if (nativeLanguage?.label) params.append("nativeLanguage", nativeLanguage.label);
+    if (nativeLanguage?.value) params.append("nativeLanguageValue", nativeLanguage.value);
     if (selectedLanguage?.label) params.append("selectedLanguage", selectedLanguage.label);
     if (selectedLanguage?.value) params.append("selectedLanguageValue",selectedLanguage.value)
     if (selectedLevel?.value) params.append("selectedLevel", selectedLevel.value);
