@@ -6,24 +6,20 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
     const audioFile = formData.get("audioFile");
 
     if (!audioFile || !(audioFile instanceof File)) {
-      return new Response(
-        JSON.stringify({ error: "Audio file is required" }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      return new Response(JSON.stringify({ error: "Audio file is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
     }
 
     const nativeLanguage = formData.get("nativeLanguage");
-    const selectedLanguage = formData.get("selectedLanguage");
+    const selectedLanguage = formData.get("selectedLanguageLabel");
 
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,

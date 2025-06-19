@@ -13,6 +13,7 @@ export function formatSystemPrompt(settings: ChatSettings): string {
   const placeholders = {
     interlocutor: settings.interlocutor,
     selectedLanguage: settings.selectedLanguage,
+    selectedLanguageLabel: settings.selectedLanguageLabel,
     //userName: settings.name || "the student",
     nativeLanguage: settings.nativeLanguage,
     selectedLevel: settings.selectedLevel,

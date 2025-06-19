@@ -7,6 +7,7 @@ import { Message } from "ai";
 export interface ChatSettings {
   nativeLanguage: string | null;
   selectedLanguage: string | null;
+  selectedLanguageLabel: string | null;
   selectedLevel: string | null;
   interlocutor: string | null;
   name?: string | null;
@@ -16,10 +17,9 @@ export interface ChatData {
   settings: ChatSettings;
   messages: Message[];
 }
-const chatId = generateId();
 
 export async function createChat(settings: ChatSettings): Promise<string> {
-  const id = chatId;
+  const id = generateId();
   const initialChatData: ChatData = {
     settings,
     messages: [],
@@ -29,7 +29,7 @@ export async function createChat(settings: ChatSettings): Promise<string> {
 }
 
 function getChatFile(id: string): string {
-  const chatDir = path.join(process.cwd(), ".chats");
+  const chatDir = path.join("/tmp", ".chats"); /// CHANGE BACK TO ".chats" LATER, NEED   const chatDir = path.join(process.cwd(), ".chats") FOR VERCEL DEPLOYMENT
   if (!existsSync(chatDir)) mkdirSync(chatDir, { recursive: true });
   return path.join(chatDir, `${id}.json`);
 }

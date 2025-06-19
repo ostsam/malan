@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
   const settings: ChatSettings = {
     nativeLanguage: searchParams.get("nativeLanguage"),
     selectedLanguage: searchParams.get("selectedLanguage"),
+    selectedLanguageLabel: searchParams.get("selectedLanguageLabel"),
     selectedLevel: searchParams.get("selectedLevel"),
     interlocutor: searchParams.get("interlocutor"),
     // name: searchParams.get("userName") ?? "the student", // Default user name if not provided

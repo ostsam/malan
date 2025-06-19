@@ -121,7 +121,7 @@ export default function Chat({
                 } space-y-1`}
               >
                 <div
-                  className={`relative max-w-[85%] rounded-3xl p-4 text-md break-words shadow-md ${
+                  className={`relative max-w-[85%] rounded-3xl p-4 text-md break-words shadow-md whitespace-pre-wrap ${
                     m.role === "user"
                       ? "bg-sky-400 dark:bg-sky-900"
                       : "bg-gray-200 dark:bg-gray-800"
