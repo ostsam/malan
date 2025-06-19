@@ -47,6 +47,7 @@ export async function POST(req: Request) {
     model: openai("o4-mini-2025-04-16"),
     messages: historyWithUserMsg, 
     system: systemPrompt,
+    temperature: 0.4,
     experimental_generateMessageId: createIdGenerator({
       prefix: "msgs",
       size: 16,
