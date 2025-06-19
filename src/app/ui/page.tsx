@@ -11,7 +11,8 @@ import type { ChatData, ChatSettings } from "../tools/chat-store";
 
 const defaultChatSettings: ChatSettings = {
   nativeLanguage: "English", // Example default, adjust as needed
-  selectedLanguage: "Spanish", // Example default, adjust as needed
+  selectedLanguage: "Spanish",
+  selectedLanguageLabel: "Spanish", // Example default, adjust as needed
   selectedLevel: "Novice", // Example default, adjust as needed
   interlocutor: "Mateo", // Example default, adjust as needed
   name: "User",

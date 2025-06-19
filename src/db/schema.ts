@@ -1,4 +1,32 @@
-import { pgTable, text, timestamp, boolean, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, jsonb, foreignKey, pgTableCreator, varchar } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+import type { Message } from "ai";
+
+export const createTable = pgTableCreator((name) => `malan-chatbot_${name}`);
+
+export const messagesTable = createTable(
+  "messagesTable",
+  {
+    messageId: varchar("messageId", { length: 256 }).primaryKey(),
+    chatId: varchar("chatId", { length: 256 }).notNull(),
+    role: varchar("role", { length: 256 }),
+    createdAt: timestamp("createdAt", { withTimezone: true }),
+    parts: jsonb("parts").notNull(),
+    content: text("content").notNull(),
+  },
+  (t) => ({
+    foreignKey: foreignKey({ columns: [t.chatId], foreignColumns: [userSession.chatId] }),
+  }),
+);
+
+export const userSession = createTable("user-sessions-table", {
+  chatId: varchar("chatId", { length: 256 }).primaryKey(),
+  settings: jsonb('settings').notNull(),
+  createdAt: timestamp("createdAt", { withTimezone: true })
+    .default(sql`CURRENT_TIMESTAMP`)
+    .notNull(),
+  userId: varchar("userId", { length: 256 }),
+});
 
 export const user = pgTable("user", {
 					id: text('id').primaryKey(),
@@ -46,4 +74,4 @@ export const verification = pgTable("verification", {
  updatedAt: timestamp('updated_at').$defaultFn(() => /* @__PURE__ */ new Date())
 				});
 
-				export const schema = {user, session, account, verification}
+export const schema = {user, session, account, verification, messagesTable, userSession};
