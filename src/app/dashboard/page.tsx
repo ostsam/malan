@@ -45,8 +45,9 @@ export default function Menu() {
     !!nativeLanguage && !!selectedLanguage && !!selectedLevel && !!interlocutor;
 
   return (
-    <div className=" bg-slate-500 flex items-center my-10 mx-100 justify-center sm:p-6 font-sans rounded-3xl shadow-blue-900">
-      <div className="bg-white p-6 sm:p-8 rounded-xl shadow-xl w-full max-w-lg text-slate-700 space-y-6">
+    <div className=" flex items-center justify-center h-dvh">
+      <div className="bg-slate-500 sm:p-6 font-sans rounded-3xl min-w-120 shadow-xl">
+      <div className="bg-white p-6 sm:p-8 rounded-xl w-full max-w-lg text-slate-700 space-y-6 min-w-120">
         <h1 className="text-4xl sm:text-5xl font-bold text-center text-sky-600 tracking-tight">
           Malan
         </h1>
@@ -138,6 +139,7 @@ export default function Menu() {
           Start Learning
         </button>
       </div>
+    </div>
     </div>
   );
 }

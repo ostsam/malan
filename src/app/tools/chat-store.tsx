@@ -16,15 +16,16 @@ export interface ChatData {
   settings: ChatSettings;
   messages: Message[];
 }
+const chatId = generateId()
 
 export async function createChat(settings: ChatSettings): Promise<string> {
-  const chatId = generateId(); // generate a unique chat ID
+  const id = chatId;
   const initialChatData: ChatData = {
     settings,
     messages: [],
   };
-  await writeFile(getChatFile(chatId), JSON.stringify(initialChatData, null, 2));
-  return chatId;
+  await writeFile(getChatFile(id), JSON.stringify(initialChatData, null, 2));
+  return id;
 }
 
 function getChatFile(id: string): string {
