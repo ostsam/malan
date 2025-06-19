@@ -22,14 +22,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const nativeLanguageValue = formData.get("nativeLanguage");
-    const selectedLanguageValue = formData.get("selectedLanguageValue");
+    const nativeLanguage = formData.get("nativeLanguage");
+    const selectedLanguage = formData.get("selectedLanguage");
 
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
       model: "whisper-1",
       temperature: 0,
-      prompt: "Transcribe what the user says word for word in the original language.",
+      prompt: `Transcribe what the user says word for word in the original language. Expect the user to speak in ${selectedLanguage} and ${nativeLanguage}.`,
     });
 
     return new Response(transcription.text, {

@@ -44,7 +44,7 @@ export default function Chat({
     const dotLottiePlayerRef = useRef<DotLottie | null>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const endOfMessagesRef = useRef<HTMLDivElement>(null);
-
+    const interlocutor = settings?.interlocutor;
     const {
       isRecording,
       audioBlob,
@@ -123,9 +123,10 @@ export default function Chat({
               </div>
             ))
           ) : (
-            <div className="text-center text-gray-500 dark:text-gray-400 mt-10">
-              Press the record button and speak to start the chat. <br></br>
-              Press the button again to end transmission.
+            <div className="text-center text-lg text-gray-600 dark:text-gray-400 flex flex-coljustify-center items-center">
+              1. Press the button and speak to start the chat. <br className="mb-3"></br>
+              2. Press the button again to end transmission.<br className="mb-3"></br>
+              3. Await response from {interlocutor}.<br className="mb-3"></br>
             </div>
           )}
           <div ref={endOfMessagesRef} />
