@@ -53,7 +53,7 @@ export function LoginForm({
       toast.success("User signed in successfully")
       router.push("/dashboard")
     } else {
-      toast.error("User not found")
+      toast.error("Login unsuccessful")
     }
     setLoading(false)
   }
