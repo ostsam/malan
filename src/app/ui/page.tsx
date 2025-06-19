@@ -123,10 +123,10 @@ export default function Chat({
               </div>
             ))
           ) : (
-            <div className="text-center text-lg text-gray-600 dark:text-gray-400 flex flex-coljustify-center items-center">
-              1. Press the button and speak to start the chat. <br className="mb-3"></br>
-              2. Press the button again to end transmission.<br className="mb-3"></br>
-              3. Await response from {interlocutor}.<br className="mb-3"></br>
+            <div className="text-center text-lg text-gray-600 dark:text-gray-400 flex flex-col justify-center items-center">
+              <p>1. Press the button and speak to start the chat.</p> <br className="mb-3"></br>
+              <p>2. Press the button again to end transmission.</p><br className="mb-3"></br>
+              <p>3. Await response from {interlocutor}.</p> <br className="mb-3"></br>
             </div>
           )}
           <div ref={endOfMessagesRef} />

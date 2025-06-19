@@ -1,3 +1,4 @@
+import { Toaster } from "sonner";
 import "./globals.css";
 
 export default function DashboardLayout({
@@ -8,6 +9,7 @@ export default function DashboardLayout({
   return (
     <html lang="en">
       <body>{children}</body>
+      <Toaster />
     </html>
   );
 }

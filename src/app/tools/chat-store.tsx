@@ -16,9 +16,10 @@ export interface ChatData {
   settings: ChatSettings;
   messages: Message[];
 }
+const chatId = generateId()
 
 export async function createChat(settings: ChatSettings): Promise<string> {
-  const id = generateId(); // generate a unique chat ID
+  const id = chatId;
   const initialChatData: ChatData = {
     settings,
     messages: [],
