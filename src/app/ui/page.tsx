@@ -44,7 +44,7 @@ export default function Chat({
     const dotLottiePlayerRef = useRef<DotLottie | null>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const endOfMessagesRef = useRef<HTMLDivElement>(null);
-
+    const interlocutor = settings?.interlocutor;
     const {
       isRecording,
       audioBlob,
@@ -95,17 +95,18 @@ export default function Chat({
 
     return (
       <div className="flex flex-col w-full max-w-xl py-8 mx-auto stretch min-h-screen items-center">
-        <div ref={messagesContainerRef} className="flex-grow w-full overflow-y-auto pb-32">
+        <div ref={messagesContainerRef} className="relative max-w-[80%] overflow-y-auto pb-32">
           {messages.length > 0 ? (
             messages.map((m) => (
               <div
                 key={m.id}
-              >
-                <div
-                  className={`whitespace-pre-wrap p-2 mb-1 rounded-lg max-w-[100%] ${
-                    m.role === "user"
-                      ? "bg-blue-100 dark:bg-blue-900"
-                      : "bg-gray-100 dark:bg-gray-800"
+                className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"} space-y-1`}
+                >
+                  <div
+                    className={`relative max-w-[85%] rounded-3xl p-4 text-md break-words shadow-md ${
+                      m.role === "user"
+                      ? "bg-sky-400 dark:bg-sky-900"
+                      : "bg-gray-200 dark:bg-gray-800"
                   }`}
                   style={{
                     direction: languageLearningData.find(
@@ -122,9 +123,10 @@ export default function Chat({
               </div>
             ))
           ) : (
-            <div className="text-center text-gray-500 dark:text-gray-400 mt-10">
-              Press the record button and speak to start the chat. <br></br>
-              Press the button again to end transmission.
+            <div className="text-center text-lg text-gray-600 dark:text-gray-400 flex flex-coljustify-center items-center">
+              1. Press the button and speak to start the chat. <br className="mb-3"></br>
+              2. Press the button again to end transmission.<br className="mb-3"></br>
+              3. Await response from {interlocutor}.<br className="mb-3"></br>
             </div>
           )}
           <div ref={endOfMessagesRef} />

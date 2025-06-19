@@ -32,6 +32,7 @@ export default function Menu() {
     const params = new URLSearchParams();
     if (nativeLanguage?.value) params.append("nativeLanguage", nativeLanguage.value);
     if (selectedLanguage?.label) params.append("selectedLanguage", selectedLanguage.label);
+    if (selectedLanguage?.value) params.append("selectedLanguageValue",selectedLanguage.value)
     if (selectedLevel?.value) params.append("selectedLevel", selectedLevel.value);
     if (interlocutor) params.append("interlocutor", interlocutor);
     ///add name/username!
@@ -43,7 +44,7 @@ export default function Menu() {
     !!nativeLanguage && !!selectedLanguage && !!selectedLevel && !!interlocutor;
 
   return (
-    <div className=" bg-slate-500 flex items-center justify-center sm:p-6 font-sans rounded-3xl shadow-blue-900">
+    <div className=" bg-slate-500 flex items-center my-10 mx-100 justify-center sm:p-6 font-sans rounded-3xl shadow-blue-900">
       <div className="bg-white p-6 sm:p-8 rounded-xl shadow-xl w-full max-w-lg text-slate-700 space-y-6">
         <h1 className="text-4xl sm:text-5xl font-bold text-center text-sky-600 tracking-tight">
           Malan
