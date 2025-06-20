@@ -179,8 +179,8 @@ export default function Chat({
                 </p>
               </div>
               <div className="text-md pb-4">
-                <p>1. Press the button and speak to start chatting.</p>
-                <p>2. Press the button again to end transmission.</p>
+                <p>1. Press the button and speak to begin</p>
+                <p>2. Release it to end the transmission.</p>
                 <p>3. Await response from {settings?.interlocutor}.</p>
               </div>
             </div>
