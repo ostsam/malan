@@ -117,23 +117,25 @@ export default function Chat({
     }, [messages]);
 
   return (
-      <div className="flex flex-col w-full max-w-xl py-8 mx-auto stretch min-h-screen items-center">
-        <div
-          ref={messagesContainerRef}
-          className="relative max-w-[80%] overflow-y-auto pb-32"
-        >
+    <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black">
+      {/* This is the main content area that will grow to fill available space */}
+      <div
+        ref={messagesContainerRef}
+        className="flex-grow overflow-y-auto w-full px-4"
+      >
+        <div className="relative h-full">
           {messages.length > 0 ? (
             messages.map((m) => (
               <div
                 key={m.id}
-                className={`flex flex-col ${
+                className={`flex flex-col my-2 ${
                   m.role === "user" ? "items-end" : "items-start"
-                } space-y-1`}
+                }`}
               >
                 <div
-                  className={`max-w-[90%] rounded-3xl my-1 w-dvh p-4 text-md break-words shadow-md whitespace-pre-wrap ${
+                  className={`max-w-[85%] rounded-2xl p-3 text-md break-words shadow-md whitespace-pre-wrap ${
                     m.role === "user"
-                      ? "bg-sky-400 dark:bg-sky-900"
+                      ? "bg-sky-400 dark:bg-sky-900 text-white"
                       : "bg-gray-200 dark:bg-gray-800"
                   }`}
                   style={{
@@ -151,61 +153,73 @@ export default function Chat({
               </div>
             ))
           ) : (
-            <div className="text-center text-lg text-gray-600 dark:text-gray-400 flex flex-col justify-center items-center">
-              <p>1. Press the button and speak to start the chat.</p>{" "}
-              <br className="mb-3"></br>
-              <p>2. Press the button again to end transmission.</p>
-              <br className="mb-3"></br>
-              <p>3. Await response from {interlocutor}.</p>{" "}
-              <br className="mb-3"></br>
+            <div className="flex h-full flex-col justify-between py-8 text-center text-lg text-gray-600 dark:text-gray-400">
+              <div>
+                <p className="text-2xl">Instructions:</p>
+                <p className="text-l mt-3">
+                  Begin speaking {settings?.selectedLanguageLabel}.{' '}
+                  {settings.interlocutor} will have you speaking fluidly about
+                  your day, your interests, or anything else you'd like in no
+                  time!
+                </p>
+              </div>
+              <div className="text-l pb-4">
+                <p>1. Press the button and speak to start the chat.</p>
+                <p>2. Press the button again to end transmission.</p>
+                <p>3. Await response from {interlocutor}.</p>
+              </div>
             </div>
           )}
           <div ref={endOfMessagesRef} />
-          {recordingError && (
-            <div className={errorMessageStyling}>
-              Recording Error: {recordingError}
-            </div>
-          )}
-          {transcriptionHookError && (
-            <div className={errorMessageStyling}>
-              Transcription Error: {transcriptionHookError}
-            </div>
-          )}
-          {chatError && (
-            <div className={errorMessageStyling}>
-              Chat Error: {chatError.message}
-            </div>
-          )}
-        </div>
-
-        <div className="fixed bottom-0 left-0 right-0 flex flex-col items-center justify-center bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800">
-          <DotLottieReact
-            dotLottieRefCallback={(playerInstance) => {
-              dotLottiePlayerRef.current = playerInstance;
-            }}
-            src="/microphonebutton.json"
-            loop={true}
-            autoplay={false}
-            onClick={() => {
-              if (!(isTranscribing || status == "submitted")) {
-                isRecording ? stopRecording() : startRecording();
-              }
-            }}
-            className={`w-25 h-25 ${
-              isTranscribing || status == "submitted"
-                ? "opacity-50 cursor-not-allowed"
-                : "cursor-pointer"
-            }`}
-          />
-          {status == "submitted" ? (
-            <p className={micCaptionStyling}>Processing Speech</p>
-          ) : isRecording ? (
-            <p className={micCaptionStyling}>Recording</p>
-          ) : (
-            <p className={micCaptionStyling}>Press to Record</p>
-          )}
         </div>
       </div>
-    );
+
+      {/* Error messages are fixed to the viewport */}
+      {recordingError && (
+        <div className={errorMessageStyling}>
+          Recording Error: {recordingError}
+        </div>
+      )}
+      {transcriptionHookError && (
+        <div className={errorMessageStyling}>
+          Transcription Error: {transcriptionHookError}
+        </div>
+      )}
+      {chatError && (
+        <div className={errorMessageStyling}>
+          Chat Error: {chatError.message}
+        </div>
+      )}
+
+      {/* This is the footer area for the microphone */}
+      <div className="flex flex-col items-center justify-center p-2 bg-white dark:bg-black border-t border-gray-200 dark:border-zinc-800">
+        <DotLottieReact
+          dotLottieRefCallback={(playerInstance) => {
+            dotLottiePlayerRef.current = playerInstance;
+          }}
+          src="/microphonebutton.json"
+          loop={true}
+          autoplay={false}
+          onClick={() => {
+            if (!(isTranscribing || status == "submitted")) {
+              isRecording ? stopRecording() : startRecording();
+            }
+          }}
+          className={`w-25 h-25 ${
+            isTranscribing || status == "submitted"
+              ? "opacity-50 cursor-not-allowed"
+              : "cursor-pointer"
+          }`}
+        />
+        {status == "submitted" ? (
+          <p className={micCaptionStyling}>Processing Speech</p>
+        ) : isRecording ? (
+          <p className={micCaptionStyling}>Recording</p>
+        ) : (
+          <p className={micCaptionStyling}>Press to Record</p>
+        )}
+      </div>
+    </div>
+  );
   }
 }

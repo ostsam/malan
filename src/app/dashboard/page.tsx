@@ -14,7 +14,7 @@ import Logout from "@/components/logout";
 
 export default function Menu() {
   const [nativeLanguage, setNativeLanguage] = useState<PopoverItem | undefined>(
-    nativeLanguageData[13]
+    nativeLanguageData[0]
   );
   const [selectedLanguage, setSelectedLanguage] = useState<
     LanguageOption | undefined
