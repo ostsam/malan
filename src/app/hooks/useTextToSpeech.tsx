@@ -39,7 +39,7 @@ export function useTextToSpeech({
   messages,
   isLoading,
   voice = 'coral',
-}: UseTextToSpeechProps): void {
+}: UseTextToSpeechProps): { stopAudioPlayback: () => void } {
   const [audioQueue, setAudioQueue] = useState<AudioQueueItem[]>([]);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [currentSpokenMessageId, setCurrentSpokenMessageId] = useState<string | null>(null);
@@ -51,6 +51,32 @@ export function useTextToSpeech({
   const isProcessingAudioRef = useRef(false);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
   const sentenceEndRef = useRef<string>("");
+  const interruptedMessageIdRef = useRef<string | null>(null);
+
+  const stopAudioPlayback = useCallback(() => {
+    console.log("TTS: Stop audio playback requested.");
+
+    if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current.src = '';
+        audioPlayerRef.current = null;
+    }
+
+    setAudioQueue(prevQueue => {
+        prevQueue.forEach(item => URL.revokeObjectURL(item.url));
+        return [];
+    });
+
+    setIsPlayingAudio(false);
+    unprocessedTextSegmentsRef.current = [];
+    sentenceEndRef.current = "";
+    
+    interruptedMessageIdRef.current = currentSpokenMessageIdRef.current;
+    setCurrentSpokenMessageId(null);
+
+    currentlyGeneratingForMessageIdRef.current = null;
+    isProcessingAudioRef.current = false;
+  }, [setAudioQueue]);
 
   useEffect(() => {
     currentSpokenMessageIdRef.current = currentSpokenMessageId;
@@ -225,7 +251,12 @@ export function useTextToSpeech({
     const lastMessage = messages[messages.length - 1];
 
     if (lastMessage && lastMessage.role === 'assistant') {
+      if (lastMessage.id === interruptedMessageIdRef.current) {
+        return;
+      }
+      
       if (lastMessage.id !== currentSpokenMessageId) {
+        interruptedMessageIdRef.current = null;
         // New assistant message ID
         console.log(`TTS: New assistant message ID: ${lastMessage.id}. Resetting TTS.`);
         if (audioPlayerRef.current) {
@@ -261,4 +292,6 @@ export function useTextToSpeech({
       }
     }
   }, [messages, currentSpokenMessageId, voice, processQueue, setAudioQueue, isLoading]); // Added processQueue, setAudioQueue, isLoading
+
+  return { stopAudioPlayback };
 }

@@ -6,6 +6,7 @@ type UseInputControlsProps = {
   status: string;
   startRecording: () => void;
   stopRecording: () => void;
+  stopAudioPlayback: () => void;
 };
 
 export const useInputControls = ({
@@ -14,6 +15,7 @@ export const useInputControls = ({
   status,
   startRecording,
   stopRecording,
+  stopAudioPlayback,
 }: UseInputControlsProps) => {
   const [pushToTalk, setPushToTalk] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
@@ -39,6 +41,7 @@ export const useInputControls = ({
   const handleMicInteractionStart = useCallback(() => {
     if (isMobile && pushToTalk) {
       if (!isRecording && !isTranscribing && status !== 'submitted') {
+        stopAudioPlayback();
         startRecording();
       }
     }
@@ -62,6 +65,7 @@ export const useInputControls = ({
           if (isRecording) {
             stopRecording();
           } else {
+            stopAudioPlayback();
             startRecording();
           }
         }
@@ -85,6 +89,7 @@ export const useInputControls = ({
       if (isRecording) {
         stopRecording();
       } else {
+        stopAudioPlayback();
         startRecording();
       }
     }
@@ -106,6 +111,7 @@ export const useInputControls = ({
         event.preventDefault();
         if (pushToTalk) {
           if (!isRecording && !isTranscribing && status !== 'submitted') {
+            stopAudioPlayback();
             startRecording();
           }
         } else {
@@ -113,6 +119,7 @@ export const useInputControls = ({
             if (isRecording) {
               stopRecording();
             } else {
+              stopAudioPlayback();
               startRecording();
             }
           }
