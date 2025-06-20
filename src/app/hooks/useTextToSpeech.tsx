@@ -100,7 +100,8 @@ export function useTextToSpeech({
         let match;
 
         while ((match = sentenceTerminators.exec(combinedText)) !== null) {
-          textForTTS = combinedText.substring(lastMatchEnd, match.index + match[0].length).trim();
+          const rawChunk = combinedText.substring(lastMatchEnd, match.index + match[0].length);
+          textForTTS = rawChunk.trim();
           lastMatchEnd = sentenceTerminators.lastIndex;
           
           if (textForTTS) {
@@ -109,7 +110,10 @@ export function useTextToSpeech({
             const audioUrl = await generateSpeechAPI(textForTTS, voice);
             if (currentlyGeneratingForMessageIdRef.current === processingMessageId && audioUrl) {
               let pauseAfterMs = 0;
-              if (/[.!?]$/.test(textForTTS)) { // Ends with period, question mark, or exclamation
+              // Prioritize pause for line breaks
+              if (rawChunk.includes('\n')) {
+                pauseAfterMs = 300;
+              } else if (/[.!?]$/.test(textForTTS)) { // Ends with period, question mark, or exclamation
                 pauseAfterMs = 300; // Pause for sentence end
               } else if (/,$/.test(textForTTS)) { // Ends with comma
                 pauseAfterMs = 150; // Shorter pause for comma
@@ -138,7 +142,7 @@ export function useTextToSpeech({
             if (currentlyGeneratingForMessageIdRef.current === processingMessageId && audioUrl) {
               let pauseAfterMs = 0; // Usually no extra pause for the very final fragment unless it's a full sentence.
               if (/[.!?]$/.test(textForTTS)) {
-                pauseAfterMs = 400;
+                pauseAfterMs = 300;
               }
               console.log(`TTS: Queuing audio for final fragment '${textForTTS}', pause: ${pauseAfterMs}ms`);
               setAudioQueue(prev => [...prev, { url: audioUrl, pauseAfterMs, textFragment: textForTTS }]);
