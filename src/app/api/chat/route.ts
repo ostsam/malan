@@ -12,6 +12,8 @@ import {
   type ChatSettings,
 } from "@/app/tools/chat-store";
 import { redirect } from "next/navigation";
+import { auth } from "@/app/api/auth/[...all]/auth";
+
 import { formatSystemPrompt } from "@/app/lib/prompt-templates";
 import { NextRequest } from "next/server";
 import OpenAI from "openai"; // Added for TTS
@@ -25,6 +27,14 @@ const ttsOpenai = new OpenAI({
 });
 
 export async function GET(req: NextRequest) {
+  const session = await auth.api.getSession({
+    headers: req.headers,
+  });
+  if (!session?.user?.id) {
+    redirect("/login");
+  }
+  const userId = session.user.id;
+
   const searchParams = req.nextUrl.searchParams;
   const settings: ChatSettings = {
     nativeLanguage: searchParams.get("nativeLanguage"),
@@ -32,10 +42,9 @@ export async function GET(req: NextRequest) {
     selectedLanguageLabel: searchParams.get("selectedLanguageLabel"),
     selectedLevel: searchParams.get("selectedLevel"),
     interlocutor: searchParams.get("interlocutor"),
-    // name: searchParams.get("userName") ?? "the student", // Default user name if not provided
   };
 
-  const id = await createChat(settings);
+  const id = await createChat(settings, userId);
   redirect(`/chat/${id}`);
 }
 
