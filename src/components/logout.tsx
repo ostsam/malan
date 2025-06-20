@@ -2,7 +2,6 @@
 import { authClient } from "@/lib/auth-client"; 
 import { LogOutIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { LogOutIcon } from "lucide-react";
 
 export default function Logout() {
     const router = useRouter();
