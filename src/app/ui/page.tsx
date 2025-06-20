@@ -141,7 +141,14 @@ export default function Chat({
           startRecording();
         }
       }
-    }, [isMobile, pushToTalk, isRecording, isTranscribing, status, startRecording]);
+    }, [
+      isMobile,
+      pushToTalk,
+      isRecording,
+      isTranscribing,
+      status,
+      startRecording,
+    ]);
 
     const handleMicInteractionEnd = useCallback(() => {
       if (isMobile && pushToTalk) {
@@ -164,7 +171,15 @@ export default function Chat({
           startRecording();
         }
       }
-    }, [isMobile, pushToTalk, isRecording, isTranscribing, status, startRecording, stopRecording]);
+    }, [
+      isMobile,
+      pushToTalk,
+      isRecording,
+      isTranscribing,
+      status,
+      startRecording,
+      stopRecording,
+    ]);
 
     // Keyboard shortcut for recording (Desktop only)
     useEffect(() => {
@@ -208,149 +223,155 @@ export default function Chat({
         window.removeEventListener("keydown", handleKeyDown);
         window.removeEventListener("keyup", handleKeyUp);
       };
-    }, [isMobile, pushToTalk, isRecording, isTranscribing, status, startRecording, stopRecording]);
+    }, [
+      isMobile,
+      pushToTalk,
+      isRecording,
+      isTranscribing,
+      status,
+      startRecording,
+      stopRecording,
+    ]);
 
-  return (
-    <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black">
-      {/* This is the main content area that will grow to fill available space */}
-      <div
-        ref={messagesContainerRef}
-        className="flex-grow overflow-y-auto w-full px-4"
-      >
-        <div className="relative h-full">
-          {messages.length > 0 ? (
-            messages.map((m) => (
-              <div
-                key={m.id}
-                className={`flex flex-col my-2 ${
-                  m.role === "user" ? "items-end" : "items-start"
-                }`}
-              >
+    return (
+      <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black">
+        {/* This is the main content area that will grow to fill available space */}
+        <div
+          ref={messagesContainerRef}
+          className="flex-grow overflow-y-auto w-full px-4"
+        >
+          <div className="relative h-full">
+            {messages.length > 0 ? (
+              messages.map((m) => (
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3 text-md break-words shadow-md whitespace-pre-wrap ${
-                    m.role === "user"
-                      ? "bg-sky-400 dark:bg-sky-900 text-white"
-                      : "bg-gray-200 dark:bg-gray-800"
+                  key={m.id}
+                  className={`flex flex-col my-2 ${
+                    m.role === "user" ? "items-end" : "items-start"
                   }`}
-                  style={{
-                    direction: languageLearningData.find(
-                      (lang) =>
-                        lang.label === settings?.selectedLanguage ||
-                        lang.value === settings?.nativeLanguage
-                    )?.rtl
-                      ? "rtl"
-                      : "ltr",
-                  }}
                 >
-                  {m.content}
+                  <div
+                    className={`max-w-[85%] rounded-2xl p-3 text-md break-words shadow-md whitespace-pre-wrap ${
+                      m.role === "user"
+                        ? "bg-sky-400 dark:bg-sky-900 text-white"
+                        : "bg-gray-200 dark:bg-gray-800"
+                    }`}
+                    style={{
+                      direction: languageLearningData.find(
+                        (lang) =>
+                          lang.label === settings?.selectedLanguage ||
+                          lang.value === settings?.nativeLanguage
+                      )?.rtl
+                        ? "rtl"
+                        : "ltr",
+                    }}
+                  >
+                    {m.content}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="flex h-full flex-col justify-between py-8 text-center text-gray-600 dark:text-gray-400">
+                <div>
+                  <p className="text-2xl">Instructions:</p>
+                  <p className="text-l mt-3">
+                    Begin speaking {settings?.selectedLanguageLabel}.{" "}
+                    {settings.interlocutor} will have you speaking fluidly about
+                    your day, your interests, or anything else you'd like in no
+                    time!
+                  </p>
+                </div>
+                <div className="text-md pb-4">
+                  <p>1. Press the button and speak to start chatting.</p>
+                  <p>2. Press the button again to end transmission.</p>
+                  <p>3. Await response from {interlocutor}.</p>
                 </div>
               </div>
-            ))
-          ) : (
-            <div className="flex h-full flex-col justify-between py-8 text-center text-gray-600 dark:text-gray-400">
-              <div>
-                <p className="text-2xl">Instructions:</p>
-                <p className="text-l mt-3">
-                  Begin speaking {settings?.selectedLanguageLabel}.{' '}
-                  {settings.interlocutor} will have you speaking fluidly about
-                  your day, your interests, or anything else you'd like in no
-                  time!
-                </p>
-              </div>
-              <div className="text-md pb-4">
-                <p>1. Press the button and speak to start the chat.</p>
-                <p>2. Press the button again to end transmission.</p>
-                <p>3. Await response from {interlocutor}.</p>
-              </div>
+            )}
+            <div ref={endOfMessagesRef} />
+          </div>
+        </div>
+
+        {recordingError && (
+          <div className={errorMessageStyling}>
+            Recording Error: {recordingError}
+          </div>
+        )}
+        {transcriptionHookError && (
+          <div className={errorMessageStyling}>
+            Transcription Error: {transcriptionHookError}
+          </div>
+        )}
+        {chatError && (
+          <div className={errorMessageStyling}>
+            Chat Error: {chatError.message}
+          </div>
+        )}
+        <div className="relative flex items-center justify-center p-2 bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800">
+          {/* Left-aligned Switch */}
+          <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+            <Switch
+              id="push-to-talk-toggle"
+              checked={pushToTalk}
+              onChange={() => setPushToTalk(!pushToTalk)}
+              checkedIcon={false}
+              uncheckedIcon={false}
+              onColor="#2196F3"
+              height={20}
+              width={40}
+            />
+            <label
+              htmlFor="push-to-talk-toggle"
+              className="mt-1 text-xs text-center text-gray-900 dark:text-gray-300 w-24 whitespace-normal"
+            >
+              {isMobile
+                ? pushToTalk
+                  ? "Hold Mic to Talk"
+                  : "Tap Mic to Toggle"
+                : pushToTalk
+                ? "Hold Shift+Z to Talk"
+                : "Toggle Shift+Z"}
+            </label>
+          </div>
+
+          {/* Centered Microphone */}
+          <div className="flex flex-col items-center justify-center">
+            <div // Wrapper for touch/mouse events
+              onMouseDown={handleMicInteractionStart}
+              onMouseUp={handleMicInteractionEnd}
+              onTouchStart={handleMicInteractionStart}
+              onTouchEnd={handleMicInteractionEnd}
+              onClick={handleMicClick}
+              role="button"
+              tabIndex={0}
+              aria-pressed={isRecording}
+              className={`${
+                isTranscribing || status === "submitted"
+                  ? "opacity-50 cursor-not-allowed"
+                  : "cursor-pointer"
+              }`}
+            >
+              <DotLottieReact
+                dotLottieRefCallback={(playerInstance) => {
+                  dotLottiePlayerRef.current = playerInstance;
+                }}
+                src="/microphonebutton.json"
+                loop={true}
+                autoplay={false}
+                className={`w-25 h-25 pointer-events-none ${
+                  isTranscribing || status === "submitted" ? "opacity-50" : ""
+                }`}
+              />
             </div>
-          )}
-          <div ref={endOfMessagesRef} />
+            {status == "submitted" ? (
+              <p className={micCaptionStyling}>Processing Speech</p>
+            ) : isRecording ? (
+              <p className={micCaptionStyling}>Recording</p>
+            ) : (
+              <p className={micCaptionStyling}>Press to Record</p>
+            )}
+          </div>
         </div>
       </div>
-
-      {recordingError && (
-        <div className={errorMessageStyling}>
-          Recording Error: {recordingError}
-        </div>
-      )}
-      {transcriptionHookError && (
-        <div className={errorMessageStyling}>
-          Transcription Error: {transcriptionHookError}
-        </div>
-      )}
-      {chatError && (
-        <div className={errorMessageStyling}>
-          Chat Error: {chatError.message}
-        </div>
-      )}
-    <div className="relative flex items-center justify-center p-2 bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800">
-      {/* Left-aligned Switch */}
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
-        <Switch
-          id="push-to-talk-toggle"
-          checked={pushToTalk}
-          onChange={() => setPushToTalk(!pushToTalk)}
-          checkedIcon={false}
-          uncheckedIcon={false}
-          onColor="#2196F3"
-          height={20}
-          width={40}
-        />
-        <label
-          htmlFor="push-to-talk-toggle"
-          className="mt-1 text-xs text-center text-gray-900 dark:text-gray-300 w-24 whitespace-normal"
-        >
-          {isMobile
-            ? pushToTalk
-              ? "Hold Mic to Talk"
-              : "Tap Mic to Toggle"
-            : pushToTalk
-            ? "Hold Shift+Z to Talk"
-            : "Toggle Shift+Z"}
-        </label>
-      </div>
-
-      {/* Centered Microphone */}
-      <div className="flex flex-col items-center justify-center">
-        <div // Wrapper for touch/mouse events
-          onMouseDown={handleMicInteractionStart}
-          onMouseUp={handleMicInteractionEnd}
-          onTouchStart={handleMicInteractionStart}
-          onTouchEnd={handleMicInteractionEnd}
-          onClick={handleMicClick}
-          role="button"
-          tabIndex={0}
-          aria-pressed={isRecording}
-          className={`${ 
-            (isTranscribing || status === "submitted")
-              ? "opacity-50 cursor-not-allowed"
-              : "cursor-pointer"
-          }`}
-        >
-          <DotLottieReact
-            dotLottieRefCallback={(playerInstance) => {
-              dotLottiePlayerRef.current = playerInstance;
-            }}
-            src="/microphonebutton.json"
-            loop={true}
-            autoplay={false}
-            className={`w-25 h-25 pointer-events-none ${
-              (isTranscribing || status === "submitted")
-                ? "opacity-50"
-                : ""
-            }`}
-          />
-          {status == "submitted" ? (
-            <p className={micCaptionStyling}>Processing Speech</p>
-          ) : isRecording ? (
-            <p className={micCaptionStyling}>Recording</p>
-          ) : (
-            <p className={micCaptionStyling}>Press to Record</p>
-          )}
-        </div>
-        </div>  
-      </div>  
-    </div>
-  );
+    );
   }
 }
