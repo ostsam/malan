@@ -66,6 +66,8 @@ export default function Chat({
     transcriptionHookError,
   } = useChatInteraction({ append });
 
+  const { stopAudioPlayback } = useTextToSpeech({ messages, isLoading, voice: "coral" });
+
   const {
     pushToTalk,
     setPushToTalk,
@@ -79,11 +81,10 @@ export default function Chat({
     status,
     startRecording,
     stopRecording,
+    stopAudioPlayback,
   });
 
   const [isOverflowing, setIsOverflowing] = useState(false);
-
-  useTextToSpeech({ messages, isLoading, voice: "coral" });
 
   useLayoutEffect(() => {
     const container = messagesContainerRef.current;

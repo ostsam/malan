@@ -13,8 +13,8 @@ export async function POST(req: NextRequest) {
       return new NextResponse("Text is required", { status: 400 });
     }
     const audioResponse = await openai.audio.speech.create({
-      model: "gpt-4o-mini-tts", // or "tts-1" / "tts-1-hd" if preferred
-      voice: voice || "coral", // Default to 'coral' voice if not provided
+      model: "gpt-4o-mini-tts",
+      voice: voice || "alloy",
       input: text,
       response_format: "opus",
     });
