@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, jsonb, foreignKey, pgTableCreator, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, jsonb, foreignKey, pgTableCreator, varchar, index } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { Message } from "ai";
 
@@ -15,6 +15,7 @@ export const messagesTable = createTable(
     content: text("content").notNull(),
   },
   (t) => ({
+    chatIdIndex: index("messages_chat_id_created_at_idx").on(t.chatId, t.createdAt),
     foreignKey: foreignKey({ columns: [t.chatId], foreignColumns: [userSession.chatId] }),
   }),
 );

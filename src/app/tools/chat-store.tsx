@@ -58,26 +58,26 @@ export async function loadChat(id: string): Promise<ChatData> {
   return { settings, messages };
 }
 
-export async function saveChat({
+export async function appendNewMessages({
   id,
-  messages,
+  newMessages,
 }: {
   id: string;
-  messages: Message[];
+  newMessages: Message[];
 }): Promise<void> {
-  //   Delete existing messages for the chat session
-  await db.delete(messagesTable).where(eq(messagesTable.chatId, id));
-
-  // Insert the new set of messages
-  if (messages.length > 0) {
-    const messagesToInsert = messages.map((msg) => ({
-      messageId: msg.id,
-      chatId: id,
-      role: msg.role,
-      createdAt: msg.createdAt instanceof Date ? msg.createdAt : (msg.createdAt ? new Date(msg.createdAt) : new Date()),
-      parts: msg.parts || [],
-      content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-    }));
-    await db.insert(messagesTable).values(messagesToInsert);
+  if (newMessages.length === 0) {
+    return;
   }
+
+  const messagesToInsert = newMessages.map((msg) => ({
+    messageId: msg.id,
+    chatId: id,
+    role: msg.role,
+    createdAt: msg.createdAt instanceof Date ? msg.createdAt : (msg.createdAt ? new Date(msg.createdAt) : new Date()),
+    parts: msg.parts || [], // Ensure parts is an array, even if undefined in msg
+    content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+  }));
+
+  // Insert only the new messages
+  await db.insert(messagesTable).values(messagesToInsert);
 }

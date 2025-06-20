@@ -29,120 +29,232 @@ interface UseTextToSpeechProps {
   voice?: string; // Optional voice parameter, defaults to 'coral'
 }
 
+export interface AudioQueueItem {
+  url: string;
+  pauseAfterMs: number;
+  textFragment: string; // For debugging or potential future use
+}
+
 export function useTextToSpeech({
   messages,
   isLoading,
   voice = 'coral',
 }: UseTextToSpeechProps): void {
-  const [audioQueue, setAudioQueue] = useState<string[]>([]);
+  const [audioQueue, setAudioQueue] = useState<AudioQueueItem[]>([]);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [currentSpokenMessageId, setCurrentSpokenMessageId] = useState<string | null>(null);
   
   const currentSpokenMessageIdRef = useRef(currentSpokenMessageId);
-  const processedContentRef = useRef('');
-  const textQueueRef = useRef('');
+  const unprocessedTextSegmentsRef = useRef<string[]>([]);
+  const processedStreamContentRef = useRef<string>("");
+  const currentlyGeneratingForMessageIdRef = useRef<string | null>(null);
   const isProcessingAudioRef = useRef(false);
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const sentenceEndRef = useRef<string>("");
 
   useEffect(() => {
     currentSpokenMessageIdRef.current = currentSpokenMessageId;
   }, [currentSpokenMessageId]);
 
-  // Effect to play audio from the queue
-  useEffect(() => {
-    if (audioQueue.length > 0 && !isPlayingAudio) {
-      setIsPlayingAudio(true);
-      const audioUrl = audioQueue[0];
-      const audio = new Audio(audioUrl);
-      audio.play().catch(e => {
-        console.error("Audio playback failed:", e);
-        URL.revokeObjectURL(audioUrl);
-        setAudioQueue((prev) => prev.slice(1));
-        setIsPlayingAudio(false);
-      });
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        setAudioQueue((prev) => prev.slice(1));
-        setIsPlayingAudio(false);
-      };
-      audio.onerror = (e) => {
-        console.error("Error playing audio:", e);
-        URL.revokeObjectURL(audioUrl);
-        setAudioQueue((prev) => prev.slice(1));
-        setIsPlayingAudio(false);
-      };
-    }
-  }, [audioQueue, isPlayingAudio]);
-
   const processQueue = useCallback(async () => {
     if (isProcessingAudioRef.current) return;
     isProcessingAudioRef.current = true;
 
-    const workingMessageId = currentSpokenMessageIdRef.current;
+    const processingMessageId = currentSpokenMessageIdRef.current;
+    currentlyGeneratingForMessageIdRef.current = processingMessageId;
 
     try {
-      while (true) {
-        if (workingMessageId !== currentSpokenMessageIdRef.current) {
-          break; // New message has started, stop processing for the old one
+      while (unprocessedTextSegmentsRef.current.length > 0 || (sentenceEndRef.current && !isLoading)) {
+        if (processingMessageId !== currentSpokenMessageIdRef.current) {
+          console.log("TTS: Message ID changed during processQueue. Aborting for:", processingMessageId);
+          currentlyGeneratingForMessageIdRef.current = null;
+          break;
         }
 
-        const isStreamComplete = !isLoading;
-        let textToSpeak = '';
+        let textForTTS = "";
+        let currentSegment = "";
 
-        // Try to find a complete sentence
-        const sentenceEndMatch = textQueueRef.current.match(/[^.!?]+[.!?](?=\s|$)/);
+        if (unprocessedTextSegmentsRef.current.length > 0) {
+          currentSegment = unprocessedTextSegmentsRef.current[0];
+        }
+        
+        let combinedText = sentenceEndRef.current + currentSegment;
+        sentenceEndRef.current = ""; // Clear after use for this iteration
 
-        if (sentenceEndMatch) {
-          textToSpeak = sentenceEndMatch[0];
-          textQueueRef.current = textQueueRef.current.substring(textToSpeak.length);
-        } else if (isStreamComplete && textQueueRef.current.trim().length > 0) {
-          // If stream is complete and there's remaining text, speak it all
-          textToSpeak = textQueueRef.current.trim();
-          textQueueRef.current = '';
-        } else {
-          break; // No complete sentence and stream is not complete, or no text left
+        if (!combinedText.trim() && unprocessedTextSegmentsRef.current.length > 0) {
+           // Current segment might be empty or whitespace, and sentenceEndRef was also empty.
+           unprocessedTextSegmentsRef.current.shift(); // Consume empty/whitespace segment
+           continue; // Get next segment
+        }
+        if (!combinedText.trim() && unprocessedTextSegmentsRef.current.length === 0 && isLoading) {
+          break; // No text and stream is ongoing, wait for more data
+        }
+        if (!combinedText.trim() && unprocessedTextSegmentsRef.current.length === 0 && !isLoading) {
+          break; // No text and stream is done.
         }
 
-        if (textToSpeak) {
-          const audioUrl = await generateSpeechAPI(textToSpeak, voice);
-          // Ensure we are still processing the same message before queuing audio
-          if (workingMessageId === currentSpokenMessageIdRef.current && audioUrl) {
-            setAudioQueue(prev => [...prev, audioUrl]);
+        // Sentence splitting logic (simplified: uses common terminators)
+        // A more robust NLP sentence tokenizer would be better for complex cases.
+        const sentenceTerminators = /[.!?]+(?=\s+|$)/g;
+        let lastMatchEnd = 0;
+        let match;
+
+        while ((match = sentenceTerminators.exec(combinedText)) !== null) {
+          textForTTS = combinedText.substring(lastMatchEnd, match.index + match[0].length).trim();
+          lastMatchEnd = sentenceTerminators.lastIndex;
+          
+          if (textForTTS) {
+            if (processingMessageId !== currentSpokenMessageIdRef.current) break;
+            console.log("TTS: Generating for sentence:", textForTTS);
+            const audioUrl = await generateSpeechAPI(textForTTS, voice);
+            if (currentlyGeneratingForMessageIdRef.current === processingMessageId && audioUrl) {
+              let pauseAfterMs = 0;
+              if (/[.!?]$/.test(textForTTS)) { // Ends with period, question mark, or exclamation
+                pauseAfterMs = 300; // Pause for sentence end
+              } else if (/,$/.test(textForTTS)) { // Ends with comma
+                pauseAfterMs = 150; // Shorter pause for comma
+              }
+              console.log(`TTS: Queuing audio for '${textForTTS}', pause: ${pauseAfterMs}ms`);
+              setAudioQueue(prev => [...prev, { url: audioUrl, pauseAfterMs, textFragment: textForTTS }]);
+            } else if (audioUrl) {
+              URL.revokeObjectURL(audioUrl); // Clean up unused URL
+            }
           }
-        } else {
-          break; // No text to speak
+        }
+        if (processingMessageId !== currentSpokenMessageIdRef.current) break; // Check again after loop
+
+        const remainingText = combinedText.substring(lastMatchEnd).trim();
+
+        if (unprocessedTextSegmentsRef.current.length > 0) {
+            unprocessedTextSegmentsRef.current.shift(); // Consume the processed segment
+        }
+
+        if (remainingText) {
+          if (!isLoading && unprocessedTextSegmentsRef.current.length === 0) {
+            // This is the very last bit of text, and the stream is complete.
+            console.log("TTS: Generating for final remaining text:", remainingText);
+            textForTTS = remainingText;
+            const audioUrl = await generateSpeechAPI(textForTTS, voice);
+            if (currentlyGeneratingForMessageIdRef.current === processingMessageId && audioUrl) {
+              let pauseAfterMs = 0; // Usually no extra pause for the very final fragment unless it's a full sentence.
+              if (/[.!?]$/.test(textForTTS)) {
+                pauseAfterMs = 400;
+              }
+              console.log(`TTS: Queuing audio for final fragment '${textForTTS}', pause: ${pauseAfterMs}ms`);
+              setAudioQueue(prev => [...prev, { url: audioUrl, pauseAfterMs, textFragment: textForTTS }]);
+            } else if (audioUrl) {
+              URL.revokeObjectURL(audioUrl);
+            }
+          } else {
+            // Stream is ongoing or more segments exist, so store as partial sentence.
+            console.log("TTS: Storing partial sentence:", remainingText);
+            sentenceEndRef.current = remainingText;
+          }
+        }
+        // If sentenceEndRef has content but no more segments and stream is loading, wait.
+        if (sentenceEndRef.current && unprocessedTextSegmentsRef.current.length === 0 && isLoading) {
+            break; 
         }
       }
+    } catch (error) {
+      console.error("TTS: Error in processQueue:", error);
     } finally {
       isProcessingAudioRef.current = false;
-      // If there's still text in the queue (e.g., due to a new message interrupting),
-      // and the lock is released, try to process again.
-      if (textQueueRef.current.trim().length > 0 && !isProcessingAudioRef.current) {
+      if (currentlyGeneratingForMessageIdRef.current === processingMessageId) {
+         currentlyGeneratingForMessageIdRef.current = null; // Clear only if it's still for this run
+      }
+      // Re-trigger if there's still work to do
+      if ((unprocessedTextSegmentsRef.current.length > 0 || (sentenceEndRef.current && !isLoading)) && !isProcessingAudioRef.current) {
+        console.log("TTS: Re-triggering processQueue from finally.");
         processQueue();
       }
     }
-  }, [isLoading, voice, generateSpeechAPI]);
+  }, [isLoading, voice, generateSpeechAPI, setAudioQueue]); // setAudioQueue is a stable dispatcher
 
-  // Producer effect: monitors messages and populates the text queue
+  // Effect to play audio from the queue
+  useEffect(() => {
+    if (audioQueue.length > 0 && !isPlayingAudio) {
+      const currentAudioItem = audioQueue[0];
+      setIsPlayingAudio(true);
+      console.log("TTS: Playing audio for:", currentAudioItem.textFragment, "Pause after:", currentAudioItem.pauseAfterMs);
+      const audio = new Audio(currentAudioItem.url);
+      audioPlayerRef.current = audio;
+
+      const cleanupAndProceed = (itemToClean: AudioQueueItem) => {
+        URL.revokeObjectURL(itemToClean.url);
+        if (audioPlayerRef.current === audio) audioPlayerRef.current = null;
+        
+        const proceed = () => {
+          setAudioQueue((prev) => prev.slice(1));
+          setIsPlayingAudio(false);
+          if ((unprocessedTextSegmentsRef.current.length > 0 || (sentenceEndRef.current && !isLoading)) && !isProcessingAudioRef.current) {
+            console.log("TTS: Triggering processQueue from playback cleanup.");
+            processQueue();
+          }
+        };
+
+        if (itemToClean.pauseAfterMs > 0) {
+          console.log(`TTS: Pausing for ${itemToClean.pauseAfterMs}ms after:`, itemToClean.textFragment);
+          setTimeout(proceed, itemToClean.pauseAfterMs);
+        } else {
+          proceed();
+        }
+      };
+
+      audio.play().catch(e => {
+        console.error("Audio playback failed:", e, currentAudioItem.textFragment);
+        cleanupAndProceed(currentAudioItem);
+      });
+      audio.onended = () => {
+        console.log("TTS: Audio ended for:", currentAudioItem.textFragment);
+        cleanupAndProceed(currentAudioItem);
+      };
+      audio.onerror = (e) => {
+        console.error("Error playing audio:", e, currentAudioItem.textFragment);
+        cleanupAndProceed(currentAudioItem);
+      };
+    }
+  }, [audioQueue, isPlayingAudio, processQueue, isLoading]); // Added isLoading to deps for sentenceEndRef check
+
+  // Producer effect: monitors messages and populates unprocessedTextSegmentsRef
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
 
     if (lastMessage && lastMessage.role === 'assistant') {
       if (lastMessage.id !== currentSpokenMessageId) {
-        // New assistant message or initial message
+        // New assistant message ID
+        console.log(`TTS: New assistant message ID: ${lastMessage.id}. Resetting TTS.`);
+        if (audioPlayerRef.current) {
+          console.log("TTS: Pausing existing audio due to new message ID.");
+          audioPlayerRef.current.pause();
+          audioPlayerRef.current.src = ""; // Release resource
+          audioPlayerRef.current = null; 
+        }
         setCurrentSpokenMessageId(lastMessage.id);
-        setAudioQueue([]); // Clear queue for the new message
+        setAudioQueue([]); // Clear pending audio from old message
         setIsPlayingAudio(false); // Reset playing state
-        textQueueRef.current = lastMessage.content; // Initialize text queue
-        processedContentRef.current = lastMessage.content; // Track processed content
-      } else {
+        unprocessedTextSegmentsRef.current = [lastMessage.content]; 
+        processedStreamContentRef.current = lastMessage.content;
+        sentenceEndRef.current = ""; 
+        console.log("TTS: Queued initial content for new message:", lastMessage.content);
+        if (!isProcessingAudioRef.current) {
+          console.log("TTS: Triggering processQueue from producer (new message).");
+          processQueue();
+        }
+      } else if (lastMessage.id === currentSpokenMessageId && 
+                 lastMessage.content.length > processedStreamContentRef.current.length) {
         // Existing assistant message is being streamed
-        if (lastMessage.content.length > processedContentRef.current.length) {
-          const newText = lastMessage.content.substring(processedContentRef.current.length);
-          textQueueRef.current += newText; // Append new chunk to the text queue
-          processedContentRef.current = lastMessage.content; // Update processed content length
+        const newTextChunk = lastMessage.content.substring(processedStreamContentRef.current.length);
+        if (newTextChunk.length > 0) {
+          console.log("TTS: Adding new text chunk to unprocessed queue:", newTextChunk);
+          unprocessedTextSegmentsRef.current.push(newTextChunk);
+          processedStreamContentRef.current = lastMessage.content;
+          if (!isProcessingAudioRef.current && !isPlayingAudio) { // Also check !isPlayingAudio to avoid interrupting current sentence's natural flow too abruptly
+            console.log("TTS: Triggering processQueue from producer (new chunk).");
+            processQueue();
+          }
         }
       }
-      processQueue(); // Attempt to process the queue
     }
-  }, [messages, currentSpokenMessageId, processQueue]);
+  }, [messages, currentSpokenMessageId, voice, processQueue, setAudioQueue, isLoading]); // Added processQueue, setAudioQueue, isLoading
 }
