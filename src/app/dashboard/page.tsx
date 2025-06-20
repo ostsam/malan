@@ -119,7 +119,7 @@ export default function Menu() {
                           <Button
                             onClick={() => setInterlocutor(name)}
                             className={cn(
-                              "!bg-white !text-sky-600 border border-sky-200",
+                              "cursor-pointer !bg-white !text-sky-600 border border-sky-200",
                               interlocutor === name && "!bg-sky-500 !text-white"
                             )}
                           >
@@ -138,7 +138,7 @@ export default function Menu() {
             className={cn(
               "w-full text-white p-3 sm:p-4 rounded-lg text-base sm:text-lg font-semibold transition-colors duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75",
               isFormComplete
-                ? "bg-sky-500 hover:animate-pulse"
+                ? "bg-sky-500 hover:animate-pulse cursor-pointer"
                 : "bg-slate-400 cursor-not-allowed"
             )}
           >
