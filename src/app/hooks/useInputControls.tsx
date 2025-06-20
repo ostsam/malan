@@ -39,35 +39,7 @@ export const useInputControls = ({
     return () => window.removeEventListener("resize", checkIsMobile);
   }, []);
 
-  const handleMicInteractionStart = useCallback(() => {
-    if (isMobile && pushToTalk) {
-      if (!isRecording && !isTranscribing && status !== "submitted") {
-        startRecording();
-        wasStartedByThisInteractionRef.current = true;
-      }
-    }
-  }, [
-    isMobile,
-    pushToTalk,
-    isRecording,
-    isTranscribing,
-    status,
-    startRecording,
-  ]);
-
-  const handleMicInteractionEnd = useCallback(() => {
-    if (isMobile && pushToTalk) {
-      if (isRecording && wasStartedByThisInteractionRef.current) {
-        stopRecording();
-      }
-      wasStartedByThisInteractionRef.current = false;
-    }
-  }, [isMobile, pushToTalk, isRecording, stopRecording]);
-
-  const handleMicClick = useCallback(() => {
-    if (isMobile && pushToTalk) {
-      return;
-    }
+  const handleToggleRecording = useCallback(() => {
     if (!(isTranscribing || status === "submitted")) {
       if (isRecording) {
         stopRecording();
@@ -75,15 +47,45 @@ export const useInputControls = ({
         startRecording();
       }
     }
-  }, [
-    isMobile,
-    pushToTalk,
-    isRecording,
-    isTranscribing,
-    status,
-    startRecording,
-    stopRecording,
-  ]);
+  }, [isRecording, isTranscribing, status, startRecording, stopRecording]);
+
+  const handleMicInteractionStart = useCallback(
+    (event: React.MouseEvent | React.TouchEvent) => {
+      if (isMobile && pushToTalk) {
+        if (!isRecording && !isTranscribing && status !== "submitted") {
+          startRecording();
+          wasStartedByThisInteractionRef.current = true;
+        }
+      }
+    },
+    [isMobile, pushToTalk, isRecording, isTranscribing, status, startRecording]
+  );
+
+  const handleMicInteractionEnd = useCallback(
+    (event: React.MouseEvent | React.TouchEvent) => {
+      if (isMobile) {
+        if (pushToTalk) {
+          if (isRecording && wasStartedByThisInteractionRef.current) {
+            stopRecording();
+          }
+          wasStartedByThisInteractionRef.current = false;
+        } else {
+          // This is a tap on mobile for tap-to-talk mode
+          event.preventDefault();
+          handleToggleRecording();
+        }
+      }
+    },
+    [isMobile, pushToTalk, isRecording, stopRecording, handleToggleRecording]
+  );
+
+  const handleMicClick = useCallback(() => {
+    // On mobile, this is handled by onTouchEnd to avoid ghost clicks.
+    // On desktop, this is the primary event.
+    if (!isMobile) {
+      handleToggleRecording();
+    }
+  }, [isMobile, handleToggleRecording]);
 
   useEffect(() => {
     if (isMobile) {
