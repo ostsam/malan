@@ -10,7 +10,6 @@ import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
 import Switch from "react-switch";
-import Analytics from "@vercel/analytics/react";
 // Example default, adjust as needed
 const defaultChatSettings: ChatSettings = {
   nativeLanguage: "English",
