@@ -66,8 +66,7 @@ export async function POST(req: Request) {
       prefix: "msgs",
       size: 16,
     }),
-    experimental_streamData: true, // Enable data streaming
-    async onFinish({ response, experimental_streamData }) {
+    async onFinish({ response }) {
       const newAssistantMessages = response.messages.filter(
         (msg) => historyWithUserMsg.every(hMsg => hMsg.id !== msg.id)
       );
@@ -83,8 +82,6 @@ export async function POST(req: Request) {
           newMessages: messagesToSaveThisTurn,
         });
       }
-
-      experimental_streamData?.close();
     },
   });
 
