@@ -1,5 +1,5 @@
 import { auth } from "@/app/api/auth/[...all]/auth";
-import { loadUserChatHistory, type ChatSummary } from "@/app/tools/chat-store";
+import { loadUserChatHistory, type ChatMetadata } from "@/app/tools/chat-store";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -21,7 +21,7 @@ export default async function HistoryPage() {
         <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Chat History</h1>
         {chats.length > 0 ? (
           <ul className="space-y-4">
-            {chats.map((chat: ChatSummary) => (
+            {chats.map((chat: ChatMetadata) => (
               <li key={chat.id} className="border-b border-gray-200 pb-4">
                 <Link href={`/chat/${chat.id}`} className="block p-4 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                   <p className="font-semibold text-gray-700">Chat from {new Date(chat.createdAt).toLocaleString()}</p>
