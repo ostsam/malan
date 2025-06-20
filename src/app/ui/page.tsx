@@ -12,11 +12,11 @@ import type { ChatData, ChatSettings } from "../tools/chat-store";
 
 // Example default, adjust as needed
 const defaultChatSettings: ChatSettings = {
-  nativeLanguage: "English", 
-  selectedLanguage: "Spanish", 
-  selectedLanguageLabel: "Spanish", 
-  selectedLevel: "Novice", 
-  interlocutor: "Mateo", 
+  nativeLanguage: "English",
+  selectedLanguage: "Spanish",
+  selectedLanguageLabel: "Spanish",
+  selectedLevel: "Novice",
+  interlocutor: "Mateo",
   name: "User",
 };
 
@@ -24,8 +24,6 @@ const defaultChatObject: ChatData = {
   settings: defaultChatSettings,
   messages: [],
 };
-
-
 
 export default function Chat({
   id,
@@ -59,13 +57,14 @@ export default function Chat({
     const errorMessageStyling =
       "fixed bottom-32 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg";
     const micCaptionStyling = "text-md text-gray-600 dark:text-gray-400 mb-1";
+
     const submissionRef = useRef(false);
-    const dotLottiePlayerRef = useRef<DotLottie | null>(null);
+    const dotLottiePlayerRef = useRef<DotLottie>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
     // Use the custom hook for Text-to-Speech functionality
-    useTextToSpeech({ messages, isLoading, voice: 'coral' });
+    useTextToSpeech({ messages, isLoading, voice: "coral" });
 
     const interlocutor = settings?.interlocutor;
     const {
