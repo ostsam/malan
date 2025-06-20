@@ -42,7 +42,7 @@ export function CustomPopover<T extends PopoverItem>({
 }: CustomPopoverProps<T>) {
   const [search, setSearch] = useState("");
   const filtered = items.filter((item) =>
-    item.label.toLowerCase().includes(search.toLowerCase())
+    item.label.toLowerCase().includes(search.toLowerCase().trim())
   );
 
   return (

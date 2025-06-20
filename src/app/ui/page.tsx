@@ -335,46 +335,47 @@ export default function Chat({
             </label>
           </div>
 
-          {/* Centered Microphone */}
-          <div className="flex flex-col items-center justify-center">
-            <div // Wrapper for touch/mouse events
-              onMouseDown={handleMicInteractionStart}
-              onMouseUp={handleMicInteractionEnd}
-              onTouchStart={handleMicInteractionStart}
-              onTouchEnd={handleMicInteractionEnd}
-              onClick={handleMicClick}
-              role="button"
-              tabIndex={0}
-              aria-pressed={isRecording}
-              className={`${
-                isTranscribing || status === "submitted"
-                  ? "opacity-50 cursor-not-allowed"
-                  : "cursor-pointer"
-              }`}
-            >
-              <DotLottieReact
-                dotLottieRefCallback={(playerInstance) => {
-                  dotLottiePlayerRef.current = playerInstance;
-                }}
-                src="/microphonebutton.json"
-                loop={true}
-                autoplay={false}
-                className={`w-25 h-25 pointer-events-none ${
-                  isTranscribing || status === "submitted" ? "opacity-50" : ""
-                }`}
-              />
-            </div>
-            {status == "submitted" ? (
-              <p className={micCaptionStyling}>Processing Speech</p>
-            ) : isRecording ? (
-              <p className={micCaptionStyling}>Recording</p>
-            ) : (
-              <p className={micCaptionStyling}>Press to Record</p>
-            )}
-          </div>
+      {/* Centered Microphone */}
+      <div className="flex flex-col items-center justify-center">
+        <div // Wrapper for touch/mouse events
+          onMouseDown={handleMicInteractionStart}
+          onMouseUp={handleMicInteractionEnd}
+          onTouchStart={handleMicInteractionStart}
+          onTouchEnd={handleMicInteractionEnd}
+          onClick={handleMicClick}
+          role="button"
+          tabIndex={0}
+          aria-pressed={isRecording}
+          className={`${ 
+            (isTranscribing || status === "submitted")
+              ? "opacity-50 cursor-not-allowed"
+              : "cursor-pointer"
+          }`}
+        >
+          <DotLottieReact
+            dotLottieRefCallback={(playerInstance) => {
+              dotLottiePlayerRef.current = playerInstance;
+            }}
+            src="/microphonebutton.json"
+            loop={true}
+            autoplay={false}
+            className={`w-25 h-25 pointer-events-none ${
+              (isTranscribing || status === "submitted")
+                ? "opacity-50"
+                : ""
+            }`}
+          />
         </div>
-        <Analytics />
-      </div>
-    );
+        {status == "submitted" ? (
+          <p className={micCaptionStyling}>Processing Speech</p>
+        ) : isRecording ? (
+          <p className={micCaptionStyling}>Recording</p>
+        ) : (
+          <p className={micCaptionStyling}>Press to Record</p>
+        )}
+        </div>  
+      </div>  
+    </div>
+  );
   }
 }
