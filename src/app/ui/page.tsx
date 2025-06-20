@@ -116,7 +116,7 @@ export default function Chat({
       }
     }, [messages]);
 
-    return (
+  return (
       <div className="flex flex-col w-full max-w-xl py-8 mx-auto stretch min-h-screen items-center">
         <div
           ref={messagesContainerRef}
