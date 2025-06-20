@@ -51,9 +51,9 @@ export default function Menu() {
     !!nativeLanguage && !!selectedLanguage && !!selectedLevel && !!interlocutor;
 
   return (
-    <div className=" flex flex-col items-center justify-center h-dvh">
-      <div className="bg-slate-500 sm:p-6 font-sans rounded-3xl min-w-120 shadow-xl">
-        <div className="bg-white p-6 sm:p-8 rounded-xl w-full sm:max-w-lg text-slate-700 space-y-6 min-w-120">
+    <div className="flex flex-col items-center justify-center max-h-screen p-4">
+      <div className="bg-slate-500 sm:p-6 font-sans rounded-3xl w-full max-w-lg shadow-xl">
+        <div className="bg-white p-6 sm:p-8 rounded-xl w-full text-slate-700 space-y-6">
           <h1 className="text-4xl sm:text-5xl font-bold text-center text-sky-600 tracking-tight">
             Malan
           </h1>
