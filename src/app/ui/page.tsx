@@ -79,6 +79,7 @@ export default function Chat({
     const micCaptionStyling = "text-md text-gray-600 dark:text-gray-400 mb-1";
 
     const submissionRef = useRef(false);
+    const wasStartedByThisInteractionRef = useRef(false);
     const dotLottiePlayerRef = useRef<DotLottie>(null);
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const endOfMessagesRef = useRef<HTMLDivElement>(null);
@@ -139,6 +140,7 @@ export default function Chat({
       if (isMobile && pushToTalk) {
         if (!isRecording && !isTranscribing && status !== "submitted") {
           startRecording();
+          wasStartedByThisInteractionRef.current = true; // Track that this interaction started recording
         }
       }
     }, [
@@ -152,9 +154,10 @@ export default function Chat({
 
     const handleMicInteractionEnd = useCallback(() => {
       if (isMobile && pushToTalk) {
-        if (isRecording) {
+        if (isRecording && wasStartedByThisInteractionRef.current) {
           stopRecording();
         }
+        wasStartedByThisInteractionRef.current = false; // Reset for the next interaction
       }
     }, [isMobile, pushToTalk, isRecording, stopRecording]);
 
