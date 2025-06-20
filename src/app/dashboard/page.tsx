@@ -11,6 +11,8 @@ import { languageLearningData } from "./menu-data/languageLearningData";
 import type { LanguageOption } from "./menu-data/languageLearningData";
 import { levelsData } from "./menu-data/levelsData";
 import Logout from "@/components/logout";
+import ChatHistory from "@/components/chat-history";
+import { Loader2 } from "lucide-react";
 
 export default function Menu() {
   const [nativeLanguage, setNativeLanguage] = useState<PopoverItem | undefined>(
@@ -26,10 +28,15 @@ export default function Menu() {
     useState(false);
   const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
   const [levelPopoverOpen, setLevelPopoverOpen] = useState(false);
-  const [interlocutor, setInterlocutor] = useState<string>("");
+  const [interlocutor, setInterlocutor] = useState<string | undefined>(
+    undefined
+  );
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   const handleStartLearning = () => {
+    if (!isFormComplete || isLoading) return;
+    setIsLoading(true);
     const params = new URLSearchParams();
     if (nativeLanguage?.label)
       params.append("nativeLanguage", nativeLanguage.label);
@@ -51,7 +58,13 @@ export default function Menu() {
     !!nativeLanguage && !!selectedLanguage && !!selectedLevel && !!interlocutor;
 
   return (
-    <div className="flex flex-col items-center justify-center max-h-screen p-4">
+    <>
+    <div className="flex flex-col h-screen p-4">
+      <div className="flex justify-between">
+      <ChatHistory />
+        <Logout />
+      </div>
+      <div className="flex-grow flex items-center justify-center">
       <div className="bg-slate-500 sm:p-6 font-sans rounded-3xl w-full max-w-lg shadow-xl">
         <div className="bg-white p-6 sm:p-8 rounded-xl w-full text-slate-700 space-y-6">
           <h1 className="text-4xl sm:text-5xl font-bold text-center text-sky-600 tracking-tight">
@@ -134,19 +147,27 @@ export default function Menu() {
           </div>
           <button
             onClick={handleStartLearning}
-            disabled={!isFormComplete}
+            disabled={!isFormComplete || isLoading}
             className={cn(
-              "w-full text-white p-3 sm:p-4 rounded-lg text-base sm:text-lg font-semibold transition-colors duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75",
-              isFormComplete
+              "w-full flex items-center justify-center text-white p-3 sm:p-4 rounded-lg text-base sm:text-lg font-semibold transition-colors duration-300 shadow-md focus:outline-none focus:ring-2 focus:ring-sky-400 focus:ring-opacity-75",
+              isFormComplete && !isLoading
                 ? "bg-sky-500 hover:animate-pulse cursor-pointer"
                 : "bg-slate-400 cursor-not-allowed"
             )}
           >
-            Start Learning
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Starting...
+              </>
+            ) : (
+              "Start Learning"
+            )}
           </button>
         </div>
       </div>
-      <Logout />
+      </div>
     </div>
+    </>
   );
 }

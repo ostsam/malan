@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useChat, Message } from "@ai-sdk/react";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { useChatInteraction } from "../hooks/useChatInteraction";
@@ -81,7 +81,17 @@ export default function Chat({
     stopRecording,
   });
 
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
   useTextToSpeech({ messages, isLoading, voice: "coral" });
+
+  useLayoutEffect(() => {
+    const container = messagesContainerRef.current;
+    if (container) {
+      const hasOverflow = container.scrollHeight > container.clientHeight;
+      setIsOverflowing(hasOverflow);
+    }
+  }, [messages]);
 
   useEffect(() => {
     const player = dotLottiePlayerRef.current;
@@ -124,9 +134,11 @@ export default function Chat({
     <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black">
       <div
         ref={messagesContainerRef}
-        className="flex-grow overflow-y-auto w-full px-4"
+        className={`flex-grow w-full p-4 ${
+          isOverflowing ? "overflow-y-auto" : "overflow-y-hidden"
+        }`}
       >
-        <div className="relative h-full mt-4">
+        <div className="relative h-full">
           {messages.length > 0 ? (
             messages.map((m) => (
               <div
