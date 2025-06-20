@@ -67,7 +67,7 @@ export async function POST(req: Request) {
   });
 
   const result = streamText({
-    model: openai("o4-mini-2025-04-16"),
+    model: openai("gpt-4.1-mini"),
     messages: historyWithUserMsg,
     system: systemPrompt,
     temperature: 0.4,
