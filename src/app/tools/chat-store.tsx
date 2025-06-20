@@ -2,7 +2,7 @@ import { generateId } from "ai";
 import { Message } from "ai";
 import { db } from "@/db";
 import { userSession, messagesTable } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 export interface ChatSettings {
   nativeLanguage: string | null;
@@ -16,15 +16,39 @@ export interface ChatSettings {
 export interface ChatData {
   settings: ChatSettings;
   messages: Message[];
+  id?: string;
+  createdAt?: Date;
 }
 
-export async function createChat(settings: ChatSettings): Promise<string> {
+export interface ChatMetadata {
+  id: string;
+  createdAt: Date;
+}
+
+export async function createChat(settings: ChatSettings, userId: string): Promise<string> {
   const chatId = generateId();
   await db.insert(userSession).values({
     chatId: chatId,
     settings: settings,
+    userId: userId,
   });
   return chatId;
+}
+
+export async function loadUserChatHistory(userId: string): Promise<ChatMetadata[]> {
+  const sessionRecords = await db
+    .select({
+      id: userSession.chatId,
+      createdAt: userSession.createdAt,
+    })
+    .from(userSession)
+    .where(eq(userSession.userId, userId))
+    .orderBy(desc(userSession.createdAt));
+
+  return sessionRecords.map(session => ({
+    ...session,
+    createdAt: session.createdAt ?? new Date(), // Ensure createdAt is a Date
+  }));
 }
 
 export async function loadChat(id: string): Promise<ChatData> {
