@@ -151,19 +151,41 @@ export default function Chat({
     ]);
 
     const handleMicInteractionEnd = useCallback(() => {
-      if (isMobile && pushToTalk) {
-        if (isRecording) {
-          stopRecording();
+      // This handler manages both "hold-to-talk" and "tap-to-talk" on mobile.
+      if (isMobile) {
+        if (pushToTalk) {
+          // In "hold-to-talk" mode, we stop recording on touch end.
+          if (isRecording) {
+            stopRecording();
+          }
+        } else {
+          // In "tap-to-talk" mode, we toggle recording on touch end.
+          if (!(isTranscribing || status === "submitted")) {
+            if (isRecording) {
+              stopRecording();
+            } else {
+              startRecording();
+            }
+          }
         }
       }
-    }, [isMobile, pushToTalk, isRecording, stopRecording]);
+    }, [
+      isMobile,
+      pushToTalk,
+      isRecording,
+      isTranscribing,
+      status,
+      startRecording,
+      stopRecording,
+    ]);
 
     const handleMicClick = useCallback(() => {
-      if (isMobile && pushToTalk) {
-        // On mobile with "hold to talk" enabled, click is handled by touch/mouse events.
+      // Mobile interactions are handled by onTouchEnd. This handler is for desktop clicks.
+      if (isMobile) {
         return;
       }
-      // Standard toggle behavior for desktop or when mobile "hold to talk" is off.
+
+      // Standard toggle behavior for desktop.
       if (!(isTranscribing || status === "submitted")) {
         if (isRecording) {
           stopRecording();
@@ -173,7 +195,6 @@ export default function Chat({
       }
     }, [
       isMobile,
-      pushToTalk,
       isRecording,
       isTranscribing,
       status,
