@@ -36,9 +36,7 @@ export function useTranscription({
 
       try {
         const formData = new FormData();
-        const fileExtension = audioBlob.type.split('/')[1];
-        const filename = `audio.${fileExtension || 'webm'}`;
-        formData.append("audioFile", audioBlob, filename);
+        formData.append("audioFile", audioBlob, "audio.webm"); // Added filename
 
         const response = await fetch("/api/chat/transcription", {
           method: "POST",
