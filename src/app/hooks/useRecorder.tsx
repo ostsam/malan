@@ -71,13 +71,24 @@ export default function UseAudioRecorder(): UseAudioRecorderReturn {
   }, []);
 
   const stopRecording = useCallback(() => {
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state === "recording"
-    ) {
-      mediaRecorderRef.current.stop();
+    if (isRecording) { // Only proceed if our state thinks we are recording
+      if (mediaRecorderRef.current) {
+        if (mediaRecorderRef.current.state === "recording") {
+          mediaRecorderRef.current.stop(); // This will trigger onstop, which sets setIsRecording(false) and stops tracks
+        } else {
+          // Recorder exists but is not in 'recording' state (e.g., 'inactive', 'paused')
+          // but our isRecording state is true. This is a state mismatch.
+          // Force setIsRecording to false and ensure tracks are stopped.
+          mediaRecorderRef.current.stream?.getTracks().forEach((track) => track.stop());
+          setIsRecording(false);
+        }
+      } else {
+        // mediaRecorderRef.current is null, but isRecording state is true.
+        // This is also a state mismatch. Force setIsRecording to false.
+        setIsRecording(false);
+      }
     }
-  }, []);
+  }, [isRecording]); // Added isRecording to dependency array
 
   const clearAudioBlob = useCallback(() => {
     setAudioBlob(null);
