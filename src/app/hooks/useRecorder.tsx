@@ -25,7 +25,21 @@ export default function UseAudioRecorder(): UseAudioRecorderReturn {
     let stream: MediaStream | null = null;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+            const supportedTypes = [
+        "audio/mp4",
+        "audio/webm",
+      ];
+      const mimeType = supportedTypes.find((type) =>
+        MediaRecorder.isTypeSupported(type)
+      );
+
+      if (!mimeType) {
+        setRecordingError("No supported audio format found.");
+        stream?.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
+      const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
@@ -36,8 +50,8 @@ export default function UseAudioRecorder(): UseAudioRecorderReturn {
       };
 
       recorder.onstop = () => {
-        const newAudioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/webm",
+                const newAudioBlob = new Blob(audioChunksRef.current, {
+          type: mediaRecorderRef.current?.mimeType || 'audio/webm',
         });
         setAudioBlob(newAudioBlob);
         setIsRecording(false);
