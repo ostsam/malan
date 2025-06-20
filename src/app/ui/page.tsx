@@ -102,7 +102,7 @@ export default function Chat({
                 }`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3 text-md break-words shadow-md whitespace-pre-wrap ${
+                  className={`max-w-[90%] rounded-2xl p-3 text-md break-words shadow-md whitespace-pre-wrap ${
                     m.role === "user"
                       ? "bg-sky-400 dark:bg-sky-900 text-white"
                       : "bg-gray-200 dark:bg-gray-800"
@@ -195,8 +195,8 @@ export default function Chat({
             role="button"
             tabIndex={0}
             aria-pressed={isRecording}
-            className={`${ 
-              (isTranscribing || status === "submitted")
+            className={`${
+              isTranscribing || status === "submitted"
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
             }`}
@@ -209,9 +209,7 @@ export default function Chat({
               loop={true}
               autoplay={false}
               className={`w-25 h-25 pointer-events-none ${
-                (isTranscribing || status === "submitted")
-                  ? "opacity-50"
-                  : ""
+                isTranscribing || status === "submitted" ? "opacity-50" : ""
               }`}
             />
           </div>
