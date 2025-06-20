@@ -9,7 +9,7 @@ import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
-
+import Switch from "react-switch";
 // Example default, adjust as needed
 const defaultChatSettings: ChatSettings = {
   nativeLanguage: "English", 
@@ -56,6 +56,7 @@ export default function Chat({
     },
   });
   {
+    const [pushToTalk, setPushToTalk] = useState(true);
     const errorMessageStyling =
       "fixed bottom-32 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg";
     const micCaptionStyling = "text-md text-gray-600 dark:text-gray-400 mb-1";
@@ -116,6 +117,47 @@ export default function Chat({
       }
     }, [messages]);
 
+    // Keyboard shortcut for recording
+    useEffect(() => {
+      const handleKeyDown = (event: KeyboardEvent) => {
+        if (event.shiftKey && event.code === "KeyZ") {
+          event.preventDefault();
+
+          if (pushToTalk) {
+            // Push-to-talk: start on keydown if not already recording
+            if (!isRecording && !isTranscribing && status !== "submitted") {
+              startRecording();
+            }
+          } else {
+            // Toggle mode: start or stop on keydown
+            if (!isTranscribing && status !== "submitted") {
+              if (isRecording) {
+                stopRecording();
+              } else {
+                startRecording();
+              }
+            }
+          }
+        }
+      };
+
+      const handleKeyUp = (event: KeyboardEvent) => {
+        // Only applies to push-to-talk mode
+        if (pushToTalk && event.code === "KeyZ" && isRecording) {
+          event.preventDefault();
+          stopRecording();
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+      window.addEventListener("keyup", handleKeyUp);
+
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+        window.removeEventListener("keyup", handleKeyUp);
+      };
+    }, [pushToTalk, isRecording, isTranscribing, status, startRecording, stopRecording]);
+
   return (
     <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black">
       {/* This is the main content area that will grow to fill available space */}
@@ -153,7 +195,7 @@ export default function Chat({
               </div>
             ))
           ) : (
-            <div className="flex h-full flex-col justify-between py-8 text-center text-lg text-gray-600 dark:text-gray-400">
+            <div className="flex h-full flex-col justify-between py-8 text-center text-gray-600 dark:text-gray-400">
               <div>
                 <p className="text-2xl">Instructions:</p>
                 <p className="text-l mt-3">
@@ -163,7 +205,7 @@ export default function Chat({
                   time!
                 </p>
               </div>
-              <div className="text-l pb-4">
+              <div className="text-md mt-8 pb-4">
                 <p>1. Press the button and speak to start the chat.</p>
                 <p>2. Press the button again to end transmission.</p>
                 <p>3. Await response from {interlocutor}.</p>
@@ -192,32 +234,53 @@ export default function Chat({
       )}
 
       {/* This is the footer area for the microphone */}
-      <div className="flex flex-col items-center justify-center p-2 bg-white dark:bg-black border-t border-gray-200 dark:border-zinc-800">
-        <DotLottieReact
-          dotLottieRefCallback={(playerInstance) => {
-            dotLottiePlayerRef.current = playerInstance;
-          }}
-          src="/microphonebutton.json"
-          loop={true}
-          autoplay={false}
-          onClick={() => {
-            if (!(isTranscribing || status == "submitted")) {
-              isRecording ? stopRecording() : startRecording();
-            }
-          }}
-          className={`w-25 h-25 ${
-            isTranscribing || status == "submitted"
-              ? "opacity-50 cursor-not-allowed"
-              : "cursor-pointer"
-          }`}
-        />
-        {status == "submitted" ? (
-          <p className={micCaptionStyling}>Processing Speech</p>
-        ) : isRecording ? (
-          <p className={micCaptionStyling}>Recording</p>
-        ) : (
-          <p className={micCaptionStyling}>Press to Record</p>
-        )}
+      <div className="relative flex items-center justify-center p-2 bg-white dark:bg-black border-t border-gray-200 dark:border-zinc-800">
+        {/* Left-aligned Switch */}
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+          <Switch
+            checked={pushToTalk}
+            onChange={() => setPushToTalk(!pushToTalk)}
+            checkedIcon={false}
+            uncheckedIcon={false}
+            onColor="#2196F3"
+          />
+          <label
+            htmlFor="push-to-talk-toggle"
+            className="mt-1 text-xs text-gray-900 dark:text-gray-300"
+          >
+            Push-to-Talk <br />
+            (Hold Shift+Z)
+          </label>
+        </div>
+
+        {/* Centered Microphone */}
+        <div className="flex flex-col items-center">
+          <DotLottieReact
+            dotLottieRefCallback={(playerInstance) => {
+              dotLottiePlayerRef.current = playerInstance;
+            }}
+            src="/microphonebutton.json"
+            loop={true}
+            autoplay={false}
+            onClick={() => {
+              if (!(isTranscribing || status == "submitted")) {
+                isRecording ? stopRecording() : startRecording();
+              }
+            }}
+            className={`w-25 h-25 ${
+              isTranscribing || status == "submitted"
+                ? "opacity-50 cursor-not-allowed"
+                : "cursor-pointer"
+            }`}
+          />
+          {status == "submitted" ? (
+            <p className={micCaptionStyling}>Processing Speech</p>
+          ) : isRecording ? (
+            <p className={micCaptionStyling}>Recording</p>
+          ) : (
+            <p className={micCaptionStyling}>Press to Record</p>
+          )}
+        </div>
       </div>
     </div>
   );
