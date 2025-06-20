@@ -235,12 +235,11 @@ export default function Chat({
 
     return (
       <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black">
-        {/* This is the main content area that will grow to fill available space */}
         <div
           ref={messagesContainerRef}
           className="flex-grow overflow-y-auto w-full px-4"
         >
-          <div className="relative h-full">
+          <div className="relative h-full mt-2">
             {messages.length > 0 ? (
               messages.map((m) => (
                 <div
@@ -307,7 +306,6 @@ export default function Chat({
           </div>
         )}
         <div className="relative flex items-center justify-center p-2 bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800">
-          {/* Left-aligned Switch */}
           <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
             <Switch
               id="push-to-talk-toggle"
