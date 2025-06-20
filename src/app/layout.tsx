@@ -1,5 +1,6 @@
 import { Toaster } from "sonner";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/react";
 
 export default function DashboardLayout({
   children,
@@ -9,6 +10,7 @@ export default function DashboardLayout({
   return (
     <html lang="en">
       <body>{children}
+        <Analytics />
       <Toaster />
       </body>
     </html>
