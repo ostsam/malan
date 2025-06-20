@@ -25,7 +25,7 @@ export async function POST(req: Request) {
       file: audioFile,
       model: "whisper-1",
       temperature: 0,
-      prompt: `Transcribe what the user says word for word in the original language. Expect the user to speak in ${selectedLanguage} and ${nativeLanguage}.`,
+      prompt: `Transcribe what the user says word for word in the original language. Expect the user to speak in ${selectedLanguage} and ${nativeLanguage}. Maintain a neutral intonation throughout your speech.`,
     });
 
     return new Response(transcription.text, {

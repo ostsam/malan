@@ -4,17 +4,19 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useChat, Message } from "@ai-sdk/react";
 import UseAudioRecorder from "../hooks/useRecorder";
 import { useTranscription } from "../hooks/useTranscription";
+import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
 
+// Example default, adjust as needed
 const defaultChatSettings: ChatSettings = {
-  nativeLanguage: "English", // Example default, adjust as needed
-  selectedLanguage: "Spanish",
-  selectedLanguageLabel: "Spanish", // Example default, adjust as needed
-  selectedLevel: "Novice", // Example default, adjust as needed
-  interlocutor: "Mateo", // Example default, adjust as needed
+  nativeLanguage: "English", 
+  selectedLanguage: "Spanish", 
+  selectedLanguageLabel: "Spanish", 
+  selectedLevel: "Novice", 
+  interlocutor: "Mateo", 
   name: "User",
 };
 
@@ -62,132 +64,9 @@ export default function Chat({
     const messagesContainerRef = useRef<HTMLDivElement>(null);
     const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
-    // State for AI text-to-speech
-    const [audioQueue, setAudioQueue] = useState<string[]>([]);
-    const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-    const [currentSpokenMessageId, setCurrentSpokenMessageId] = useState<string | null>(null);
-    const currentSpokenMessageIdRef = useRef(currentSpokenMessageId);
-    useEffect(() => {
-      currentSpokenMessageIdRef.current = currentSpokenMessageId;
-    }, [currentSpokenMessageId]);
+    // Use the custom hook for Text-to-Speech functionality
+    useTextToSpeech({ messages, isLoading, voice: 'coral' });
 
-    const processedContentRef = useRef('');
-    const textQueueRef = useRef('');
-    const isProcessingAudioRef = useRef(false);
-
-    const generateSpeech = useCallback(async (text: string): Promise<string | null> => {
-      if (!text.trim()) return null;
-      try {
-        const response = await fetch("/api/chat/tts", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voice: "coral" }),
-        });
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.details || "Failed to generate speech");
-        }
-        const blob = await response.blob();
-        return URL.createObjectURL(blob);
-      } catch (error) {
-        console.error("Error generating speech:", error);
-        return null;
-      }
-    }, []);
-
-    // Effect to play audio from the queue
-    useEffect(() => {
-      if (audioQueue.length > 0 && !isPlayingAudio) {
-        setIsPlayingAudio(true);
-        const audioUrl = audioQueue[0];
-        const audio = new Audio(audioUrl);
-        audio.play().catch(e => {
-          console.error("Audio playback failed:", e);
-          URL.revokeObjectURL(audioUrl);
-          setAudioQueue((prev) => prev.slice(1));
-          setIsPlayingAudio(false);
-        });
-        audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
-          setAudioQueue((prev) => prev.slice(1));
-          setIsPlayingAudio(false);
-        };
-        audio.onerror = (e) => {
-          console.error("Error playing audio:", e);
-          URL.revokeObjectURL(audioUrl);
-          setAudioQueue((prev) => prev.slice(1));
-          setIsPlayingAudio(false);
-        };
-      }
-    }, [audioQueue, isPlayingAudio]);
-
-    const processQueue = useCallback(async () => {
-      if (isProcessingAudioRef.current) return;
-      isProcessingAudioRef.current = true;
-
-      const workingMessageId = currentSpokenMessageIdRef.current;
-
-      try {
-        while (true) {
-          if (workingMessageId !== currentSpokenMessageIdRef.current) {
-            break;
-          }
-
-          const isStreamComplete = !isLoading;
-          let textToSpeak = '';
-
-          const sentenceEndMatch = textQueueRef.current.match(/[^.!?]+[.!?](?=\s|$)/);
-
-          if (sentenceEndMatch) {
-            textToSpeak = sentenceEndMatch[0];
-            textQueueRef.current = textQueueRef.current.substring(textToSpeak.length);
-          } else if (isStreamComplete && textQueueRef.current.trim().length > 0) {
-            textToSpeak = textQueueRef.current.trim();
-            textQueueRef.current = '';
-          } else {
-            break;
-          }
-
-          if (textToSpeak) {
-            const audioUrl = await generateSpeech(textToSpeak);
-            if (workingMessageId === currentSpokenMessageIdRef.current && audioUrl) {
-              setAudioQueue(prev => [...prev, audioUrl]);
-            }
-          } else {
-            break;
-          }
-        }
-      } finally {
-        isProcessingAudioRef.current = false;
-        // After releasing the lock, check if there's more work to be done.
-        // This handles the transition between an old message task and a new one.
-        if (textQueueRef.current.trim().length > 0) {
-          processQueue();
-        }
-      }
-    }, [isLoading, generateSpeech]);
-
-    // Producer effect: monitors messages and populates the text queue
-    useEffect(() => {
-      const lastMessage = messages[messages.length - 1];
-
-      if (lastMessage && lastMessage.role === 'assistant') {
-        if (lastMessage.id !== currentSpokenMessageId) {
-          setCurrentSpokenMessageId(lastMessage.id);
-          setAudioQueue([]);
-          setIsPlayingAudio(false);
-          textQueueRef.current = lastMessage.content;
-          processedContentRef.current = lastMessage.content;
-        } else {
-          if (lastMessage.content.length > processedContentRef.current.length) {
-            const newText = lastMessage.content.substring(processedContentRef.current.length);
-            textQueueRef.current += newText;
-            processedContentRef.current = lastMessage.content;
-          }
-        }
-        processQueue();
-      }
-    }, [messages, currentSpokenMessageId, processQueue]);
     const interlocutor = settings?.interlocutor;
     const {
       isRecording,
@@ -318,7 +197,9 @@ export default function Chat({
                 : "cursor-pointer"
             }`}
           />
-          {isRecording ? (
+          {status == "submitted" ? (
+            <p className={micCaptionStyling}>Processing Speech</p>
+          ) : isRecording ? (
             <p className={micCaptionStyling}>Recording</p>
           ) : (
             <p className={micCaptionStyling}>Press to Record</p>
