@@ -9,12 +9,13 @@ import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
 
+// Example default, adjust as needed
 const defaultChatSettings: ChatSettings = {
-  nativeLanguage: "English", // Example default, adjust as needed
-  selectedLanguage: "Spanish",
-  selectedLanguageLabel: "Spanish", // Example default, adjust as needed
-  selectedLevel: "Novice", // Example default, adjust as needed
-  interlocutor: "Mateo", // Example default, adjust as needed
+  nativeLanguage: "English", 
+  selectedLanguage: "Spanish", 
+  selectedLanguageLabel: "Spanish", 
+  selectedLevel: "Novice", 
+  interlocutor: "Mateo", 
   name: "User",
 };
 

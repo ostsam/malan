@@ -47,7 +47,7 @@ export const languageLearningData: LanguageOption[] = [
   {
     value: "ru",
     label: "Русский / Russian",
-    interlocutors: { male: "Иван (Ivan)", female: "Анна (Anna)" },
+    interlocutors: { male: "Иван (Ivan)", female: "Лина (Lina)" },
   },
   {
     value: "pt",
