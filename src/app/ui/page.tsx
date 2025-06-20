@@ -340,14 +340,14 @@ export default function Chat({
                 : ""
             }`}
           />
-          {status == "submitted" ? (
-            <p className={micCaptionStyling}>Processing Speech</p>
-          ) : isRecording ? (
-            <p className={micCaptionStyling}>Recording</p>
-          ) : (
-            <p className={micCaptionStyling}>Press to Record</p>
-          )}
         </div>
+        {status == "submitted" ? (
+          <p className={micCaptionStyling}>Processing Speech</p>
+        ) : isRecording ? (
+          <p className={micCaptionStyling}>Recording</p>
+        ) : (
+          <p className={micCaptionStyling}>Press to Record</p>
+        )}
         </div>  
       </div>  
     </div>
