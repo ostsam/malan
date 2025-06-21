@@ -1,5 +1,8 @@
 import { auth } from "@/app/api/auth/[...all]/auth";
 import { loadUserChatHistory, type ChatMetadata } from "@/app/tools/chat-store";
+import ChatHistory from "@/components/chat-history";
+import DashboardButton from "@/components/dashboard-button";
+import Logout from "@/components/logout";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -16,7 +19,7 @@ export default async function HistoryPage() {
   const chats = await loadUserChatHistory(session.user.id);
 
   return (
-    <div className="flex flex-col items-center min-h-screen bg-gray-50 py-8">
+    <div className="flex flex-col mt-10 items-center min-h-screen bg-gray-50 py-8">
       <div className="w-full max-w-2xl p-6 bg-white rounded-lg shadow-md">
         <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Chat History</h1>
         {chats.length > 0 ? (

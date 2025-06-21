@@ -10,8 +10,6 @@ import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
 import Switch from "react-switch";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 
 const defaultChatSettings: ChatSettings = {
   nativeLanguage: "en",
@@ -139,10 +137,19 @@ export default function Chat({
   const micCaptionStyling = "text-md text-gray-600 dark:text-gray-400 mb-1";
 
   return (
-    <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black">
+    <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black overflow-hidden">
+      <div className="flex justify-center">
+        <a href="/">
+          <img
+            src="/logo.svg"
+            alt="Malan Logo"
+            className="h-16 w-auto"
+          />
+        </a>
+      </div>
       <div
         ref={messagesContainerRef}
-        className={`flex-grow w-full p-4 ${
+        className={`flex-grow w-full px-4 pb-4 ${
           isOverflowing ? "overflow-y-auto" : "overflow-y-hidden"
         }`}
       >
@@ -212,8 +219,8 @@ export default function Chat({
           Chat Error: {chatError.message}
         </div>
       )}
-      <div className="relative flex items-center justify-center p-2 bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800">
-        <div className="absolute right-1 flex flex-col items-center">
+      <div className="relative flex items-center justify-center bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800">
+        <div className="absolute left-1 flex flex-col items-center">
           <Switch
             id="push-to-talk-toggle"
             checked={pushToTalk}
@@ -273,15 +280,6 @@ export default function Chat({
           ) : (
             <p className={micCaptionStyling}>Press to Record</p>
           )}
-        </div>
-        <div className="translate-y-1/6 absolute left-1">
-          <Link
-            href="/dashboard"
-            className="inline-flex text-center justify-center items-center px-1 py-2 text-xs font-semibold text-white bg-sky-500 rounded-lg hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Dashboard
-          </Link>
         </div>
       </div>
     </div>
