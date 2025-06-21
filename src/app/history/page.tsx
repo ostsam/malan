@@ -24,7 +24,7 @@ export default async function HistoryPage() {
             {chats.map((chat: ChatMetadata) => (
               <li key={chat.id} className="border-b border-gray-200 pb-4">
                 <Link href={`/chat/${chat.id}`} className="block p-4 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                  <p className="font-semibold text-gray-700">Chat from {new Date(chat.createdAt).toLocaleString()}</p>
+                  <p className="font-semibold text-gray-700"> from {new Date(chat.createdAt).toLocaleString()}</p>
                   <p className="text-sm text-gray-500 mt-1">ID: {chat.id}</p>
                 </Link>
               </li>
