@@ -121,7 +121,7 @@ export function useTextToSpeech({
 
         // Sentence splitting logic (simplified: uses common terminators)
         // A more robust NLP sentence tokenizer would be better for complex cases.
-        const sentenceTerminators = /[.!?]+(?=\s+|$)/g;
+        const sentenceTerminators = /[.!?。！？]+(?=\s+|$)/g;
         let lastMatchEnd = 0;
         let match;
 
