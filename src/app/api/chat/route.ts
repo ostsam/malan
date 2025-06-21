@@ -21,9 +21,8 @@ import OpenAI from "openai"; // Added for TTS
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
 
-
 const ttsOpenai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY, 
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 export async function GET(req: NextRequest) {
@@ -67,7 +66,7 @@ export async function POST(req: Request) {
   });
 
   const result = streamText({
-    model: openai("gpt-4.1-mini"),
+    model: openai("gpt-4.1-nano"),
     messages: historyWithUserMsg,
     system: systemPrompt,
     temperature: 0.4,
@@ -76,15 +75,15 @@ export async function POST(req: Request) {
       size: 16,
     }),
     async onFinish({ response }) {
-      const newAssistantMessages = response.messages.filter(
-        (msg) => historyWithUserMsg.every(hMsg => hMsg.id !== msg.id)
+      const newAssistantMessages = response.messages.filter((msg) =>
+        historyWithUserMsg.every((hMsg) => hMsg.id !== msg.id)
       );
 
       const messagesToSaveThisTurn = [
         ...(userMessage ? [userMessage] : []),
-        ...newAssistantMessages
+        ...newAssistantMessages,
       ];
-      
+
       if (messagesToSaveThisTurn.length > 0) {
         await appendNewMessages({
           id: chatId,
