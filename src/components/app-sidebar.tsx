@@ -1,12 +1,14 @@
 "use client";
 
-import { Calendar, Home, Search, Settings } from "lucide-react";
+import { Calendar, Home, LogOutIcon, Search, Settings } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -14,6 +16,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+
 
 // Menu items.
 const items = [
@@ -90,6 +93,20 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <div className="flex justify-end w-full border-gray-200 border-t">
+          <button
+            onClick={async () => {
+              await authClient.signOut();
+              window.location.href = '/';
+            }}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+          >
+            <LogOutIcon className="h-4 w-4" />
+            <span>Sign out</span>
+          </button>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 }
