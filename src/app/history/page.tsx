@@ -3,7 +3,6 @@ import { loadUserChatHistory, type ChatMetadata } from "@/app/tools/chat-store";
 import ChatHistory from "@/components/chat-history";
 import DashboardButton from "@/components/dashboard-button";
 import Logout from "@/components/logout";
-import { Menubar } from "@/components/ui/menubar";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -20,16 +19,6 @@ export default async function HistoryPage() {
   const chats = await loadUserChatHistory(session.user.id);
 
   return (
-    <>
-    <Menubar className="px-6 fixed top-0 left-0 right-0">
-    <DashboardButton />
-    <div className="absolute left-1/2 transform -translate-x-1/2">
-      <img src="/logo.svg" alt="Malan Logo" className="h-16 w-auto" />
-    </div>
-    <div className="flex-1 flex justify-end">
-      <Logout />
-    </div>
-  </Menubar>
     <div className="flex flex-col mt-10 items-center min-h-screen bg-gray-50 py-8">
       <div className="w-full max-w-2xl p-6 bg-white rounded-lg shadow-md">
         <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">Chat History</h1>
@@ -58,6 +47,5 @@ export default async function HistoryPage() {
         )}
       </div>
     </div>
-    </>
   );
 }

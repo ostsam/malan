@@ -27,7 +27,7 @@ export default async function Homepage() {
         <div className="mt-10 flex items-center justify-center">
           <Link
             href="/login"
-            className="rounded-md bg-sky-500 px-4 py-3 text-lg font-semibold text-white shadow-sm hover:bg-sky-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+            className="rounded-md bg-sky-500 px-4 py-3 text-lg font-semibold text-white shadow-sm hover:bg-sky-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
           >
             Get Started
           </Link>
