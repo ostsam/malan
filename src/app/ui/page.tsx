@@ -10,6 +10,8 @@ import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
 import Switch from "react-switch";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 const defaultChatSettings: ChatSettings = {
   nativeLanguage: "English",
@@ -206,7 +208,7 @@ export default function Chat({
         </div>
       )}
       <div className="relative flex items-center justify-center p-2 bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800">
-        <div className="absolute left-4 top-1/2 -translate-y-1/2 flex flex-col items-center">
+        <div className="inline-flex absolute right-1 flex flex-col items-center">
           <Switch
             id="push-to-talk-toggle"
             checked={pushToTalk}
@@ -266,6 +268,15 @@ export default function Chat({
           ) : (
             <p className={micCaptionStyling}>Press to Record</p>
           )}
+        </div>
+        <div className="translate-y-1/6 absolute left-1">
+          <Link
+            href="/dashboard"
+            className="inline-flex text-center justify-center items-center px-1 py-2 text-xs font-semibold text-white bg-sky-500 rounded-lg hover:bg-sky-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Dashboard
+          </Link>
         </div>
       </div>
     </div>

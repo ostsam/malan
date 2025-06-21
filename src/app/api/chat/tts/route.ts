@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       if (chunk.trim().length === 0) continue;
       const audioResponse = await openai.audio.speech.create({
         model: "gpt-4o-mini-tts",
-        voice: voice || "alloy",
+        voice: voice || "echo",
         input: chunk,
         response_format: "mp3",
       });
