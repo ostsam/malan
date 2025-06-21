@@ -94,7 +94,7 @@ export default function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <div className="flex justify-end w-full border-gray-200 border-t">
+        <div className="flex justify-center w-full border-gray-200 border-t">
           <button
             onClick={async () => {
               await authClient.signOut();
