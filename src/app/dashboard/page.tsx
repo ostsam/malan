@@ -12,6 +12,7 @@ import { levelsData } from "./menu-data/levelsData";
 import Logout from "@/components/logout";
 import ChatHistory from "@/components/chat-history";
 import { Loader2 } from "lucide-react";
+import { Menubar, MenubarContent, MenubarItem, MenubarMenu, MenubarSeparator, MenubarShortcut, MenubarTrigger } from "@/components/ui/menubar";
 
 export default function Menu() {
   const [nativeLanguage, setNativeLanguage] = useState<PopoverItem | undefined>(
@@ -58,12 +59,17 @@ export default function Menu() {
 
   return (
     <>
-    <div className="flex flex-col h-screen p-4">
-      <div className="flex justify-between">
-      <ChatHistory />
-        <Logout />
-      </div>
-      <div className="flex-grow flex items-center justify-center">
+    <div className="flex flex-col h-screen">
+      <Menubar className="px-6">
+        <ChatHistory />
+        <div className="absolute left-1/2 transform -translate-x-1/2">
+          <img src="/logo.svg" alt="Malan Logo" className="h-16 w-auto" />
+        </div>
+        <div className="flex-1 flex justify-end">
+          <Logout />
+        </div>
+      </Menubar>
+      <div className="flex-grow flex flex-col items-center justify-center">
       <div className="bg-slate-500 sm:p-6 font-sans rounded-3xl w-full max-w-lg shadow-xl">
         <div className="bg-white p-6 sm:p-8 rounded-xl w-full text-slate-700 space-y-6">
           <h1 className="text-4xl sm:text-5xl font-bold text-center text-sky-600 tracking-tight">

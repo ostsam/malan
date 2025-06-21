@@ -3,14 +3,18 @@ import { authClient } from "@/lib/auth-client";
 import { LogOutIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-export default function Logout() {
+interface LogoutProps {
+  className?: string;
+}
+
+export default function Logout({ className }: LogoutProps) {
     const router = useRouter();
     const handleLogout = async () => {
         await authClient.signOut();
         router.push("/");
     }
     return (
-        <button className="cursor-pointer mt-3 flex flex-row items-center align-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-center font-semibold text-white shadow transition-colors hover:bg-sky-600" onClick={handleLogout}>
+        <button className="flex flex-row cursor-pointer items-center gap-2 rounded-lg bg-sky-500 px-2 py-1 text-center font-semibold text-white shadow transition-colors hover:bg-sky-600" onClick={handleLogout}>
             Sign out
             <LogOutIcon className="h-4 w-4"/>
             </button>
