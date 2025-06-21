@@ -6,6 +6,7 @@ import { eq, desc } from "drizzle-orm";
 
 export interface ChatSettings {
   nativeLanguage: string | null;
+  nativeLanguageLabel: string | null;
   selectedLanguage: string | null;
   selectedLanguageLabel: string | null;
   selectedLevel: string | null;
