@@ -23,9 +23,13 @@ export interface ChatData {
 export interface ChatMetadata {
   id: string;
   createdAt: Date;
+  settings: ChatSettings;
 }
 
-export async function createChat(settings: ChatSettings, userId: string): Promise<string> {
+export async function createChat(
+  settings: ChatSettings,
+  userId: string
+): Promise<string> {
   const chatId = generateId();
   await db.insert(userSession).values({
     chatId: chatId,
@@ -35,19 +39,23 @@ export async function createChat(settings: ChatSettings, userId: string): Promis
   return chatId;
 }
 
-export async function loadUserChatHistory(userId: string): Promise<ChatMetadata[]> {
+export async function loadUserChatHistory(
+  userId: string
+): Promise<ChatMetadata[]> {
   const sessionRecords = await db
     .select({
       id: userSession.chatId,
       createdAt: userSession.createdAt,
+      settings: userSession.settings,
     })
     .from(userSession)
     .where(eq(userSession.userId, userId))
     .orderBy(desc(userSession.createdAt));
 
-  return sessionRecords.map(session => ({
-    ...session,
-    createdAt: session.createdAt ?? new Date(), // Ensure createdAt is a Date
+  return sessionRecords.map((session) => ({
+    id: session.id,
+    createdAt: session.createdAt ?? new Date(),
+    settings: session.settings as ChatSettings,
   }));
 }
 
@@ -73,7 +81,7 @@ export async function loadChat(id: string): Promise<ChatData> {
   const messages: Message[] = messageRecords.map((record) => ({
     id: record.messageId!,
     chatId: record.chatId!,
-    role: record.role as Message['role'],
+    role: record.role as Message["role"],
     createdAt: record.createdAt || undefined,
     content: record.content!,
     parts: record.parts as any,
@@ -97,9 +105,17 @@ export async function appendNewMessages({
     messageId: msg.id,
     chatId: id,
     role: msg.role,
-    createdAt: msg.createdAt instanceof Date ? msg.createdAt : (msg.createdAt ? new Date(msg.createdAt) : new Date()),
+    createdAt:
+      msg.createdAt instanceof Date
+        ? msg.createdAt
+        : msg.createdAt
+        ? new Date(msg.createdAt)
+        : new Date(),
     parts: msg.parts || [], // Ensure parts is an array, even if undefined in msg
-    content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+    content:
+      typeof msg.content === "string"
+        ? msg.content
+        : JSON.stringify(msg.content),
   }));
 
   // Insert only the new messages

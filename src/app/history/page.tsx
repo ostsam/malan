@@ -24,7 +24,11 @@ export default async function HistoryPage() {
             {chats.map((chat: ChatMetadata) => (
               <li key={chat.id} className="border-b border-gray-200 pb-4">
                 <Link href={`/chat/${chat.id}`} className="block p-4 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                  <p className="font-semibold text-gray-700"> from {new Date(chat.createdAt).toLocaleString()}</p>
+                  <p className="font-semibold text-gray-700">Chat Session from {new Date(chat.createdAt).toLocaleString()}</p>
+                  <div className="flex space-x-4 mt-2">
+                    <span className="text-sm text-gray-600">Language: {chat.settings.selectedLanguageLabel}</span>
+                    <span className="text-sm text-gray-600">Level: {chat.settings.selectedLevel}</span>
+                  </div>
                   <p className="text-sm text-gray-500 mt-1">ID: {chat.id}</p>
                 </Link>
               </li>

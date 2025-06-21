@@ -68,7 +68,11 @@ export default function Chat({
     transcriptionHookError,
   } = useChatInteraction({ append });
 
-  const { stopAudioPlayback } = useTextToSpeech({ messages, isLoading, voice: "coral" });
+  const { stopAudioPlayback } = useTextToSpeech({
+    messages,
+    isLoading,
+    voice: "coral",
+  });
 
   const {
     pushToTalk,
@@ -113,13 +117,13 @@ export default function Chat({
     }
   }, [messages]);
 
-  const renderMessageContent = (content: Message['content']) => {
-    if (typeof content === 'string') {
+  const renderMessageContent = (content: Message["content"]) => {
+    if (typeof content === "string") {
       try {
-        if (content.startsWith('[') && content.endsWith(']')) {
+        if (content.startsWith("[") && content.endsWith("]")) {
           const parsed = JSON.parse(content);
-          if (Array.isArray(parsed) && parsed[0]?.type === 'text') {
-            return parsed.map(p => p.text).join('');
+          if (Array.isArray(parsed) && parsed[0]?.type === "text") {
+            return parsed.map((p) => p.text).join("");
           }
         }
       } catch (e) {
@@ -208,7 +212,7 @@ export default function Chat({
         </div>
       )}
       <div className="relative flex items-center justify-center p-2 bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800">
-        <div className="inline-flex absolute right-1 flex flex-col items-center">
+        <div className="absolute right-1 flex flex-col items-center">
           <Switch
             id="push-to-talk-toggle"
             checked={pushToTalk}
@@ -243,7 +247,7 @@ export default function Chat({
             role="button"
             tabIndex={0}
             aria-pressed={isRecording}
-            className={`${ 
+            className={`${
               isTranscribing || status === "submitted"
                 ? "opacity-50 cursor-not-allowed"
                 : "cursor-pointer"
