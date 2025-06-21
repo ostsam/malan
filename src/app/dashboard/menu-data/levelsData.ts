@@ -1,7 +1,7 @@
-export const levelsData: { value: string }[] = [
-  { value: "Novice" },
-  { value: "Beginner" },
-  { value: "Intermediate" },
-  { value: "Advanced" },
-  { value: "Expert" },
+export const levelsData: { value: string; label: string }[] = [
+  { value: "Novice", label: "Novice" },
+  { value: "Beginner", label: "Beginner" },
+  { value: "Intermediate", label: "Intermediate" },
+  { value: "Advanced", label: "Advanced" },
+  { value: "Expert", label: "Expert" },
 ];

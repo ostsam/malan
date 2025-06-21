@@ -4,12 +4,7 @@ import { getSessionCookie } from "better-auth/cookies";
 export async function middleware(request: NextRequest) {
   console.log(`Middleware triggered for path: ${request.nextUrl.pathname}`);
 
-  if (request.nextUrl.pathname === "/") {
-    console.log("Redirecting from / to /dashboard");
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  // This part will run if pathname is /dashboard (due to matcher and the / redirect)
+  // This part will run if pathname is /dashboard (due to matcher)
   if (request.nextUrl.pathname.startsWith("/dashboard")) {
     console.log("Checking session for /dashboard");
     const sessionCookie = getSessionCookie(request);
