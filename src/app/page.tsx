@@ -14,6 +14,9 @@ export default async function Homepage() {
 
   return (
     <main className="flex h-dvh flex-col items-center justify-center bg-gray-50 p-4">
+      <div>
+        <img src="/logo.svg" alt="Logo" className="h-50 w-auto" />
+      </div>
       <div className="text-center">
         <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
           Welcome to Malan

@@ -4,11 +4,11 @@ import { History } from "lucide-react";
 
 export default function ChatHistory() {
     const router = useRouter();
-    const handleClick = () => {
+    const handleChatHistoryClick = () => {
         router.push("/history");
     }
     return (
-        <button className="cursor-pointer mt-3 flex flex-row items-center align-center justify-center gap-2 rounded-lg bg-sky-500 px-4 py-2 text-center font-semibold text-white shadow transition-colors hover:bg-sky-600" onClick={handleClick}>
+        <button className="flex flex-row cursor-pointer items-center gap-2 rounded-lg bg-sky-500 px-2 py-1 text-center font-semibold text-white shadow transition-colors hover:bg-sky-600" onClick={handleChatHistoryClick}>
             Chat history
             <History className="h-4 w-4"/>
             </button>

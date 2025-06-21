@@ -135,7 +135,7 @@ export default function Chat({
   };
 
   const errorMessageStyling =
-    "fixed bottom-32 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg";
+    "fixed bottom-40 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg z-10";
   const micCaptionStyling = "text-md text-gray-600 dark:text-gray-400 mb-1";
 
   return (
