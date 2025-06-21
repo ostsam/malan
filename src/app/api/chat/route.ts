@@ -37,6 +37,7 @@ export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
   const settings: ChatSettings = {
     nativeLanguage: searchParams.get("nativeLanguage"),
+    nativeLanguageLabel: searchParams.get("nativeLanguageLabel"),
     selectedLanguage: searchParams.get("selectedLanguage"),
     selectedLanguageLabel: searchParams.get("selectedLanguageLabel"),
     selectedLevel: searchParams.get("selectedLevel"),

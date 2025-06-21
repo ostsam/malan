@@ -14,8 +14,9 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
 const defaultChatSettings: ChatSettings = {
-  nativeLanguage: "English",
-  selectedLanguage: "Spanish",
+  nativeLanguage: "en",
+  nativeLanguageLabel: "English",
+  selectedLanguage: "es",
   selectedLanguageLabel: "Spanish",
   selectedLevel: "Novice",
   interlocutor: "Mateo",
