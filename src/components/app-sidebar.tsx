@@ -93,17 +93,19 @@ export default function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-2 border-t border-gray-200 dark:border-gray-700">
-        <button
-          onClick={async () => {
-            await authClient.signOut();
-            window.location.href = '/';
-          }}
-          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800 md:ml-auto"
-        >
-          <LogOutIcon className="h-4 w-4" />
-          <span>Sign out</span>
-        </button>
+      <SidebarFooter>
+        <div className="flex justify-center w-full border-gray-200 border-t">
+          <button
+            onClick={async () => {
+              await authClient.signOut();
+              window.location.href = '/';
+            }}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
+          >
+            <LogOutIcon className="h-4 w-4" />
+            <span>Sign out</span>
+          </button>
+        </div>
       </SidebarFooter>
     </Sidebar>
   );
