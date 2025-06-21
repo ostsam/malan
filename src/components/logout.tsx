@@ -3,11 +3,7 @@ import { authClient } from "@/lib/auth-client";
 import { LogOutIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-interface LogoutProps {
-  className?: string;
-}
-
-export default function Logout({ className }: LogoutProps) {
+export default function Logout() {
     const router = useRouter();
     const handleLogout = async () => {
         await authClient.signOut();
