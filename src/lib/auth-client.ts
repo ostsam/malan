@@ -7,35 +7,10 @@ const baseURL = isProduction
 
 export const authClient = createAuthClient({
   baseURL,
-  credentials: 'include',
-  withCredentials: true,
+  credentials: 'include', // Important for cookies to be sent with requests
+  withCredentials: true, // Important for CORS requests
   headers: {
     'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-  // Add request interceptor to handle CORS
-  requestInterceptor: async (config: {
-    method?: string;
-    headers?: Record<string, string>;
-    credentials?: RequestCredentials;
-    withCredentials?: boolean;
-    [key: string]: any;
-  }) => {
-    // Ensure credentials are included in all requests
-    config.credentials = 'include';
-    config.withCredentials = true;
-    
-    // Add CORS headers if not present
-    if (!config.headers) {
-      config.headers = {};
-    }
-    
-    // Add CORS headers for non-simple requests
-    if (config.method?.toUpperCase() !== 'GET') {
-      config.headers['X-Requested-With'] = 'XMLHttpRequest';
-    }
-    
-    return config;
   },
 });
 
