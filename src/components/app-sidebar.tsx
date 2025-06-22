@@ -46,26 +46,9 @@ const items = [
 export default function AppSidebar() {
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const router = useRouter();
 
-  // Check authentication status
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { data: session } = await authClient.useSession();
-        setIsAuthenticated(!!session?.user);
-      } catch (error) {
-        console.error('Error checking auth status:', error);
-        setIsAuthenticated(false);
-      }
-    };
-    checkAuth();
-  }, []);
-
- if (!isAuthenticated) {
-    return null;
-  }
+  // Handle chat history loading
 
   useEffect(() => {
     async function fetchHistory() {
