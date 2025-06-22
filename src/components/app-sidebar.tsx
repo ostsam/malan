@@ -102,7 +102,21 @@ export default function AppSidebar() {
             onClick={async (e) => {
               e.preventDefault();
               try {
+                // Clear any local storage or cookies that might be used for auth
+                if (typeof window !== 'undefined') {
+                  // Clear all cookies (you might want to be more specific in a real app)
+                  document.cookie.split(';').forEach(c => {
+                    document.cookie = c.trim().split('=')[0] + '=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+                  });
+                  // Clear local storage
+                  localStorage.clear();
+                  // Clear session storage
+                  sessionStorage.clear();
+                }
+                
+                // Call the sign out API
                 await authClient.signOut();
+                
                 // Force a full page reload to ensure all auth state is cleared
                 window.location.href = '/';
               } catch (error) {
