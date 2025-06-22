@@ -4,6 +4,7 @@ import { Calendar, Home, LogOutIcon, Search, Settings } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import {
   Sidebar,
@@ -42,10 +43,29 @@ const items = [
   },
 ];
 
-// Sidebar component with chat history
 export default function AppSidebar() {
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const router = useRouter();
+
+  // Check authentication status
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: session } = await authClient.useSession();
+        setIsAuthenticated(!!session?.user);
+      } catch (error) {
+        console.error('Error checking auth status:', error);
+        setIsAuthenticated(false);
+      }
+    };
+    checkAuth();
+  }, []);
+
+ if (!isAuthenticated) {
+    return null;
+  }
 
   useEffect(() => {
     async function fetchHistory() {
@@ -98,7 +118,7 @@ export default function AppSidebar() {
           <button
             onClick={async () => {
               await authClient.signOut();
-              window.location.href = '/';
+              router.push('/');
             }}
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
           >
