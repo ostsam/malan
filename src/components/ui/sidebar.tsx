@@ -278,7 +278,7 @@ function SidebarTrigger({
       size="icon"
       className={cn(
         "fixed top-4 z-50 size-9 rounded-full bg-white/80 backdrop-blur-sm shadow-lg transition-all duration-200 hover:bg-white",
-        "sm:left-4 left-4", // Always keep it at left-4 on mobile
+        "sm:left-4 left-4", 
         isOpen ? "sm:left-[calc(var(--sidebar-width)_+_1rem)]" : "sm:left-4",
         className
       )}
