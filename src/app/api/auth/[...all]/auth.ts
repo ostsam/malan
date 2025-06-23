@@ -4,19 +4,19 @@ import { db } from "@/db";
 import { nextCookies } from "better-auth/next-js";
 import { user, session, account, verification } from "@/db/schema";
 
-// Configure allowed origins for CORS
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://malan.vercel.app',
-  'https://www.malan.vercel.app'
-];
+// // Configure allowed origins for CORS
+// const allowedOrigins = [
+//   'http://localhost:3000',
+//   'https://malan.vercel.app',
+//   'https://www.malan.vercel.app'
+// ];
 
-const origin = (origin: string | undefined) => {
-  if (!origin || allowedOrigins.includes(origin)) {
-    return origin || '*';
-  }
-  return allowedOrigins[0];
-};
+// const origin = (origin: string | undefined) => {
+//   if (!origin || allowedOrigins.includes(origin)) {
+//     return origin || '*';
+//   }
+//   return allowedOrigins[0];
+// };
  
 export const auth = betterAuth({
     appName: "Malan",
@@ -33,7 +33,14 @@ export const auth = betterAuth({
       secure: process.env.NODE_ENV === 'production',
     },
     cors: {
-      origin,
+      origin: (origin: string | undefined) => {
+        const allowed = [
+          'http://localhost:3000',
+          'https://malan.vercel.app',
+          'https://www.malan.vercel.app'
+        ];
+        return allowed.includes(origin || '') ? origin : allowed[0];
+      },
       credentials: true,
     },
     emailAndPassword: {
