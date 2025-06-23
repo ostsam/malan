@@ -4,35 +4,30 @@ import { nextCookies } from "better-auth/next-js";
 import { db } from "@/db";
 import { user, session, account, verification } from "@/db/schema";
 
-const isProduction = process.env.NODE_ENV === 'production';
-const appUrl = isProduction ? 'https://www.malan.vercel.app' : 'http://localhost:3000';
-
 export const auth = betterAuth({
   appName: "Malan",
-  basePath: "/api/auth",
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
-      user,
-      session,
-      account,
-      verification,
-    }
-  }),
-  emailAndPassword: {
-    enabled: true,
-    autoSignIn: false,
-  },
+        user,
+        session,
+        account,
+        verification,
+    }}),
+    emailAndPassword: {
+        enabled: true,
+        autoSignIn: false,
+      },
   socialProviders: {
     github: {
       clientId: process.env.GITHUB_CLIENT_ID as string,
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
-      redirectURI: `${appUrl}/dashboard`,
+      redirectURI: "https://www.malan.vercel.app/dashboard",
     },
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      redirectURI: `${appUrl}/dashboard`,
+      redirectURI: "https://www.malan.vercel.app/dashboard",
     },
   },
   session: {
@@ -42,20 +37,17 @@ export const auth = betterAuth({
     },
     expiresIn: 604800, // 7 days
     updateAge: 86400, // 1 day
-    disableSessionRefresh: true,
-    storeSessionInDatabase: true,
-    preserveSessionInDatabase: false,
-    cookie: {
-      name: '__Secure-next-auth.session-token',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      domain: isProduction ? '.malan.vercel.app' : 'localhost',
-      path: '/',
-      sameSite: 'lax',
-      secure: isProduction,
-      httpOnly: true,
+    disableSessionRefresh: true, // Disable session refresh so that the session is not updated regardless of the `updateAge` option. (default: `false`)
+    additionalFields: {
+      // Additional fields for the session table
+      customField: {
+        type: "string",
+      },
     },
+    storeSessionInDatabase: true, // Store session in database when secondary storage is provided (default: `false`)
+    preserveSessionInDatabase: false, // Preserve session records in database when deleted from secondary storage (default: `false`)
     cookieCache: {
-      enabled: true,
+      enabled: true, // Enable caching session in cookie (default: `false`)
       maxAge: 300, // 5 minutes
     },
   },
