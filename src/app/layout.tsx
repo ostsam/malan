@@ -1,10 +1,8 @@
-import { Toaster } from "sonner";
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import AppSidebar from "@/components/app-sidebar";
+import { Toaster } from "sonner";
 
-export default function DashboardLayout({
+export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -12,15 +10,9 @@ export default function DashboardLayout({
   return (
     <html lang="en">
       <body>
-        <SidebarProvider>
-          <AppSidebar />
-          <SidebarTrigger />
-          <div className="flex-1">
-            <main className="h-full flex-1 flex-col md:flex">{children}</main>
-          </div>
-          <Analytics />
-          <Toaster />
-        </SidebarProvider>
+        {children}
+        <Analytics />
+        <Toaster />
       </body>
     </html>
   );
