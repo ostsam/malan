@@ -1,11 +1,9 @@
 "use client";
 
-import { authClient, useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Loader2, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import { CustomPopover } from "./menu-components/CustomPopover";
 import type { PopoverItem } from "./menu-components/CustomPopover";
 import { nativeLanguageData } from "./menu-data/nativeLanguageData";
@@ -14,6 +12,9 @@ import {
   type LanguageOption,
 } from "./menu-data/languageLearningData";
 import { levelsData } from "./menu-data/levelsData";
+import Logout from "@/components/logout";
+import { Loader2 } from "lucide-react";
+
 export default function Menu() {
   const [nativeLanguage, setNativeLanguage] = useState<PopoverItem | undefined>(
     nativeLanguageData[0]
@@ -170,21 +171,6 @@ export default function Menu() {
               </button>
             </div>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={async () => {
-              try {
-                await authClient.signOut();
-                window.location.href = '/';
-              } catch (error) {
-                console.error('Error signing out:', error);
-              }
-            }}
-            className="mt-4 w-full flex items-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Sign Out
-          </Button>
         </div>
       </div>
     </>
