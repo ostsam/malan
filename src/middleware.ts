@@ -1,7 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+};
+
+
 export async function middleware(request: NextRequest) {
+  // Handle CORS preflight requests
+  if (request.method === 'OPTIONS') {
+    return new NextResponse(null, {
+      status: 204,
+      headers: CORS_HEADERS,
+    });
+  }
+
+  const response = NextResponse.next();
+  
+  // Add CORS headers to all responses
+  Object.entries(CORS_HEADERS).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+
+  // Handle session check for /dashboard routes
+  if (request.nextUrl.pathname.startsWith("/dashboard")) {
+    const sessionCookie = getSessionCookie(request);
+    if (!sessionCookie) {
+      return NextResponse.redirect(new URL("/login", request.url), {
+        headers: CORS_HEADERS,
+      });
+    }
+  }
+
+  return response;
   console.log(`Middleware triggered for path: ${request.nextUrl.pathname}`);
 
   // This part will run if pathname is /dashboard (due to matcher)
@@ -21,5 +54,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*"], // Updated matcher to include sub-paths of dashboard
+  matcher: [
+    '/',
+    '/api/:path*',
+    '/dashboard/:path*',
+  ],
 };
