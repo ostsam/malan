@@ -3,6 +3,20 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/db"; 
 import { nextCookies } from "better-auth/next-js";
 import { user, session, account, verification } from "@/db/schema";
+
+// Configure allowed origins for CORS
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://malan.vercel.app',
+  'https://www.malan.vercel.app'
+];
+
+const origin = (origin: string | undefined) => {
+  if (!origin || allowedOrigins.includes(origin)) {
+    return origin || '*';
+  }
+  return allowedOrigins[0];
+};
  
 export const auth = betterAuth({
     appName: "Malan",
@@ -14,20 +28,32 @@ export const auth = betterAuth({
           account,
           verification,
       }}),
-      emailAndPassword: {
-          enabled: true,
-          autoSignIn: false,
-        },
+    cookies: {
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    },
+    cors: {
+      origin,
+      credentials: true,
+    },
+    emailAndPassword: {
+      enabled: true,
+      autoSignIn: false,
+    },
     socialProviders: {
       github: {
         clientId: process.env.GITHUB_CLIENT_ID as string,
         clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
-        redirectURI: "https://www.malan.vercel.app/dashboard",
+        redirectURI: process.env.NODE_ENV === 'development' 
+          ? 'http://localhost:3000/dashboard' 
+          : 'https://www.malan.vercel.app/dashboard',
       },
       google: {
         clientId: process.env.GOOGLE_CLIENT_ID as string,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-        redirectURI: "https://www.malan.vercel.app/dashboard",
+        redirectURI: process.env.NODE_ENV === 'development'
+          ? 'http://localhost:3000/dashboard'
+          : 'https://www.malan.vercel.app/dashboard',
       },
     },
     session: {
