@@ -35,7 +35,7 @@ async function generateDescriptiveSlug(firstMessage: string, targetLanguageLabel
   const prompt = `Generate a sentence in ${targetLanguageLabel} explaining the topic of this message: "${firstMessage}" in order to summarize this conversation. ONLY WRITE IN ${targetLanguageLabel}!.`;
   
   const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo",
+    model: "gpt-4.1-nano",
     messages: [{
       role: "user",
       content: prompt

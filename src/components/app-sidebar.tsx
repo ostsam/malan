@@ -1,10 +1,10 @@
 "use client";
 
-import { Calendar, Home, LogOutIcon, PanelLeftIcon, Search, Settings } from "lucide-react";
-import { authClient } from "@/lib/auth-client";
+import { Calendar, Home, LogOutIcon, PanelLeftIcon, Search, Settings, TrashIcon } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
+import { deleteChat } from '@/app/actions/chat';
 
 import {
   Sidebar,
@@ -47,6 +47,8 @@ const items = [
 export default function AppSidebar() {
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Handle chat history loading
 
@@ -66,6 +68,18 @@ export default function AppSidebar() {
     fetchHistory();
   }, []);
 
+  const fetchChatHistory = async () => {
+    try {
+      const res = await fetch("/api/history", { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setChatHistory(data.sessions || []);
+      }
+    } catch (e) {
+      // Optionally handle error
+    }
+  };
+
   return (
     <>
       <SidebarTrigger />
@@ -77,19 +91,46 @@ export default function AppSidebar() {
             {loading ? (
               <div className="p-2 text-sm text-gray-500">Loading...</div>
             ) : chatHistory.length > 0 ? (
-              <ul className="space-y-1">
+              <ul className="space-y-1 flex flex-col">
                 {chatHistory.map((chat) => (
-                  <li key={chat.id}>
-                    <Link
-                      href={`/chat/${chat.id}`}
-                      className="block px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
-                    >
-                      {chat.slug}
-                      <p className="text-gray-00 text-xs font-medium">{chat.selectedLanguageLabel}
-                      <span className="ml-2 text-xs text-gray-400 font-normal"> 
-                        {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : ""}
-                      </span></p>
-                    </Link>
+                  <li
+                    key={chat.id}
+                    className={`group flex flex-row items-center justify-between border-b border-gray-200 last:border-b-0 py-1 relative`}
+                  >
+                    <div className="flex flex-col w-full">
+                      <Link
+                        href={`/tools/chat/${chat.id}`}
+                        className="flex flex-row items-center overflow-hidden"
+                      >
+                        <div className="truncate">
+                          {chat.slug}
+                          <p className="ml-0.5 text-xs font-semibold text-gray-400 justify-between mr-1">
+                            {chat.selectedLanguageLabel}
+                            <span className="absolute right-0 font-normal text-xs text-gray-400 items-end">
+                              {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : ""}
+                            </span>
+                          </p>
+                        </div>
+                      </Link>
+                      <div className="flex justify-end mt-auto">
+                        <button
+                          className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-600 transition-colors"
+                          onClick={async (e) => {
+                            e.preventDefault();
+                            if (confirm('Are you sure you want to delete this chat?')) {
+                              try {
+                                await deleteChat(chat.id);
+                                await fetchChatHistory();
+                              } catch (error) {
+                                console.error("Failed to delete chat:", error);
+                              }
+                            }
+                          }}
+                        >
+                          <TrashIcon className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
                   </li>
                 ))}
               </ul>
