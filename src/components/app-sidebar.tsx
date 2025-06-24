@@ -18,8 +18,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import Logout from "./logout";
-
+import { LogoutButton } from "./logout";
 
 // Menu items.
 const items = [
@@ -103,15 +102,7 @@ export default function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <div className="flex justify-center w-full border-gray-200 border-t">
-          <button
-            onClick={Logout}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
-          >
-            <LogOutIcon className="h-4 w-4" />
-            <span>Sign out</span>
-          </button>
-        </div>
+        <LogoutButton />
       </SidebarFooter>
     </Sidebar>
   );

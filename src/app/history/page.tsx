@@ -1,8 +1,5 @@
 import { auth } from "@/app/api/auth/[...all]/auth";
 import { loadUserChatHistory, type ChatMetadata } from "@/app/tools/chat-store";
-import ChatHistory from "@/components/chat-history";
-import DashboardButton from "@/components/dashboard-button";
-import Logout from "@/components/logout";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
