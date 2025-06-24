@@ -32,7 +32,7 @@ export interface ChatMetadata {
 }
 
 async function generateDescriptiveSlug(firstMessage: string, targetLanguageLabel?: string): Promise<string> {
-  const prompt = `Generate a sentence in ${targetLanguageLabel} based on this message: "${firstMessage}" in order to summarize this conversation. ONLY WRITE IN ${targetLanguageLabel}!.`;
+  const prompt = `Generate a sentence in ${targetLanguageLabel} explaining the topic of this message: "${firstMessage}" in order to summarize this conversation. ONLY WRITE IN ${targetLanguageLabel}!.`;
   
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo",
