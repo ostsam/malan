@@ -99,7 +99,7 @@ export default function AppSidebar() {
                   >
                     <div className="flex flex-col w-full">
                       <Link
-                        href={`/tools/chat/${chat.id}`}
+                        href={`/chat/${chat.id}`}
                         className="flex flex-row items-center overflow-hidden"
                       >
                         <div className="truncate">
