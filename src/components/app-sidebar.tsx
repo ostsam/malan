@@ -18,6 +18,7 @@ import {
   SidebarMenuItem,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import Logout from "./logout";
 
 
 // Menu items.
@@ -104,18 +105,7 @@ export default function AppSidebar() {
       <SidebarFooter>
         <div className="flex justify-center w-full border-gray-200 border-t">
           <button
-            onClick={async (e) => {
-              e.preventDefault();
-              try {
-                await authClient.signOut();
-                // Force a full page reload to ensure all auth state is cleared
-                window.location.href = '/';
-              } catch (error) {
-                console.error('Error during sign out:', error);
-                // Still redirect even if there's an error
-                window.location.href = '/';
-              }
-            }}
+            onClick={Logout}
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
           >
             <LogOutIcon className="h-4 w-4" />
