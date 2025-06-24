@@ -85,9 +85,10 @@ export default function AppSidebar() {
                       className="block px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
                       {chat.slug}
-                      <span className="ml-2 text-xs text-gray-400">
+                      <p className="text-gray-500 text-xs">{chat.selectedLanguageLabel}
+                      <span className="ml-2 text-xs text-gray-400"> 
                         {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : ""}
-                      </span>
+                      </span></p>
                     </Link>
                   </li>
                 ))}
