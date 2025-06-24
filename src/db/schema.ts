@@ -22,6 +22,7 @@ export const messagesTable = createTable(
 
 export const userSession = createTable("user-sessions-table", {
   chatId: varchar("chatId", { length: 256 }).primaryKey(),
+  slug: varchar("slug", { length: 256 }).notNull(),
   settings: jsonb('settings').notNull(),
   createdAt: timestamp("createdAt", { withTimezone: true })
     .default(sql`CURRENT_TIMESTAMP`)

@@ -12,6 +12,7 @@ export interface ChatSettings {
   selectedLevel: string | null;
   interlocutor: string | null;
   name?: string | null;
+  targetLanguage?: string | null;
 }
 
 export interface ChatData {
@@ -19,12 +20,21 @@ export interface ChatData {
   messages: Message[];
   id?: string;
   createdAt?: Date;
+  slug?: string;
 }
 
 export interface ChatMetadata {
   id: string;
+  slug: string;
   createdAt: Date;
   settings: ChatSettings;
+}
+
+async function generateSlug(settings: ChatSettings): Promise<string> {
+  if (settings.targetLanguage) {
+    return `Learn-${settings.targetLanguage}`;
+  }
+  return "chat-" + Math.random().toString(36).substring(2, 8);
 }
 
 export async function createChat(
@@ -32,10 +42,12 @@ export async function createChat(
   userId: string
 ): Promise<string> {
   const chatId = generateId();
+  const slug = await generateSlug(settings);
   await db.insert(userSession).values({
     chatId: chatId,
     settings: settings,
     userId: userId,
+    slug: slug,
   });
   return chatId;
 }
@@ -46,6 +58,7 @@ export async function loadUserChatHistory(
   const sessionRecords = await db
     .select({
       id: userSession.chatId,
+      slug: userSession.slug,
       createdAt: userSession.createdAt,
       settings: userSession.settings,
     })
@@ -55,6 +68,7 @@ export async function loadUserChatHistory(
 
   return sessionRecords.map((session) => ({
     id: session.id,
+    slug: session.slug,
     createdAt: session.createdAt ?? new Date(),
     settings: session.settings as ChatSettings,
   }));
@@ -72,6 +86,7 @@ export async function loadChat(id: string): Promise<ChatData> {
   }
 
   const settings = sessionResult[0].settings as ChatSettings;
+  const slug = sessionResult[0].slug;
 
   const messageRecords = await db
     .select()
@@ -88,7 +103,7 @@ export async function loadChat(id: string): Promise<ChatData> {
     parts: record.parts as any,
   }));
 
-  return { settings, messages };
+  return { settings, messages, id, slug, createdAt: sessionResult[0].createdAt };
 }
 
 export async function appendNewMessages({
