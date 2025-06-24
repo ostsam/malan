@@ -47,17 +47,16 @@ const items = [
 export default function AppSidebar() {
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   // Handle chat history loading
 
   useEffect(() => {
     async function fetchHistory() {
       try {
-        const res = await fetch("/api/history");
+        const res = await fetch("/api/history", { credentials: 'include' });
         if (res.ok) {
           const data = await res.json();
-          setChatHistory(data.chats || []);
+          setChatHistory(data.sessions || []);
         }
       } catch (e) {
         // Optionally handle error
@@ -68,14 +67,12 @@ export default function AppSidebar() {
   }, []);
 
   return (
-    <Sidebar side="left" collapsible="offcanvas">
-      <SidebarTrigger className="fixed left-4 top-4 z-50">
-        <PanelLeftIcon className="h-5 w-5" />
-        <span className="sr-only">Toggle Sidebar</span>
-      </SidebarTrigger>
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Chat History</SidebarGroupLabel>
+    <>
+      <SidebarTrigger />
+      <Sidebar side="left" collapsible="offcanvas" className="group">
+        <SidebarContent>
+          <SidebarGroup>
+            <SidebarGroupLabel>Chat History</SidebarGroupLabel>
           <SidebarGroupContent>
             {loading ? (
               <div className="p-2 text-sm text-gray-500">Loading...</div>
@@ -87,7 +84,7 @@ export default function AppSidebar() {
                       href={`/chat/${chat.id}`}
                       className="block px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-800"
                     >
-                      {chat.settings?.name || chat.id}
+                      {chat.slug}
                       <span className="ml-2 text-xs text-gray-400">
                         {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : ""}
                       </span>
@@ -100,10 +97,11 @@ export default function AppSidebar() {
             )}
           </SidebarGroupContent>
         </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter>
-        <LogoutButton />
-      </SidebarFooter>
-    </Sidebar>
+          </SidebarContent>
+          <SidebarFooter>
+            <LogoutButton />
+          </SidebarFooter>
+        </Sidebar>
+      </>
   );
 }

@@ -8,7 +8,7 @@ export function LogoutButton() {
     
     const handleLogout = async () => {
         await authClient.signOut();
-        router.push("/");
+        window.location.href = '/'
     }
 
     return (

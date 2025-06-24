@@ -15,6 +15,13 @@
       "when": 1750372378614,
       "tag": "0001_massive_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1750792526644,
+      "tag": "0002_lazy_silver_samurai",
+      "breakpoints": true
     }
   ]
 }
