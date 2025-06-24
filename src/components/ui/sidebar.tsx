@@ -198,18 +198,18 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
+          style={{
+            "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+          } as React.CSSProperties}
           side={side}
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Sidebar</SheetTitle>
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
-          <div className="flex h-full w-full flex-col">{children}</div>
+          <div className="flex h-full w-full flex-col">
+            {children}
+          </div>
         </SheetContent>
       </Sheet>
     )
@@ -268,7 +268,28 @@ function SidebarTrigger({
   onClick,
   ...props
 }: React.ComponentProps<typeof Button>) {
-  const { toggleSidebar, isOpen } = useSidebar()
+  const { toggleSidebar, isOpen, isMobile, openMobile, setOpenMobile } = useSidebar()
+  const [isMounted, setIsMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
+    onClick?.(event)
+    if (isMobile) {
+      setOpenMobile(!openMobile)
+    } else {
+      toggleSidebar()
+    }
+  }
+
+  // Calculate the transform for mobile animation
+  const getMobileTransform = () => {
+    if (!isMounted || !isMobile) return 'translateX(0)'
+    return openMobile ? `translateX(${SIDEBAR_WIDTH_MOBILE})` : 'translateX(0)'
+  }
 
   return (
     <Button
@@ -277,19 +298,23 @@ function SidebarTrigger({
       variant="ghost"
       size="icon"
       className={cn(
-        "fixed top-4 left-4 z-[100] size-9 rounded-full bg-white/80 backdrop-blur-sm shadow-lg transition-all duration-200 hover:bg-white lg:left-4",
-        "sm:left-4 left-4", 
-        isOpen ? "sm:left-[calc(var(--sidebar-width)_+_1rem)]" : "sm:left-4",
+        'fixed top-4 z-[60] size-8 rounded-full bg-white/80 backdrop-blur-sm shadow-lg hover:bg-white',
+        isMobile ? 'left-4' : isOpen ? 'left-[calc(var(--sidebar-width)+1rem)]' : 'left-4',
         className
       )}
-      onClick={(event) => {
-        onClick?.(event)
-        toggleSidebar()
+      style={{
+        transform: isMobile ? getMobileTransform() : undefined,
+        transition: 'transform 250ms ease, left 250ms ease',
+        willChange: 'transform, left',
       }}
+      onClick={handleClick}
       {...props}
     >
-      <PanelLeftIcon />
-      <span className="sr-only">Toggle Sidebar</span>
+      <PanelLeftIcon className={cn(
+        'h-4 w-4 transition-transform duration-250',
+        (isOpen || openMobile) && 'rotate-180'
+      )} />
+      <span className="sr-only">{isOpen || openMobile ? 'Close' : 'Open'} Sidebar</span>
     </Button>
   )
 }
