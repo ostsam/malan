@@ -106,7 +106,7 @@ export default function AppSidebar() {
                 // Force a full page reload to ensure all auth state is cleared
                 window.location.href = '/';
               } catch (error) {
-                console.error('Error during sign out:', error);
+                console.error('Error during log out:', error);
                 // Still redirect even if there's an error
                 window.location.href = '/';
               }
@@ -114,7 +114,7 @@ export default function AppSidebar() {
             className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
           >
             <LogOutIcon className="h-4 w-4" />
-            <span>Sign out</span>
+            <span>Log out</span>
           </button>
         </div>
       </SidebarFooter>
