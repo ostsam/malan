@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Home, LogOutIcon, Search, Settings } from "lucide-react";
+import { Calendar, Home, LogOutIcon, PanelLeftIcon, Search, Settings } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
@@ -16,6 +16,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
 
 
@@ -68,6 +69,10 @@ export default function AppSidebar() {
 
   return (
     <Sidebar side="left" collapsible="offcanvas">
+      <SidebarTrigger className="fixed left-4 top-4 z-50">
+        <PanelLeftIcon className="h-5 w-5" />
+        <span className="sr-only">Toggle Sidebar</span>
+      </SidebarTrigger>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Chat History</SidebarGroupLabel>
