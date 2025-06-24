@@ -6,6 +6,7 @@ import { eq, desc } from "drizzle-orm";
 
 interface UserSessionSettings {
   selectedLanguageLabel: string;
+  selectedLevel: string;
 }
 
 export async function GET(request: Request) {
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
       return {
         ...rest,
         selectedLanguageLabel: userSettings.selectedLanguageLabel,
+        selectedLevel: userSettings.selectedLevel,
       };
     })
   });

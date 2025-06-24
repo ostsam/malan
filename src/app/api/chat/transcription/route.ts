@@ -30,7 +30,7 @@ export async function POST(req: Request) {
       model: "whisper-1",
       language: selectedLanguage || nativeLanguage,
       temperature: 0,
-      prompt: "NEVER translate!"
+      prompt: "NEVER TRANSLATE!!!!! TRANSCRIBE EXACTLY AS THE USER SPEAKS!"
     });
 
     return new Response(transcription.text, {
