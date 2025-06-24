@@ -47,7 +47,6 @@ const items = [
 export default function AppSidebar() {
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
 
   // Handle chat history loading
 
@@ -69,7 +68,7 @@ export default function AppSidebar() {
 
   return (
     <Sidebar side="left" collapsible="offcanvas">
-      <SidebarTrigger className="fixed left-4 top-4 z-50">
+      <SidebarTrigger className="fixed left-4 top-4 z-[100] sm:z-50">
         <PanelLeftIcon className="h-5 w-5" />
         <span className="sr-only">Toggle Sidebar</span>
       </SidebarTrigger>
