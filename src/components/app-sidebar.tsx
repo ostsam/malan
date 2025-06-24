@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Home, LogOutIcon, Search, Settings } from "lucide-react";
+import { Calendar, Home, LogOutIcon, PanelLeftIcon, Search, Settings } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
@@ -16,8 +16,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
 } from "@/components/ui/sidebar";
-
+import { LogoutButton } from "./logout";
 
 // Menu items.
 const items = [
@@ -68,6 +69,10 @@ export default function AppSidebar() {
 
   return (
     <Sidebar side="left" collapsible="offcanvas">
+      <SidebarTrigger className="fixed left-4 top-4 z-50">
+        <PanelLeftIcon className="h-5 w-5" />
+        <span className="sr-only">Toggle Sidebar</span>
+      </SidebarTrigger>
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Chat History</SidebarGroupLabel>
@@ -97,26 +102,7 @@ export default function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <div className="flex justify-center w-full border-gray-200 border-t">
-          <button
-            onClick={async (e) => {
-              e.preventDefault();
-              try {
-                await authClient.signOut();
-                // Force a full page reload to ensure all auth state is cleared
-                window.location.href = '/';
-              } catch (error) {
-                console.error('Error during sign out:', error);
-                // Still redirect even if there's an error
-                window.location.href = '/';
-              }
-            }}
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800"
-          >
-            <LogOutIcon className="h-4 w-4" />
-            <span>Sign out</span>
-          </button>
-        </div>
+        <LogoutButton />
       </SidebarFooter>
     </Sidebar>
   );

@@ -12,7 +12,6 @@ import {
   type LanguageOption,
 } from "./menu-data/languageLearningData";
 import { levelsData } from "./menu-data/levelsData";
-import Logout from "@/components/logout";
 import { Loader2 } from "lucide-react";
 
 export default function Menu() {

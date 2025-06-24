@@ -1,8 +1,11 @@
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({
-    baseURL: process.env.BETTER_AUTH_URL || "https://www.malan.vercel.app"
-});
 
-const { signIn, signUp, useSession, signOut } = authClient;
-export { signIn, signUp, useSession, signOut };
+    baseURL: typeof window !== "undefined"
+    ? window.location.origin
+    : process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "http://localhost:3000"
+})
+export const { signIn, signUp, useSession, signOut } = authClient;
