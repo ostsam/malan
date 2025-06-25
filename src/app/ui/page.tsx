@@ -111,7 +111,7 @@ export default function Chat({
     (lang) => lang.value === settings.selectedLanguage
   );
 
-  let ttsVoice: "nova" | "onyx" = "nova"; // Default voice
+  let ttsVoice: "nova" | "ash" = "nova";
   if (selectedLanguageData && settings.interlocutor) {
     if (settings.interlocutor === selectedLanguageData.interlocutors.male) {
       ttsVoice = "ash"; 
