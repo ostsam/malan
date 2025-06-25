@@ -139,7 +139,7 @@ export default function AppSidebar() {
               className="p-1 text-gray-400 hover:text-red-500 transition-colors"
               onClick={() => handleTogglePin(chat.chatId, chat.isPinned)}
             >
-              <Bookmark className={`h-4 w-4 ${chat.isPinned ? 'fill-yellow-400 text-yellow-500' : 'text-gray-400'}`} />
+              <Bookmark className={`h-4 w-4 ${chat.isPinned ? 'fill-yellow-400 text-yellow-500' : ''}`} />
             </button>
             <div className="flex">
                 <button

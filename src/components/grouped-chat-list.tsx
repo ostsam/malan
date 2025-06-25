@@ -61,7 +61,7 @@ export const GroupedChatList = ({ chats, onTogglePin, onUpdateSlug, onDeleteChat
                     className="p-1 text-gray-400 hover:text-yellow-500 transition-colors"
                     onClick={() => onTogglePin(chat.chatId, chat.isPinned)}
                   >
-                    <Bookmark className={`h-4 w-4 ${chat.isPinned ? 'fill-yellow-400 text-yellow-500' : 'text-gray-400'}`} />
+                    <Bookmark className={`h-4 w-4 ${chat.isPinned ? 'fill-yellow-400 text-yellow-500' : ''}`} />
                   </button>
                   <div className="flex">
                       <button
