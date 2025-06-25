@@ -47,13 +47,14 @@ export async function GET(request: NextRequest) {
       slug: userSession.slug,
       createdAt: userSession.createdAt,
       userId: userSession.userId,
+      isPinned: userSession.isPinned,
       lastMessageAt: latestMessages.lastMessageAt,
       settings: userSession.settings,
     })
     .from(userSession)
     .leftJoin(latestMessages, eq(userSession.chatId, latestMessages.chatId))
     .where(eq(userSession.userId, a.user.id))
-    .orderBy(desc(latestMessages.lastMessageAt));
+    .orderBy(desc(userSession.isPinned), desc(latestMessages.lastMessageAt));
 
   return NextResponse.json({
     sessions: sessions.map(session => {
