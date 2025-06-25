@@ -25,12 +25,12 @@ export async function POST(req: NextRequest) {
 
     const textChunks = chunkText(text);
     const audioBuffers: Buffer[] = [];
-//
+
     for (const chunk of textChunks) {
       if (chunk.trim().length === 0) continue;
       const audioResponse = await openai.audio.speech.create({
         model: "gpt-4o-mini-tts",
-        voice: "sage",
+        voice: voice || "nova",
         input: chunk,
         response_format: "opus",
       });
