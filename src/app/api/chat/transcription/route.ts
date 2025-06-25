@@ -19,18 +19,14 @@ export async function POST(req: Request) {
     }
 
     const nativeLanguage = formData.get("nativeLanguage")?.toString();
-    const nativeLanguageLabel = formData.get("nativeLanguage")?.toString();
     const selectedLanguage = formData.get("selectedLanguage")?.toString();
-    const selectedLanguageLabel = formData
-      .get("selectedLanguageLabel")
-      ?.toString();
 
     const transcription = await openai.audio.transcriptions.create({
       file: audioFile,
       model: "whisper-1",
       language: selectedLanguage || nativeLanguage,
       temperature: 0,
-      prompt: "NEVER TRANSLATE!!!!! TRANSCRIBE EXACTLY AS THE USER SPEAKS!"
+      prompt: "Never translate, only transcribe. Transcribe exactly as the user speaks."
     });
 
     return new Response(transcription.text, {

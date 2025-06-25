@@ -7,6 +7,10 @@ import { eq, desc } from "drizzle-orm";
 interface UserSessionSettings {
   selectedLanguageLabel: string;
   selectedLevel: string;
+  interlocutor: string;
+  nativeLanguage: string;
+  selectedLanguage: string;
+  nativeLanguageLabel: string;
 }
 
 export async function GET(request: Request) {
@@ -34,8 +38,12 @@ export async function GET(request: Request) {
       const userSettings: UserSessionSettings = settings as UserSessionSettings;
       return {
         ...rest,
-        selectedLanguageLabel: userSettings.selectedLanguageLabel,
+        interlocutor: userSettings.interlocutor,
         selectedLevel: userSettings.selectedLevel,
+        nativeLanguage: userSettings.nativeLanguage,
+        selectedLanguage: userSettings.selectedLanguage,
+        nativeLanguageLabel: userSettings.nativeLanguageLabel,
+        selectedLanguageLabel: userSettings.selectedLanguageLabel,
       };
     })
   });

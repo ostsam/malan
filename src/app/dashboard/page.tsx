@@ -13,6 +13,7 @@ import {
 } from "./menu-data/languageLearningData";
 import { levelsData } from "./menu-data/levelsData";
 import { Loader2 } from "lucide-react";
+import { createChat } from "@/app/actions/chat";
 
 export default function Menu() {
   const [nativeLanguage, setNativeLanguage] = useState<PopoverItem | undefined>(
@@ -34,24 +35,24 @@ export default function Menu() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
-  const handleStartLearning = () => {
+  const handleStartLearning = async () => {
     if (!isFormComplete || isLoading) return;
     setIsLoading(true);
-    const params = new URLSearchParams();
-    if (nativeLanguage?.label)
-      params.append("nativeLanguage", nativeLanguage.label);
-    if (nativeLanguage?.value)
-      params.append("nativeLanguageValue", nativeLanguage.value);
-    if (selectedLanguage?.value)
-      params.append("selectedLanguage", selectedLanguage.value);
-    if (selectedLanguage?.label)
-      params.append("selectedLanguageLabel", selectedLanguage.label);
-    if (selectedLevel?.value)
-      params.append("selectedLevel", selectedLevel.value);
-    if (interlocutor) params.append("interlocutor", interlocutor);
-    ///add name/username!
 
-    router.push(`/api/chat?${params.toString()}`);
+    try {
+      const chatId = await createChat({
+        nativeLanguage: nativeLanguage?.value ?? null,
+        nativeLanguageLabel: nativeLanguage?.label ?? null,
+        selectedLanguage: selectedLanguage?.value ?? null,
+        selectedLanguageLabel: selectedLanguage?.label ?? null,
+        selectedLevel: selectedLevel?.value ?? null,
+        interlocutor: interlocutor ?? null,
+      });
+      router.push(`/chat/${chatId}`);
+    } catch (error) {
+      console.error("Failed to create chat:", error);
+      setIsLoading(false);
+    }
   };
 
   const isFormComplete =
