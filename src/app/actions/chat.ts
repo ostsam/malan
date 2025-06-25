@@ -53,3 +53,18 @@ export async function updateChatSlug(chatId: string, newSlug: string) {
 
   revalidatePath('/', 'layout');
 }
+
+export async function getChat(chatId: string) {
+  const session = await auth.api.getSession({ headers: new Headers(await headers()) });
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    throw new Error('User not authenticated');
+  }
+
+  const chat = await db.query.userSession.findFirst({
+    where: and(eq(userSession.chatId, chatId), eq(userSession.userId, userId)),
+  });
+
+  return chat;
+}

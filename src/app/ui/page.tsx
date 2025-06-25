@@ -6,6 +6,8 @@ import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { useChatInteraction } from "../hooks/useChatInteraction";
 import { useInputControls } from "../hooks/useInputControls";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
+import { EditIcon } from 'lucide-react';
+import { getChat, updateChatSlug } from '../actions/chat';
 import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
@@ -33,12 +35,16 @@ const defaultChatObject: SerializableChatData = {
 };
 
 export default function Chat({
+  slug: initialSlug,
+
   id,
   chatObject = defaultChatObject,
 }: {
+  slug?: string;
   id?: string | undefined;
   chatObject?: SerializableChatData;
 }) {
+  const [slug, setSlug] = useState(initialSlug || 'New Chat');
   const { messages: serializableMessages, settings } = chatObject;
 
   // Deserialize messages before passing them to the useChat hook
@@ -111,6 +117,16 @@ export default function Chat({
     }
   }, [messages]);
 
+    useEffect(() => {
+    if (id) {
+      getChat(id).then(chat => {
+        if (chat?.slug) {
+          setSlug(chat.slug);
+        }
+      });
+    }
+  }, [id]);
+
   useEffect(() => {
     const player = dotLottiePlayerRef.current;
     if (player) {
@@ -151,17 +167,36 @@ export default function Chat({
   return (
     <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black overflow-hidden">
       <div className="flex justify-center">
+        <div className="text-center">
         <a href="/">
           <img
             src="/logo.svg"
             alt="Malan Logo"
-            className="h-16 w-auto"
+            className="h-16 w-auto inline-block"
           />
         </a>
+        <div className="relative mt-2 flex flex-col">
+          <h2 className="text-lg text-center font-semibold text-gray-700 dark:text-gray-300 break-words px-8">
+            {slug}
+          </h2> <br />
+          <button 
+            onClick={async () => {
+              const newSlug = prompt('Enter new chat title:', slug);
+              if (id && newSlug) {
+                await updateChatSlug(id, newSlug);
+                setSlug(newSlug);
+              }
+            }}
+            className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
+          >
+            <EditIcon className="h-5 w-5" />
+          </button>
+        </div>
+      </div>
       </div>
       <div
         ref={messagesContainerRef}
-        className={`flex-grow w-full px-4 pb-4 ${
+        className={`flex-grow w-full pt-4 px-4 pb-4 ${
           isOverflowing ? "overflow-y-auto" : "overflow-y-hidden"
         }`}
       >
