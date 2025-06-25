@@ -1,10 +1,10 @@
 "use client";
 
-import { Calendar, Home, LogOutIcon, PanelLeftIcon, Search, Settings, TrashIcon } from "lucide-react";
+import { Calendar, Home, LogOutIcon, PanelLeftIcon, Search, Settings, TrashIcon, EditIcon } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { deleteChat } from '@/app/actions/chat';
+import { deleteChat, updateChatSlug } from '@/app/actions/chat';
 
 import {
   Sidebar,
@@ -113,23 +113,40 @@ export default function AppSidebar() {
                           </div>
                         </div>
                       </Link>
-                      <div className="flex justify-end mt-auto">
+                      <div className="flex justify-end items-center mt-auto">
                         <button
-                          className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-600 transition-colors"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            if (confirm('Are you sure you want to delete this chat?')) {
-                              try {
-                                await deleteChat(chat.chatId);
-                                await fetchChatHistory();
-                              } catch (error) {
-                                console.error("Failed to delete chat:", error);
+                            className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-blue-600 transition-colors"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              const newSlug = prompt('Enter new slug:', chat.slug);
+                              if (newSlug) {
+                                try {
+                                  await updateChatSlug(chat.chatId, newSlug);
+                                  await fetchChatHistory();
+                                } catch (error) {
+                                  console.error("Failed to update slug:", error);
+                                }
                               }
-                            }
-                          }}
-                        >
-                          <TrashIcon className="h-3 w-3" />
-                        </button>
+                            }}
+                          >
+                            <EditIcon className="h-4 w-4 mr-3" />
+                          </button>
+                          <button
+                            className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-600 transition-colors"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              if (confirm('Are you sure you want to delete this chat?')) {
+                                try {
+                                  await deleteChat(chat.chatId);
+                                  await fetchChatHistory();
+                                } catch (error) {
+                                  console.error("Failed to delete chat:", error);
+                                }
+                              }
+                            }}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
                       </div>
                     </div>
                   </li>
