@@ -18,10 +18,10 @@ export default async function Page({
   const chatData = await loadChat(id);
 
   if (!chatData) {
-    return <div>Chat not found.</div>;
+    notFound();
   }
 
-  const serializableChatData = {
+    const serializableChatData = {
     ...chatData,
     createdAt: chatData.createdAt?.toISOString(),
     messages: chatData.messages.map((message) => ({
