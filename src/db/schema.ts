@@ -16,7 +16,11 @@ export const messagesTable = createTable(
   },
   (t) => ({
     chatIdIndex: index("messages_chat_id_created_at_idx").on(t.chatId, t.createdAt),
-    foreignKey: foreignKey({ columns: [t.chatId], foreignColumns: [userSession.chatId] }),
+    foreignKey: foreignKey({
+      columns: [t.chatId],
+      foreignColumns: [userSession.chatId],
+      name: 'messages_chat_id_fk',
+    }).onDelete('cascade'),
   }),
 );
 
@@ -28,6 +32,7 @@ export const userSession = createTable("user-sessions-table", {
     .default(sql`CURRENT_TIMESTAMP`)
     .notNull(),
   userId: varchar("userId", { length: 256 }),
+  isPinned: boolean('isPinned').default(false).notNull(),
 });
 
 export const user = pgTable("user", {

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useChat, Message } from "@ai-sdk/react";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
@@ -7,7 +8,7 @@ import { useChatInteraction } from "../hooks/useChatInteraction";
 import { useInputControls } from "../hooks/useInputControls";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { EditIcon } from 'lucide-react';
-import { getChat, updateChatSlug } from '../actions/chat';
+import { getChat, updateChatSlug, generateAndAssignSlug } from '../actions/chat';
 import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
@@ -44,6 +45,7 @@ export default function Chat({
   id?: string | undefined;
   chatObject?: SerializableChatData;
 }) {
+  const router = useRouter();
   const [slug, setSlug] = useState(initialSlug || 'New Chat');
   const { messages: serializableMessages, settings } = chatObject;
 
@@ -76,6 +78,26 @@ export default function Chat({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
+  const handleAppend = async (message: Omit<Message, 'id'>) => {
+    // The AI SDK's append function handles adding a unique ID.
+    await append(message);
+
+    // We only want to generate a slug for the very first user message in a new chat.
+    // If the slug is the default, generate a new one from the first message.
+    if (slug === 'New Chat' && id) {
+      console.log('Attempting to generate slug for chat ID:', id);
+      try {
+        const newSlug = await generateAndAssignSlug(id, message.content as string);
+        console.log('Successfully generated new slug:', newSlug);
+        setSlug(newSlug);
+        router.refresh();
+      } catch (error) {
+        console.error('Failed to generate or assign slug:', error);
+        // Optionally, show a toast notification to the user about the failure
+      }
+    }
+  };
+
   const {
     isRecording,
     recordingError,
@@ -83,7 +105,7 @@ export default function Chat({
     stopRecording,
     isTranscribing,
     transcriptionHookError,
-  } = useChatInteraction({ append });
+  } = useChatInteraction({ append: handleAppend });
 
   const { stopAudioPlayback } = useTextToSpeech({
     messages,
@@ -183,8 +205,9 @@ export default function Chat({
             onClick={async () => {
               const newSlug = prompt('Enter new chat title:', slug);
               if (id && newSlug) {
-                await updateChatSlug(id, newSlug);
-                setSlug(newSlug);
+                const updatedSlug = await updateChatSlug(id, newSlug);
+                setSlug(updatedSlug);
+                router.refresh();
               }
             }}
             className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"

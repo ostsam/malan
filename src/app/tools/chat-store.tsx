@@ -30,7 +30,7 @@ export interface ChatMetadata {
   settings: ChatSettings;
 }
 
-async function generateDescriptiveSlug(firstMessage: string, selectedLanguageLabel?: string): Promise<string> {
+export async function generateDescriptiveSlug(firstMessage: string, selectedLanguageLabel?: string): Promise<string> {
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const prompt = `Generate a sentence in ${selectedLanguageLabel} explaining the topic of this message: "${firstMessage}" in order to summarize this conversation. ONLY WRITE IN ${selectedLanguageLabel}!.`;
   
@@ -54,10 +54,7 @@ export async function createChat(
   const chatId = generateId();
   const finalSettings = parseChatSettings(settings);
 
-  const slug = await generateDescriptiveSlug(
-    "Chat about anything!",
-    finalSettings.selectedLanguageLabel ?? undefined
-  );
+  const slug = "New Chat";
 
   await db.insert(userSession).values({
     chatId: chatId,
