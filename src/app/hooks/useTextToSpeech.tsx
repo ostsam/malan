@@ -90,7 +90,10 @@ export function useTextToSpeech({
   messages,
   isLoading,
   voice = "nova",
-}: UseTextToSpeechProps): { stopAudioPlayback: () => void } {
+}: UseTextToSpeechProps): {
+  stopAudioPlayback: () => void;
+  speak: (text: string) => void;
+} {
   const [audioQueue, setAudioQueue] = useState<AudioQueueItem[]>([]);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const [currentSpokenMessageId, setCurrentSpokenMessageId] = useState<string | null>(null);
@@ -267,5 +270,46 @@ export function useTextToSpeech({
     }
   }, [isLoading, processQueue]);
 
-  return { stopAudioPlayback };
+  const speak = useCallback(
+    async (text: string) => {
+      console.log("TTS: Manual speak triggered.");
+      stopAudioPlayback();
+
+      const generation = generationRef.current + 1;
+      generationRef.current = generation;
+
+      try {
+        const sentences = text.match(/[^.!?]+[.!?]*/g) || [];
+        for (const sentence of sentences) {
+          if (generation !== generationRef.current) {
+            console.log("TTS (speak): Generation changed, aborting.");
+            break;
+          }
+          const trimmedSentence = sentence.trim();
+          if (trimmedSentence) {
+            const audioUrl = await generateSpeechAPI(
+              trimmedSentence,
+              voice,
+              generation,
+              generationRef
+            );
+            if (audioUrl && generation === generationRef.current) {
+              const pauseAfterMs = 150;
+              setAudioQueue((prev) => [
+                ...prev,
+                { url: audioUrl, textFragment: trimmedSentence, pauseAfterMs },
+              ]);
+            } else if (audioUrl) {
+              URL.revokeObjectURL(audioUrl);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("TTS (speak): Error in speak function:", error);
+      }
+    },
+    [stopAudioPlayback, voice]
+  );
+
+  return { stopAudioPlayback, speak };
 }

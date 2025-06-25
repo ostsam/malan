@@ -7,7 +7,7 @@ import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { useChatInteraction } from "../hooks/useChatInteraction";
 import { useInputControls } from "../hooks/useInputControls";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
-import { EditIcon } from 'lucide-react';
+import { EditIcon, Volume2 } from 'lucide-react';
 import { getChat, updateChatSlug, generateAndAssignSlug } from '../actions/chat';
 import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
@@ -107,7 +107,7 @@ export default function Chat({
     transcriptionHookError,
   } = useChatInteraction({ append: handleAppend });
 
-  const { stopAudioPlayback } = useTextToSpeech({
+  const { stopAudioPlayback, speak } = useTextToSpeech({
     messages,
     isLoading,
     voice: "coral",
@@ -233,7 +233,7 @@ export default function Chat({
                 }`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl p-3 text-md break-words shadow-md whitespace-pre-wrap ${
+                  className={`relative group max-w-[85%] rounded-2xl p-3 text-md break-words shadow-md whitespace-pre-wrap ${
                     m.role === "user"
                       ? "bg-sky-400 dark:bg-sky-900 text-white"
                       : "bg-gray-200 dark:bg-gray-800"
@@ -248,7 +248,25 @@ export default function Chat({
                       : "ltr",
                   }}
                 >
-                  {renderMessageContent(m.content)}
+                  <div className="pb-5">
+                    {renderMessageContent(m.content)}
+                  </div>
+                  <button
+                    onClick={() => {
+                      const textToSpeak = renderMessageContent(m.content);
+                      if (
+                        typeof textToSpeak === "string" &&
+                        textToSpeak.trim().length > 0
+                      ) {
+                        speak(textToSpeak);
+                      }
+                    }}
+                    className={`absolute bottom-1 ${m.role === "user" ? "left-1" : "right-1"
+                      } p-1 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200`}
+                    aria-label="Read message aloud"
+                  >
+                    <Volume2 className="h-4 w-4" />
+                  </button>
                 </div>
               </div>
             ))
