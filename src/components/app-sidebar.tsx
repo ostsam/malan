@@ -19,8 +19,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { LogoutButton } from "./logout";
+import { GroupedChatList } from './grouped-chat-list';
 
-interface Chat {
+export interface Chat {
   chatId: string;
   slug: string;
   selectedLanguageLabel: string;
@@ -132,10 +133,10 @@ export default function AppSidebar() {
               )}
             </div>
           </Link>
-          <div className="flex flex-col justify-between items-end shrink-0 pl-1">
+          <div className="flex flex-col justify-between items-end shrink-0">
             <button
               title="Pin chat"
-              className="p-1 text-gray-400 hover:text-yellow-500 transition-colors"
+              className="p-1 text-gray-400 hover:text-red-500 transition-colors"
               onClick={() => handleTogglePin(chat.chatId, chat.isPinned)}
             >
               <Bookmark className={`h-4 w-4 ${chat.isPinned ? 'fill-yellow-400 text-yellow-500' : 'text-gray-400'}`} />
@@ -179,8 +180,12 @@ export default function AppSidebar() {
                       {renderChatList(pinnedChats)}
                     </div>
                   )}
-                  <SidebarGroupLabel>Recent</SidebarGroupLabel>
-                  {renderChatList(recentChats)}
+                  <GroupedChatList 
+                    chats={recentChats} 
+                    onTogglePin={handleTogglePin}
+                    onUpdateSlug={handleUpdateSlug}
+                    onDeleteChat={handleDeleteChat}
+                  />
                 </>
               ) : (
                 <div className="p-4 text-sm text-center text-gray-500">No chat history.</div>
