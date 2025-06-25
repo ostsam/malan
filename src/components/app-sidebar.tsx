@@ -102,14 +102,15 @@ export default function AppSidebar() {
                         href={`/chat/${chat.chatId}`}
                         className="flex flex-row items-center overflow-hidden"
                       >
-                        <div className="truncate">
-                          {chat.slug}
-                          <p className="ml-0.5 text-xs font-semibold text-gray-400 justify-between mr-1">
-                            {chat.selectedLanguageLabel}
-                            <span className="absolute right-0 font-normal text-xs text-gray-400 items-end">
-                              {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : ""}
-                            </span>
-                          </p>
+                        <div className="flex-grow overflow-hidden">
+                          <div className="truncate font-medium">{chat.slug}</div>
+                          <div className="flex justify-between items-start text-xs text-gray-400 mt-1">
+                            <span className="font-semibold">{chat.selectedLanguageLabel}</span>
+                            <div className="text-right font-normal flex-shrink-0">
+                              <div>{chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleDateString() : ""}</div>
+                              <div>{chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ""}</div>
+                            </div>
+                          </div>
                         </div>
                       </Link>
                       <div className="flex justify-end mt-auto">
