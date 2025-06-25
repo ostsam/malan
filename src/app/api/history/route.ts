@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/app/api/auth/[...all]/auth";
+import { NextResponse, type NextRequest } from "next/server";
 import { db } from "@/db";
-import { userSession } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { userSession, messagesTable } from "@/db/schema";
+import { sql, desc, eq, and, notInArray } from "drizzle-orm";
+import { auth } from "@/app/api/auth/[...all]/auth";
 
 interface UserSessionSettings {
   selectedLanguageLabel: string;
@@ -13,24 +13,47 @@ interface UserSessionSettings {
   nativeLanguageLabel: string;
 }
 
-export async function GET(request: Request) {
-  const session = await auth.api.getSession({ headers: request.headers });
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+export async function GET(request: NextRequest) {
+  const a = await auth.api.getSession({ headers: request.headers });
+  if (!a?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  
+
+  // Delete user sessions that have no messages.
+  const chatsWithMessagesSubquery = db
+    .selectDistinct({ chatId: messagesTable.chatId })
+    .from(messagesTable);
+
+  await db.delete(userSession).where(
+    and(
+      eq(userSession.userId, a.user.id),
+      notInArray(userSession.chatId, chatsWithMessagesSubquery)
+    )
+  );
+
+  // Now, fetch the remaining sessions and sort them.
+  const latestMessages = db
+    .select({
+      chatId: messagesTable.chatId,
+      lastMessageAt: sql<string>`MAX(${messagesTable.createdAt})`.as('lastMessageAt'),
+    })
+    .from(messagesTable)
+    .groupBy(messagesTable.chatId)
+    .as("latestMessages");
+
   const sessions = await db
     .select({
-      id: userSession.chatId,
+      chatId: userSession.chatId,
       slug: userSession.slug,
       createdAt: userSession.createdAt,
+      userId: userSession.userId,
+      lastMessageAt: latestMessages.lastMessageAt,
       settings: userSession.settings,
     })
     .from(userSession)
-    .where(eq(userSession.userId, session.user.id))
-    .orderBy(desc(userSession.createdAt));
-
-  console.log("Sessions:", sessions);
+    .leftJoin(latestMessages, eq(userSession.chatId, latestMessages.chatId))
+    .where(eq(userSession.userId, a.user.id))
+    .orderBy(desc(latestMessages.lastMessageAt));
 
   return NextResponse.json({
     sessions: sessions.map(session => {

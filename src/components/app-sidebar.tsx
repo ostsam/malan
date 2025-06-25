@@ -94,12 +94,12 @@ export default function AppSidebar() {
               <ul className="space-y-1 flex flex-col">
                 {chatHistory.map((chat) => (
                   <li
-                    key={chat.id}
+                    key={chat.chatId}
                     className={`group flex flex-row items-center justify-between border-b border-gray-200 last:border-b-0 py-1 relative`}
                   >
                     <div className="flex flex-col w-full">
                       <Link
-                        href={`/chat/${chat.id}`}
+                        href={`/chat/${chat.chatId}`}
                         className="flex flex-row items-center overflow-hidden"
                       >
                         <div className="truncate">
@@ -119,7 +119,7 @@ export default function AppSidebar() {
                             e.preventDefault();
                             if (confirm('Are you sure you want to delete this chat?')) {
                               try {
-                                await deleteChat(chat.id);
+                                await deleteChat(chat.chatId);
                                 await fetchChatHistory();
                               } catch (error) {
                                 console.error("Failed to delete chat:", error);
