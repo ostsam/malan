@@ -107,10 +107,25 @@ export default function Chat({
     transcriptionHookError,
   } = useChatInteraction({ append: handleAppend });
 
+  const selectedLanguageData = languageLearningData.find(
+    (lang) => lang.value === settings.selectedLanguage
+  );
+
+  let ttsVoice: "nova" | "onyx" = "nova"; // Default voice
+  if (selectedLanguageData && settings.interlocutor) {
+    if (settings.interlocutor === selectedLanguageData.interlocutors.male) {
+      ttsVoice = "ash"; 
+    } else if (
+      settings.interlocutor === selectedLanguageData.interlocutors.female
+    ) {
+      ttsVoice = "nova";
+    }
+  }
+
   const { stopAudioPlayback, speak } = useTextToSpeech({
     messages,
     isLoading,
-    voice: "coral",
+    voice: ttsVoice,
   });
 
   const {
