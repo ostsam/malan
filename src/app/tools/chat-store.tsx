@@ -3,7 +3,8 @@ import { Message } from "ai";
 import { db } from "@/db";
 import { userSession, messagesTable } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { openai } from "@/lib/openai";
+import OpenAI from "openai";
+import { getLanguageInfo, getNativeLanguageLabel } from "@/lib/utils";
 
 export interface ChatSettings {
   nativeLanguage: string | null;
@@ -13,7 +14,6 @@ export interface ChatSettings {
   selectedLevel: string | null;
   interlocutor: string | null;
   name?: string | null;
-  targetLanguage?: string | null;
 }
 
 export interface ChatData {
@@ -31,44 +31,43 @@ export interface ChatMetadata {
   settings: ChatSettings;
 }
 
-async function generateDescriptiveSlug(firstMessage: string, targetLanguageLabel?: string): Promise<string> {
-  const prompt = `Generate a sentence in ${targetLanguageLabel} explaining the topic of this message: "${firstMessage}" in order to summarize this conversation. ONLY WRITE IN ${targetLanguageLabel}!.`;
+async function generateDescriptiveSlug(firstMessage: string, selectedLanguageLabel?: string): Promise<string> {
+  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  const prompt = `Generate a sentence in ${selectedLanguageLabel} explaining the topic of this message: "${firstMessage}" in order to summarize this conversation. ONLY WRITE IN ${selectedLanguageLabel}!.`;
   
-  const response = await openai.chat.completions.create({
-    model: "gpt-4.1-nano",
+  const response = await client.chat.completions.create({
+    model: "gpt-4o-mini",
     messages: [{
       role: "user",
       content: prompt
     }],
-    max_tokens: 15,
+    max_tokens: 8,
     temperature: 0.2,
   });
   
   return response.choices[0].message.content?.trim() || "";
 }
 
-async function generateSlug(settings: ChatSettings): Promise<string> {
-  if (settings.targetLanguage) {
-    return `Learn-${settings.targetLanguage}`;
-  }
-  return "chat-" + Math.random().toString(36).substring(2, 8);
-}
-
 export async function createChat(
-  settings: ChatSettings,
+  settings: Partial<ChatSettings>,
   userId: string
 ): Promise<string> {
   const chatId = generateId();
-  const tempSlug = "chat-" + Math.random().toString(36).substring(2, 8);
-  
+  const finalSettings = parseChatSettings(settings);
+
+  const slug = await generateDescriptiveSlug(
+    "Chat about anything!",
+    finalSettings.selectedLanguageLabel ?? undefined
+  );
+
   await db.insert(userSession).values({
     chatId: chatId,
     userId: userId,
-    slug: tempSlug,
-    settings: JSON.stringify(settings),
+    slug: slug,
+    settings: JSON.stringify(finalSettings),
     createdAt: new Date(),
   });
-  
+
   return chatId;
 }
 
@@ -90,7 +89,7 @@ export async function loadUserChatHistory(
     id: session.id,
     slug: session.slug,
     createdAt: session.createdAt ?? new Date(),
-    settings: parseChatSettings(session.settings as string),
+    settings: parseChatSettings(session.settings as Partial<ChatSettings> | null),
   }));
 }
 
@@ -105,7 +104,7 @@ export async function loadChat(id: string): Promise<ChatData> {
     throw new Error(`Chat session with id ${id} not found.`);
   }
 
-  const settings = parseChatSettings(String(sessionResult[0].settings));
+  const settings = parseChatSettings(sessionResult[0].settings as Partial<ChatSettings> | null);
   const slug = sessionResult[0].slug;
 
   const messageRecords = await db
@@ -172,11 +171,11 @@ export async function appendNewMessages({
       
       if (sessionResult.length === 0) return;
       
-      const settings = parseChatSettings(String(sessionResult[0].settings));
+      const settings = parseChatSettings(sessionResult[0].settings as Partial<ChatSettings> | null);
       
       const descriptiveSlug = await generateDescriptiveSlug(
         firstUserMessage.content as string,
-        settings.targetLanguage ?? undefined
+        settings.selectedLanguageLabel ?? undefined
       );
       
       await db.update(userSession)
@@ -186,17 +185,47 @@ export async function appendNewMessages({
   }
 }
 
-function parseChatSettings(settingsJson: string): ChatSettings {
-  try {
-    return JSON.parse(settingsJson) as ChatSettings;
-  } catch (e) {
-    return {
-      nativeLanguage: null,
-      nativeLanguageLabel: null,
-      selectedLanguage: null,
-      selectedLanguageLabel: null,
-      selectedLevel: null,
-      interlocutor: null,
-    };
+function parseChatSettings(
+  settings: string | Partial<ChatSettings> | null | undefined
+): ChatSettings {
+  const defaults: ChatSettings = {
+    nativeLanguage: "en",
+    nativeLanguageLabel: "English",
+    selectedLanguage: "es",
+    selectedLanguageLabel: "Español / Spanish",
+    selectedLevel: "Beginner",
+    interlocutor: "Mateo",
+    name: "New Chat",
+  };
+
+  let parsed: Partial<ChatSettings> = {};
+  if (typeof settings === "string") {
+    try {
+      const parsedJson = JSON.parse(settings);
+      if (typeof parsedJson === 'object' && parsedJson !== null) {
+        parsed = parsedJson;
+      }
+    } catch {
+      // Fallback to empty object on parse error
+      parsed = {};
+    }
+  } else if (settings) {
+    parsed = settings;
   }
+
+  // Filter out null/undefined values from parsed settings so they don't overwrite defaults
+  const cleanParsed: Partial<ChatSettings> = {};
+  for (const key in parsed) {
+    if (Object.prototype.hasOwnProperty.call(parsed, key)) {
+      const value = parsed[key as keyof typeof parsed];
+      if (value !== null && value !== undefined) {
+        (cleanParsed as any)[key] = value;
+      }
+    }
+  }
+
+  return {
+    ...defaults,
+    ...cleanParsed,
+  };
 }

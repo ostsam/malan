@@ -9,6 +9,12 @@ import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
 import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
+
+// Define a version of ChatData where dates are strings for serialization
+interface SerializableChatData extends Omit<ChatData, 'messages' | 'createdAt'> {
+  messages: Array<Omit<Message, 'createdAt'> & { createdAt?: string }>;
+  createdAt?: string;
+}
 import Switch from "react-switch";
 
 const defaultChatSettings: ChatSettings = {
@@ -21,7 +27,7 @@ const defaultChatSettings: ChatSettings = {
   name: "User",
 };
 
-const defaultChatObject: ChatData = {
+const defaultChatObject: SerializableChatData = {
   settings: defaultChatSettings,
   messages: [],
 };
@@ -31,9 +37,15 @@ export default function Chat({
   chatObject = defaultChatObject,
 }: {
   id?: string | undefined;
-  chatObject?: ChatData;
+  chatObject?: SerializableChatData;
 }) {
-  const { messages: initialMessages, settings } = chatObject;
+  const { messages: serializableMessages, settings } = chatObject;
+
+  // Deserialize messages before passing them to the useChat hook
+  const initialMessages: Message[] = serializableMessages.map((message) => ({
+    ...message,
+    createdAt: message.createdAt ? new Date(message.createdAt) : undefined,
+  }));
 
   const {
     messages,
@@ -187,7 +199,7 @@ export default function Chat({
               <div>
                 <p className="text-2xl">Instructions:</p>
                 <p className="text-l mt-3">
-                  Begin speaking {settings?.selectedLanguageLabel}.{" "}
+                  Begin speaking {settings.selectedLanguageLabel}.{" "}
                   {settings.interlocutor} will have you speaking fluidly about
                   your day, your interests, or anything else you'd like in no
                   time!
@@ -196,7 +208,7 @@ export default function Chat({
               <div className="text-md pb-4">
                 <p>1. Press the button and speak to begin</p>
                 <p>2. Release it to end the transmission.</p>
-                <p>3. Await response from {settings?.interlocutor}.</p>
+                <p>3. Await response from {settings.interlocutor}.</p>
               </div>
             </div>
           )}
