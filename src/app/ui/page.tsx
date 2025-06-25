@@ -12,13 +12,13 @@ import { getChat, updateChatSlug, generateAndAssignSlug } from '../actions/chat'
 import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
+import Switch from "react-switch";
 
 // Define a version of ChatData where dates are strings for serialization
 interface SerializableChatData extends Omit<ChatData, 'messages' | 'createdAt'> {
   messages: Array<Omit<Message, 'createdAt'> & { createdAt?: string }>;
   createdAt?: string;
 }
-import Switch from "react-switch";
 
 const defaultChatSettings: ChatSettings = {
   nativeLanguage: "en",
