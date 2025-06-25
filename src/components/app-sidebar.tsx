@@ -1,10 +1,10 @@
 "use client";
 
-import { Calendar, Home, LogOutIcon, PanelLeftIcon, Search, Settings, TrashIcon } from "lucide-react";
+import { Calendar, Home, LogOutIcon, PanelLeftIcon, Search, Settings, TrashIcon, EditIcon } from "lucide-react";
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { deleteChat } from '@/app/actions/chat';
+import { deleteChat, updateChatSlug } from '@/app/actions/chat';
 
 import {
   Sidebar,
@@ -94,41 +94,59 @@ export default function AppSidebar() {
               <ul className="space-y-1 flex flex-col">
                 {chatHistory.map((chat) => (
                   <li
-                    key={chat.id}
+                    key={chat.chatId}
                     className={`group flex flex-row items-center justify-between border-b border-gray-200 last:border-b-0 py-1 relative`}
                   >
                     <div className="flex flex-col w-full">
                       <Link
-                        href={`/chat/${chat.id}`}
+                        href={`/chat/${chat.chatId}`}
                         className="flex flex-row items-center overflow-hidden"
                       >
-                        <div className="truncate">
-                          {chat.slug}
-                          <p className="ml-0.5 text-xs font-semibold text-gray-400 justify-between mr-1">
-                            {chat.selectedLanguageLabel}
-                            <span className="absolute right-0 font-normal text-xs text-gray-400 items-end">
-                              {chat.createdAt ? new Date(chat.createdAt).toLocaleDateString() : ""}
-                            </span>
-                          </p>
+                        <div className="flex-grow overflow-hidden">
+                          <div className="truncate font-medium">{chat.slug}</div>
+                          <div className="flex justify-between items-start text-xs text-gray-400 mt-1">
+                            <span className="font-semibold">{chat.selectedLanguageLabel}</span>
+                            <div className="text-right font-normal flex-shrink-0">
+                              <div>{chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleDateString() : ""}</div>
+                              <div>{chat.lastMessageAt ? new Date(chat.lastMessageAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : ""}</div>
+                            </div>
+                          </div>
                         </div>
                       </Link>
-                      <div className="flex justify-end mt-auto">
+                      <div className="flex justify-end items-center mt-auto">
                         <button
-                          className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-600 transition-colors"
-                          onClick={async (e) => {
-                            e.preventDefault();
-                            if (confirm('Are you sure you want to delete this chat?')) {
-                              try {
-                                await deleteChat(chat.id);
-                                await fetchChatHistory();
-                              } catch (error) {
-                                console.error("Failed to delete chat:", error);
+                            className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-blue-600 transition-colors"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              const newSlug = prompt('Enter new slug:', chat.slug);
+                              if (newSlug) {
+                                try {
+                                  await updateChatSlug(chat.chatId, newSlug);
+                                  await fetchChatHistory();
+                                } catch (error) {
+                                  console.error("Failed to update slug:", error);
+                                }
                               }
-                            }
-                          }}
-                        >
-                          <TrashIcon className="h-3 w-3" />
-                        </button>
+                            }}
+                          >
+                            <EditIcon className="h-4 w-4 mr-3" />
+                          </button>
+                          <button
+                            className="opacity-0 group-hover:opacity-100 p-0.5 text-gray-400 hover:text-red-600 transition-colors"
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              if (confirm('Are you sure you want to delete this chat?')) {
+                                try {
+                                  await deleteChat(chat.chatId);
+                                  await fetchChatHistory();
+                                } catch (error) {
+                                  console.error("Failed to delete chat:", error);
+                                }
+                              }
+                            }}
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
                       </div>
                     </div>
                   </li>

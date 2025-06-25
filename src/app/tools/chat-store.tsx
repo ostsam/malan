@@ -4,7 +4,6 @@ import { db } from "@/db";
 import { userSession, messagesTable } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
-import { getLanguageInfo, getNativeLanguageLabel } from "@/lib/utils";
 
 export interface ChatSettings {
   nativeLanguage: string | null;
