@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   const {
     message: userMessage,
     id: chatId,
-    voice, // e.g., "alloy", "nova"
+    voice,
   } = await req.json();
 
   const { settings, messages } = await loadChat(chatId);

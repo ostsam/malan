@@ -47,6 +47,7 @@ export default function Chat({
 }) {
   const router = useRouter();
   const [slug, setSlug] = useState(initialSlug || 'New Chat');
+  const [uiError, setUiError] = useState<string | null>(null);
   const { messages: serializableMessages, settings } = chatObject;
 
   // Deserialize messages before passing them to the useChat hook
@@ -79,6 +80,14 @@ export default function Chat({
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
   const handleAppend = async (message: Omit<Message, 'id'>) => {
+    const content = typeof message.content === 'string' ? message.content.trim() : message.content;
+
+    if (!content) {
+      setUiError("Cannot send an empty message.");
+      setTimeout(() => setUiError(null), 5000); // Hide after 5 seconds
+      return;
+    }
+    
     // The AI SDK's append function handles adding a unique ID.
     await append(message);
 
@@ -307,6 +316,11 @@ export default function Chat({
         </div>
       </div>
 
+      {uiError && (
+        <div className={errorMessageStyling}>
+          {uiError}
+        </div>
+      )}
       {recordingError && (
         <div className={errorMessageStyling}>
           Recording Error: {recordingError}
