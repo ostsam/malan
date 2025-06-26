@@ -107,7 +107,7 @@ export async function generateAndAssignSlug(chatId: string, firstMessage: string
     throw new Error('Chat not found or user not authorized');
   }
 
-  const settings: ChatSettings = JSON.parse(chat.settings as string);
+  const settings: ChatSettings = chat.settings as ChatSettings;  
   const slug = await generateDescriptiveSlug(firstMessage, settings.selectedLanguageLabel ?? undefined);
 
   await db.update(userSession)

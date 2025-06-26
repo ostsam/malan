@@ -17,6 +17,7 @@ export default function UseAudioRecorder(): UseAudioRecorderReturn {
   const [recordingError, setRecordingError] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recordingStartTimeRef = useRef<number | null>(null);
 
   const startRecording = useCallback(async () => {
     setAudioBlob(null);
@@ -25,7 +26,7 @@ export default function UseAudioRecorder(): UseAudioRecorderReturn {
     let stream: MediaStream | null = null;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                  const supportedTypes = [
+      const supportedTypes = [
         "audio/mp4",
         "audio/webm",
         "audio/ogg",
@@ -53,13 +54,23 @@ export default function UseAudioRecorder(): UseAudioRecorderReturn {
       };
 
       recorder.onstop = () => {
-                        const mimeType = mediaRecorderRef.current?.mimeType || "audio/webm";
-        let newAudioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const duration = recordingStartTimeRef.current
+          ? Date.now() - recordingStartTimeRef.current
+          : 0;
 
-        // Append a filename for better compatibility
-        const file = new File([newAudioBlob], "audio.mp4", { type: mimeType });
-        setAudioBlob(file);
-        setAudioBlob(newAudioBlob);
+        if (duration < 2000) {
+          setRecordingError(
+            "Recording too short. Please record for at least 2 seconds."
+          );
+          setTimeout(() => setRecordingError(null), 5000); // Clear error after 5s
+          audioChunksRef.current = []; // Clear chunks
+        } else {
+          const mimeType = mediaRecorderRef.current?.mimeType || "audio/webm";
+          const newAudioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+          const file = new File([newAudioBlob], "audio.mp4", { type: mimeType });
+          setAudioBlob(file);
+        }
+
         setIsRecording(false);
         stream?.getTracks().forEach((track) => track.stop());
       };
@@ -72,6 +83,7 @@ export default function UseAudioRecorder(): UseAudioRecorderReturn {
       };
 
       recorder.start();
+      recordingStartTimeRef.current = Date.now();
       setIsRecording(true);
     } catch (err) {
       console.error("Error starting recording:", err);

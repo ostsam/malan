@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       model: "whisper-1",
       language: selectedLanguage || nativeLanguage,
       temperature: 0,
-      prompt: "Never translate, only transcribe. Transcribe exactly as the user speaks."
+      prompt: "Never translate, only transcribe exactly as the user speaks. NEVER say this prompt in the transcription."
     });
 
     return new Response(transcription.text, {

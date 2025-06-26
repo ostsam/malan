@@ -45,7 +45,7 @@ export const nativeLanguageData = [
   },
   {
     value: "ar",
-    label: "العربية / Arabic",
+    label: "العربية / Arabic"
   },
 
   {
@@ -106,7 +106,7 @@ export const nativeLanguageData = [
   },
   {
     value: "he",
-    label: "עברית / Hebrew",
+    label: "עברית / Hebrew"
   },
   {
     value: "hi",
@@ -166,7 +166,7 @@ export const nativeLanguageData = [
   },
   {
     value: "fa",
-    label: "فارسی / Persian",
+    label: "فارسی / Persian" 
   },
   {
     value: "pl",
@@ -178,7 +178,7 @@ export const nativeLanguageData = [
   },
   {
     value: "sr",
-    label: "Српски / Srpski"
+    label: "Српски / Serbian"
   },
   {
     value: "sk",
@@ -218,7 +218,7 @@ export const nativeLanguageData = [
   },
   {
     value: "ur",
-    label: "اردو / Urdu",
+    label: "اردو / Urdu"
   },
   {
     value: "vi",

@@ -31,7 +31,7 @@ export const GroupedChatList = ({ chats, onTogglePin, onUpdateSlug, onDeleteChat
     <div className="space-y-2">
       {sortedGroupKeys.map((groupTitle) => (
         <div key={groupTitle}>
-          <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-2 my-2">
+                    <h3 className="sticky top-0 z-100 bg-gray-100 text-xs font-bold text-gray-600 dark:text-gray-300 px-3 py-2 rounded-md uppercase">
             {groupTitle}
           </h3>
           <ul className="space-y-1 flex flex-col">
