@@ -12,8 +12,20 @@ const getBaseURL = () => {
     }
     return 'http://localhost:3000';
   };
+
+const getTrustedOrigins = () => {
+    const origins = ['http://localhost:3000'];
+    if (process.env.NEXT_PUBLIC_VERCEL_URL) {
+      origins.push(`https://${process.env.NEXT_PUBLIC_VERCEL_URL}`);
+    }
+    if (process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL) {
+      origins.push(`https://${process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL}`);
+    }
+    return [...new Set(origins)];
+};
   
 export const authClient = createAuthClient({
     baseURL: getBaseURL(),
+    trustedOrigins: getTrustedOrigins(),
 });
 export const { signIn, signUp, useSession, signOut } = authClient;
