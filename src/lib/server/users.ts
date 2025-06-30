@@ -1,6 +1,5 @@
 "use server"
 import { auth } from "@/app/api/auth/[...all]/auth";
-import { Toaster } from "sonner";
 
 export const signIn = async (email: string, password: string) => {
     try {

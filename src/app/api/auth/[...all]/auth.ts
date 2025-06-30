@@ -22,7 +22,6 @@ const getTrustedOrigins = () => {
       origins.push(vercelUrl);
     }
 
-    console.log("[AUTH_DEBUG] VERCEL_PROJECT_PRODUCTION_URL:", process.env.VERCEL_PROJECT_PRODUCTION_URL);
     if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
         const prodUrl = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
         origins.push(prodUrl);
