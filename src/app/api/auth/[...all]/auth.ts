@@ -1,10 +1,36 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "@/db"; 
+import { db } from "@/db";
 import { nextCookies } from "better-auth/next-js";
 import { user, session, account, verification } from "@/db/schema";
- 
+
+const getBaseURL = () => {
+    if (process.env.VERCEL_URL) {
+      return `https://${process.env.VERCEL_URL}`;
+    }
+    return 'http://localhost:3000';
+};
+
+const getTrustedOrigins = () => {
+    const origins = [
+        'http://localhost:3000',
+        'https://malan.vercel.app' // Manually added production URL
+    ];
+    
+    if (process.env.VERCEL_URL) {
+      origins.push(`https://${process.env.VERCEL_URL}`);
+    }
+
+    if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+        origins.push(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
+    }
+
+    return [...new Set(origins)];
+};
+
 export const auth = betterAuth({
+    baseURL: getBaseURL(),
+    trustedOrigins: getTrustedOrigins(),
     appName: "Malan",
     database: drizzleAdapter(db, {
       provider: "pg",
