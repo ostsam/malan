@@ -14,7 +14,10 @@ const getBaseURL = () => {
 };
 
 const getTrustedOrigins = () => {
-    const origins = ['http://localhost:3000'];
+    const origins = [
+        'http://localhost:3000',
+        'https://malan.vercel.app' // Manually added production URL
+    ];
     
     // Trust the current deployment URL on Vercel (for both preview and production)
     if (process.env.VERCEL_URL) {
