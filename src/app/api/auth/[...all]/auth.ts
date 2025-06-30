@@ -12,29 +12,23 @@ const getBaseURL = () => {
 };
 
 const getTrustedOrigins = () => {
-    console.log("[AUTH_DEBUG] Entering getTrustedOrigins");
     const origins = [
         'http://localhost:3000',
         'https://malan.vercel.app' // Manually added production URL
     ];
-    console.log("[AUTH_DEBUG] Initial hardcoded origins:", origins);
 
-    console.log("[AUTH_DEBUG] VERCEL_URL:", process.env.VERCEL_URL);
     if (process.env.VERCEL_URL) {
       const vercelUrl = `https://${process.env.VERCEL_URL}`;
       origins.push(vercelUrl);
-      console.log(`[AUTH_DEBUG] Added Vercel URL: ${vercelUrl}`);
     }
 
     console.log("[AUTH_DEBUG] VERCEL_PROJECT_PRODUCTION_URL:", process.env.VERCEL_PROJECT_PRODUCTION_URL);
     if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
         const prodUrl = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
         origins.push(prodUrl);
-        console.log(`[AUTH_DEBUG] Added Production URL: ${prodUrl}`);
     }
 
     const finalOrigins = [...new Set(origins)];
-    console.log("[AUTH_DEBUG] Final unique origins to be returned:", finalOrigins);
     return finalOrigins;
 };
 
