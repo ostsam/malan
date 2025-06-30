@@ -129,6 +129,7 @@ export function useTextToSpeech({
     isProcessingAudioRef.current = true;
 
     const generation = generationRef.current;
+    let didProcessSomething = false;
 
     try {
       let textToProcess = "";
@@ -150,6 +151,7 @@ export function useTextToSpeech({
       }
 
       if (textToProcess.trim()) {
+        didProcessSomething = true;
         const sentences = textToProcess.match(/[^.!?]+[.!?]*/g) || [];
         for (const sentence of sentences) {
           if (generation !== generationRef.current) break;
@@ -179,8 +181,10 @@ export function useTextToSpeech({
       console.error("TTS: Error in processQueue:", error);
     } finally {
       isProcessingAudioRef.current = false;
-      if (generation === generationRef.current && textBufferRef.current && !isLoading) {
-        console.log("TTS: Re-triggering processQueue from finally for remaining text.");
+      // If we processed a chunk and there's more text in the buffer,
+      // schedule another run. This makes the processing "greedy".
+      if (didProcessSomething && generation === generationRef.current && textBufferRef.current.trim()) {
+        console.log("TTS: Re-triggering processQueue for remaining buffered text.");
         processQueue();
       }
     }
