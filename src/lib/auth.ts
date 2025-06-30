@@ -9,5 +9,3 @@ export const auth = betterAuth({
     },
 });
 //
-//
-//
