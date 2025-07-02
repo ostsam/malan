@@ -5,26 +5,46 @@ import { nextCookies } from "better-auth/next-js";
 import { user, session, account, verification } from "@/db/schema";
 
 const getBaseURL = () => {
+  // Prioritize custom domain over Vercel preview URL
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL;
+  }
+
+  // Use custom domain if available
+  if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
+    return `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
+  }
+
+  // Fallback to Vercel URL
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
   }
+
   return "http://localhost:3000";
 };
 
 const getTrustedOrigins = () => {
   const origins = [
     "http://localhost:3000",
-    "https://malan.vercel.app", // Manually added production URL
+    "https://malan.vercel.app", // Custom domain
+    "https://www.malan.vercel.app", // www version
   ];
 
-  if (process.env.VERCEL_URL) {
-    const vercelUrl = `https://${process.env.VERCEL_URL}`;
-    origins.push(vercelUrl);
+  // Add custom domain if set
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    origins.push(process.env.NEXT_PUBLIC_APP_URL);
   }
 
+  // Add production URL if set
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     const prodUrl = `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`;
     origins.push(prodUrl);
+  }
+
+  // Add Vercel URL if set
+  if (process.env.VERCEL_URL) {
+    const vercelUrl = `https://${process.env.VERCEL_URL}`;
+    origins.push(vercelUrl);
   }
 
   const finalOrigins = [...new Set(origins)];

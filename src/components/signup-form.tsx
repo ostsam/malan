@@ -109,6 +109,7 @@ export function SignUpForm({
               <div className="grid gap-4">
                 <div className="flex flex-col gap-4">
                   <Button
+                    type="button"
                     variant="outline"
                     className="w-full"
                     onClick={handleGitHubSignUp}
@@ -126,6 +127,7 @@ export function SignUpForm({
                     Sign up with Github
                   </Button>
                   <Button
+                    type="button"
                     variant="outline"
                     className="w-full"
                     onClick={handleGoogleSignUp}
