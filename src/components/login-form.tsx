@@ -52,16 +52,12 @@ export function LoginForm({
   const handleGitHubSignIn = async () => {
     setSocialLoading("github");
     try {
-      const result = await gitHubSignIn();
-      if (result.success) {
-        toast.success("Signed in with GitHub successfully");
-        router.push("/dashboard");
-      } else {
-        toast.error("GitHub sign in failed");
-      }
+      await gitHubSignIn();
+      // If we reach here, there was an error
+      toast.error("GitHub sign in failed");
+      setSocialLoading(null);
     } catch (error) {
       toast.error("GitHub sign in failed");
-    } finally {
       setSocialLoading(null);
     }
   };
@@ -69,16 +65,12 @@ export function LoginForm({
   const handleGoogleSignIn = async () => {
     setSocialLoading("google");
     try {
-      const result = await googleSignIn();
-      if (result.success) {
-        toast.success("Signed in with Google successfully");
-        router.push("/dashboard");
-      } else {
-        toast.error("Google sign in failed");
-      }
+      await googleSignIn();
+      // If we reach here, there was an error
+      toast.error("Google sign in failed");
+      setSocialLoading(null);
     } catch (error) {
       toast.error("Google sign in failed");
-    } finally {
       setSocialLoading(null);
     }
   };
