@@ -31,8 +31,14 @@ const getTrustedOrigins = () => {
   return finalOrigins;
 };
 
+// Log the base URL for debugging
+const baseURL = getBaseURL();
+console.log("Better Auth Base URL:", baseURL);
+console.log("GitHub Redirect URI:", `${baseURL}/api/auth/callback/github`);
+console.log("Google Redirect URI:", `${baseURL}/api/auth/callback/google`);
+
 export const auth = betterAuth({
-  baseURL: getBaseURL(),
+  baseURL: baseURL,
   trustedOrigins: getTrustedOrigins(),
   appName: "Malan",
   database: drizzleAdapter(db, {
