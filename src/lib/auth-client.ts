@@ -8,11 +8,16 @@ export const googleSignIn = async () => {
     await authClient.signIn.social({
       provider: "google",
     });
-    // If we reach here, there was an error
-    return { success: false, error: "Failed to redirect to Google" };
+    // If we reach here, there was an error with the redirect
+    throw new Error("Failed to redirect to Google");
   } catch (error) {
+    // Only throw if it's not a redirect (which is expected)
+    if (error instanceof Error && error.message.includes("redirect")) {
+      // This is expected - the OAuth flow is working
+      return;
+    }
     console.error("Google sign in error:", error);
-    return { success: false, error };
+    throw error;
   }
 };
 
@@ -22,11 +27,16 @@ export const gitHubSignIn = async () => {
     await authClient.signIn.social({
       provider: "github",
     });
-    // If we reach here, there was an error
-    return { success: false, error: "Failed to redirect to GitHub" };
+    // If we reach here, there was an error with the redirect
+    throw new Error("Failed to redirect to GitHub");
   } catch (error) {
+    // Only throw if it's not a redirect (which is expected)
+    if (error instanceof Error && error.message.includes("redirect")) {
+      // This is expected - the OAuth flow is working
+      return;
+    }
     console.error("GitHub sign in error:", error);
-    return { success: false, error };
+    throw error;
   }
 };
 

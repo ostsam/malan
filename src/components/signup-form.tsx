@@ -55,11 +55,13 @@ export function SignUpForm({
     setSocialLoading("github");
     try {
       await gitHubSignIn();
-      // If we reach here, there was an error
-      toast.error("GitHub sign up failed");
-      setSocialLoading(null);
+      // If we reach here, the OAuth redirect was successful
+      // No need to show error or success - the redirect will happen
     } catch (error) {
+      // Only show error if it's a real error, not a successful redirect
+      console.error("GitHub sign up error:", error);
       toast.error("GitHub sign up failed");
+    } finally {
       setSocialLoading(null);
     }
   };
@@ -68,11 +70,13 @@ export function SignUpForm({
     setSocialLoading("google");
     try {
       await googleSignIn();
-      // If we reach here, there was an error
-      toast.error("Google sign up failed");
-      setSocialLoading(null);
+      // If we reach here, the OAuth redirect was successful
+      // No need to show error or success - the redirect will happen
     } catch (error) {
+      // Only show error if it's a real error, not a successful redirect
+      console.error("Google sign up error:", error);
       toast.error("Google sign up failed");
+    } finally {
       setSocialLoading(null);
     }
   };

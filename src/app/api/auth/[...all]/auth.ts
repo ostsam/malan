@@ -56,6 +56,9 @@ const baseURL = getBaseURL();
 console.log("Better Auth Base URL:", baseURL);
 console.log("GitHub Redirect URI:", `${baseURL}/api/auth/callback/github`);
 console.log("Google Redirect URI:", `${baseURL}/api/auth/callback/google`);
+console.log("GitHub Client ID exists:", !!process.env.GITHUB_CLIENT_ID);
+console.log("GitHub Client Secret exists:", !!process.env.GITHUB_CLIENT_SECRET);
+console.log("Environment:", process.env.NODE_ENV);
 
 export const auth = betterAuth({
   baseURL: baseURL,
@@ -78,7 +81,7 @@ export const auth = betterAuth({
     github: {
       clientId: process.env.GITHUB_CLIENT_ID as string,
       clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
-      scopes: ["user:email"],
+      scopes: ["user:email", "read:user"],
     },
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
