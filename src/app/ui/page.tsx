@@ -1,22 +1,27 @@
 "use client";
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useChat, Message } from "@ai-sdk/react";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { useChatInteraction } from "../hooks/useChatInteraction";
 import { useInputControls } from "../hooks/useInputControls";
 import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
-import { EditIcon, Volume2 } from 'lucide-react';
-import { getChat, updateChatSlug, generateAndAssignSlug } from '../actions/chat';
+import { EditIcon, Volume2 } from "lucide-react";
+import {
+  getChat,
+  updateChatSlug,
+  generateAndAssignSlug,
+} from "../actions/chat";
 import { createIdGenerator } from "ai";
 import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
 import Switch from "react-switch";
 
 // Define a version of ChatData where dates are strings for serialization
-interface SerializableChatData extends Omit<ChatData, 'messages' | 'createdAt'> {
-  messages: Array<Omit<Message, 'createdAt'> & { createdAt?: string }>;
+interface SerializableChatData
+  extends Omit<ChatData, "messages" | "createdAt"> {
+  messages: Array<Omit<Message, "createdAt"> & { createdAt?: string }>;
   createdAt?: string;
 }
 
@@ -46,7 +51,7 @@ export default function Chat({
   chatObject?: SerializableChatData;
 }) {
   const router = useRouter();
-  const [slug, setSlug] = useState(initialSlug || 'New Chat');
+  const [slug, setSlug] = useState(initialSlug || "New Chat");
   const [uiError, setUiError] = useState<string | null>(null);
   const { messages: serializableMessages, settings } = chatObject;
 
@@ -79,29 +84,35 @@ export default function Chat({
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
 
-  const handleAppend = async (message: Omit<Message, 'id'>) => {
-    const content = typeof message.content === 'string' ? message.content.trim() : message.content;
+  const handleAppend = async (message: Omit<Message, "id">) => {
+    const content =
+      typeof message.content === "string"
+        ? message.content.trim()
+        : message.content;
 
     if (!content) {
       setUiError("Cannot send an empty message.");
       setTimeout(() => setUiError(null), 5000); // Hide after 5 seconds
       return;
     }
-    
+
     // The AI SDK's append function handles adding a unique ID.
     await append(message);
 
     // We only want to generate a slug for the very first user message in a new chat.
     // If the slug is the default, generate a new one from the first message.
-    if (slug === 'New Chat' && id) {
-      console.log('Attempting to generate slug for chat ID:', id);
+    if (slug === "New Chat" && id) {
+      console.log("Attempting to generate slug for chat ID:", id);
       try {
-        const newSlug = await generateAndAssignSlug(id, message.content as string);
-        console.log('Successfully generated new slug:', newSlug);
+        const newSlug = await generateAndAssignSlug(
+          id,
+          message.content as string
+        );
+        console.log("Successfully generated new slug:", newSlug);
         setSlug(newSlug);
         router.refresh();
       } catch (error) {
-        console.error('Failed to generate or assign slug:', error);
+        console.error("Failed to generate or assign slug:", error);
         // Optionally, show a toast notification to the user about the failure
       }
     }
@@ -123,7 +134,7 @@ export default function Chat({
   let ttsVoice: "nova" | "ash" = "nova";
   if (selectedLanguageData && settings.interlocutor) {
     if (settings.interlocutor === selectedLanguageData.interlocutors.male) {
-      ttsVoice = "ash"; 
+      ttsVoice = "ash";
     } else if (
       settings.interlocutor === selectedLanguageData.interlocutors.female
     ) {
@@ -163,9 +174,9 @@ export default function Chat({
     }
   }, [messages]);
 
-    useEffect(() => {
+  useEffect(() => {
     if (id) {
-      getChat(id).then(chat => {
+      getChat(id).then((chat) => {
         if (chat?.slug) {
           setSlug(chat.slug);
         }
@@ -212,38 +223,66 @@ export default function Chat({
 
   return (
     <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black overflow-hidden">
-      <div className="flex justify-center">
+      <style jsx>{`
+        @keyframes fadeIn {
+          0% {
+            opacity: 0;
+            transform: translateY(24px) scale(0.98);
+            filter: blur(4px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+          }
+        }
+        .fade-in {
+          animation: fadeIn 0.2s forwards;
+        }
+        .delay-1 {
+          animation-delay: 0.05s;
+        }
+        .delay-2 {
+          animation-delay: 0.1s;
+        }
+        .delay-3 {
+          animation-delay: 0.15s;
+        }
+      `}</style>
+
+      <div className="flex justify-center fade-in">
         <div className="text-center">
-        <a href="/">
-          <img
-            src="/logo.svg"
-            alt="Malan Logo"
-            className="h-16 w-auto inline-block"
-          />
-        </a>
-        <div className="relative mt-2 flex flex-col">
-          <h2 className="text-lg text-center font-semibold text-gray-700 dark:text-gray-300 break-words px-8">
-            {slug}
-          </h2> <br />
-          <button 
-            onClick={async () => {
-              const newSlug = prompt('Enter new chat title:', slug);
-              if (id && newSlug) {
-                const updatedSlug = await updateChatSlug(id, newSlug);
-                setSlug(updatedSlug);
-                router.refresh();
-              }
-            }}
-            className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
-          >
-            <EditIcon className="h-5 w-5" />
-          </button>
+          <a href="/">
+            <img
+              src="/logo.svg"
+              alt="Malan Logo"
+              className="h-16 w-auto inline-block hover:opacity-70"
+            />
+          </a>
+          <div className="relative mt-2 flex flex-col">
+            <h2 className="text-lg text-center font-semibold text-gray-700 dark:text-gray-300 break-words px-8">
+              {slug}
+            </h2>{" "}
+            <br />
+            <button
+              onClick={async () => {
+                const newSlug = prompt("Enter new chat title:", slug);
+                if (id && newSlug) {
+                  const updatedSlug = await updateChatSlug(id, newSlug);
+                  setSlug(updatedSlug);
+                  router.refresh();
+                }
+              }}
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
+            >
+              <EditIcon className="h-5 w-5" />
+            </button>
+          </div>
         </div>
-      </div>
       </div>
       <div
         ref={messagesContainerRef}
-        className={`flex-grow w-full pt-4 px-4 pb-4 ${
+        className={`flex-grow w-full pt-4 px-4 pb-4 fade-in delay-1 ${
           isOverflowing ? "overflow-y-auto" : "overflow-y-hidden"
         }`}
       >
@@ -272,9 +311,7 @@ export default function Chat({
                       : "ltr",
                   }}
                 >
-                  <div className="pb-5">
-                    {renderMessageContent(m.content)}
-                  </div>
+                  <div className="pb-5">{renderMessageContent(m.content)}</div>
                   <button
                     onClick={() => {
                       const textToSpeak = renderMessageContent(m.content);
@@ -285,8 +322,9 @@ export default function Chat({
                         speak(textToSpeak);
                       }
                     }}
-                    className={`absolute bottom-1 ${m.role === "user" ? "left-1" : "right-1"
-                      } p-1 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200`}
+                    className={`absolute bottom-1 ${
+                      m.role === "user" ? "left-1" : "right-1"
+                    } p-1 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200`}
                     aria-label="Read message aloud"
                   >
                     <Volume2 className="h-4 w-4" />
@@ -316,11 +354,7 @@ export default function Chat({
         </div>
       </div>
 
-      {uiError && (
-        <div className={errorMessageStyling}>
-          {uiError}
-        </div>
-      )}
+      {uiError && <div className={errorMessageStyling}>{uiError}</div>}
       {recordingError && (
         <div className={errorMessageStyling}>
           Recording Error: {recordingError}
@@ -336,7 +370,7 @@ export default function Chat({
           Chat Error: {chatError.message}
         </div>
       )}
-      <div className="relative flex items-center justify-center bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800">
+      <div className="relative flex items-center justify-center bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800 fade-in delay-2">
         <div className="absolute left-1 flex flex-col items-center">
           <Switch
             id="push-to-talk-toggle"
@@ -357,8 +391,8 @@ export default function Chat({
                 ? "Hold Mic to Talk"
                 : "Tap Mic to Toggle"
               : pushToTalk
-              ? "Hold Shift+Z to Talk"
-              : "Toggle Shift+Z"}
+                ? "Hold Shift+Z to Talk"
+                : "Toggle Shift+Z"}
           </label>
         </div>
 

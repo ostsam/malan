@@ -21,7 +21,7 @@ export default async function Page({
     notFound();
   }
 
-    const serializableChatData = {
+  const serializableChatData = {
     ...chatData,
     createdAt: chatData.createdAt?.toISOString(),
     messages: chatData.messages.map((message) => ({

@@ -4,10 +4,12 @@ import { db } from "@/db";
 import { nextCookies } from "better-auth/next-js";
 import { user, session, account, verification } from "@/db/schema";
 
+const localhost = "http://localhost:3000";
+
 const getBaseURL = () => {
-  // Prioritize custom domain over Vercel preview URL
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL;
+  // Use server-side environment variable for production URL
+  if (process.env.APP_URL) {
+    return process.env.APP_URL;
   }
 
   // Use custom domain if available
@@ -18,6 +20,9 @@ const getBaseURL = () => {
   // Fallback to Vercel URL
   if (process.env.VERCEL_URL) {
     return `https://${process.env.VERCEL_URL}`;
+  }
+  if (localhost) {
+    return localhost;
   }
 
   return "http://localhost:3000";
@@ -31,8 +36,8 @@ const getTrustedOrigins = () => {
   ];
 
   // Add custom domain if set
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    origins.push(process.env.NEXT_PUBLIC_APP_URL);
+  if (process.env.APP_URL) {
+    origins.push(process.env.APP_URL);
   }
 
   // Add production URL if set
