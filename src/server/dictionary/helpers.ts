@@ -124,36 +124,6 @@ export async function fetchOpenAiDefinition({
   return [];
 }
 
-/** Translate existing Definition array to target language via OpenAI */
-export async function translateDefinitions(
-  defs: Definition[],
-  targetLang: string
-): Promise<Definition[]> {
-  if (!targetLang) return defs;
-  try {
-    const openai = getOpenAIClient();
-    const prompt = `Translate ONLY the \"sense\" values of the following JSON array into ${targetLang}. Do NOT change the \"pos\" field. Do NOT translate any text inside the \"examples\" arrays. Return strictly the translated JSON.`;
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-nano",
-      temperature: 0.2,
-      messages: [
-        { role: "user", content: prompt },
-        { role: "user", content: JSON.stringify(defs) },
-      ],
-    });
-
-    const content = response.choices[0]?.message?.content?.trim();
-    if (!content) return defs;
-    const jsonString = content.replace(/^```json[\s\n]*|```$/g, "");
-    const data = JSON.parse(jsonString);
-    if (Array.isArray(data)) return data as Definition[];
-  } catch (err) {
-    console.error("Definition translation failed", err);
-  }
-  return defs;
-}
-
 /** Very small helper to strip HTML tags and basic entities from a string */
 export function stripHtml(raw: string): string {
   if (!raw) return "";
