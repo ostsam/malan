@@ -1,10 +1,6 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 // A simple text chunker that splits text by sentences.
 const chunkText = (text: string): string[] => {
   // This regex splits text by sentences, respecting CJK and English punctuation.
@@ -22,6 +18,11 @@ export async function POST(req: NextRequest) {
     if (!text) {
       return new NextResponse("Text is required", { status: 400 });
     }
+
+    // Initialize OpenAI client lazily at runtime to avoid env issues during build
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY!,
+    });
 
     const textChunks = chunkText(text);
     const audioBuffers: Buffer[] = [];

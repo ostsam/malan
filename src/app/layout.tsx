@@ -2,7 +2,6 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { Inter } from "next/font/google";
 import LazyToaster from "@/components/LazyToaster";
-import { interfaceColor } from "@/lib/theme";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
