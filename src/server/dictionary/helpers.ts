@@ -1,10 +1,12 @@
 import type { Definition, FetchDefinitionParams } from "./types";
 import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
+import { openai } from "@ai-sdk/openai";
 
 // Centralised Gemini model accessor. Defaults to the public flash model but can
 // be overridden via env (e.g. GEMINI_MODEL_ID=gemini-2.5-flash-preview-04-17)
-const geminiModelId = process.env.GEMINI_MODEL_ID || "gemini-2.5-flash";
+const geminiModelId =
+  process.env.GEMINI_MODEL_ID || "gemini-2.5-flash-lite-preview-06-17";
 
 function getGeminiModel() {
   return google(geminiModelId);
@@ -13,6 +15,25 @@ function getGeminiModel() {
 async function runGeminiPrompt(prompt: string, temperature: number = 0.2) {
   const { text } = await generateText({
     model: getGeminiModel(),
+    prompt,
+    temperature,
+  });
+  return text.trim();
+}
+
+// ---------------------------------------------------------------------------
+//                      OpenAI (GPT) model helpers
+// ---------------------------------------------------------------------------
+
+const openaiModelId = process.env.OPENAI_MODEL_ID || "gpt-3.5-turbo";
+
+function getOpenAiModel() {
+  return openai(openaiModelId);
+}
+
+async function runOpenAiPrompt(prompt: string, temperature: number = 0.2) {
+  const { text } = await generateText({
+    model: getOpenAiModel(),
     prompt,
     temperature,
   });
@@ -75,17 +96,23 @@ export function parseWiktionary(json: any, filterLang?: string): Definition[] {
 /* -------------------------------------------------------------------------- */
 
 /**
- * Fetch a concise dictionary definition using OpenAI when Wiktionary has none.
+ * Fetch a concise dictionary definition using Google Gemini. Used as default provider.
  * The model is prompted to return STRICT JSON that matches Definition[] shape.
  */
-export async function fetchOpenAiDefinition({
+export async function fetchGeminiDefinition({
   word,
   lang,
   targetLang,
 }: FetchDefinitionParams): Promise<Definition[]> {
   try {
     const target = targetLang && targetLang !== lang ? targetLang : lang;
-    const prompt = `Return a concise dictionary definition for the ${lang} word \"${word}\" as STRICT JSON. Requirements:\n1. The array (max 3) items must have keys: pos, sense, examples (array max 2).\n2. The \"sense\" field text MUST be written in ${target}.\n3. The \"examples\" MUST remain in ${lang}.\n4. Keep the \"pos\" value in English.`;
+    const prompt = `Return a concise dictionary definition for the ${lang} word \"${word}\" as STRICT JSON.
+    \nRules:
+    1. The response MUST be a JSON array (no code fences) of up to 3 objects, each with keys: pos, sense, examples (max 2).
+    2. Only include MORE THAN ONE object when the word genuinely has multiple distinct meanings. If there is a single meaning, the array must contain exactly ONE object.
+    3. The \"sense\" text must be written entirely in ${target}. Do NOT include any English or other-language glosses, parentheses, or abbreviations.
+    4. The example sentences MUST remain in ${lang}.
+    5. The \"pos\" value stays in English (e.g. \"verb\", \"noun\").`;
 
     const content = await runGeminiPrompt(prompt, 0.2);
     if (!content) return [];
@@ -103,17 +130,19 @@ export async function fetchOpenAiDefinition({
     }
 
     if (Array.isArray(data)) {
-      return data
-        .filter(
+      const processed = postProcessDefinitions(
+        data.filter(
           (d) =>
             typeof d.pos === "string" &&
             typeof d.sense === "string" &&
             Array.isArray(d.examples)
-        )
-        .slice(0, 3) as Definition[];
+        ) as Definition[],
+        word
+      );
+      return processed.slice(0, 3);
     }
   } catch (err) {
-    console.error("OpenAI definition fetch failed", err);
+    console.error("Gemini definition fetch failed", err);
   }
   return [];
 }
@@ -211,4 +240,96 @@ export async function fillMissingExamples(
     console.error("Failed to generate example sentences", err);
   }
   return defs;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                     Fallback: Fetch definition via OpenAI                  */
+/* -------------------------------------------------------------------------- */
+
+export async function fetchOpenAiDefinition({
+  word,
+  lang,
+  targetLang,
+}: FetchDefinitionParams): Promise<Definition[]> {
+  try {
+    const target = targetLang && targetLang !== lang ? targetLang : lang;
+    const prompt = `Return a concise dictionary definition for the ${lang} word \"${word}\" as STRICT JSON. Requirements:\n1. The array (max 3) items must have keys: pos, sense, examples (array max 2).\n2. The \"sense\" field text MUST be written in ${target}.\n3. The \"examples\" MUST remain in ${lang}.\n4. Keep the \"pos\" value in English.`;
+
+    const content = await runOpenAiPrompt(prompt, 0.2);
+    if (!content) return [];
+
+    const fenceClean = content.replace(/```[a-z]*[\s\n]*([\s\S]*?)```/i, "$1");
+    const jsonMatch = fenceClean.match(/\[\s*{[\s\S]*?}\s*]/);
+    const jsonString = jsonMatch ? jsonMatch[0] : fenceClean;
+
+    let data: any;
+    try {
+      data = JSON.parse(jsonString);
+    } catch {
+      return [];
+    }
+
+    if (Array.isArray(data)) {
+      return data
+        .filter(
+          (d) =>
+            typeof d.pos === "string" &&
+            typeof d.sense === "string" &&
+            Array.isArray(d.examples)
+        )
+        .slice(0, 3) as Definition[];
+    }
+  } catch (err) {
+    console.error("OpenAI definition fetch failed", err);
+  }
+  return [];
+}
+
+/* -------------------------------------------------------------------------- */
+/*               Local post-processing: dedupe senses & clean examples        */
+/* -------------------------------------------------------------------------- */
+
+function normalise(str: string): string {
+  return str
+    .normalize("NFD")
+    .replace(/[^\p{L}\s]+/gu, "")
+    .toLowerCase()
+    .trim();
+}
+
+function dedupe(defs: Definition[]): Definition[] {
+  const seen = new Set<string>();
+  return defs.filter((d) => {
+    const key = normalise(d.sense).slice(0, 80);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function cleanExamples(defs: Definition[], word: string): Definition[] {
+  const re = new RegExp(`\\b${word}\\b`, "i");
+  return defs.map((d) => {
+    const ex = (d.examples || []).filter((e) => re.test(e));
+    return { ...d, examples: ex.slice(0, 2) };
+  });
+}
+
+function collapseIfSame(defs: Definition[]): Definition[] {
+  if (defs.length <= 1) return defs;
+  const firstStem = normalise(defs[0].sense).split(" ").slice(0, 4).join(" ");
+  const allSame = defs.every(
+    (d) => normalise(d.sense).split(" ").slice(0, 4).join(" ") === firstStem
+  );
+  return allSame ? [defs[0]] : defs;
+}
+
+function postProcessDefinitions(
+  defs: Definition[],
+  word: string
+): Definition[] {
+  let out = dedupe(defs);
+  out = collapseIfSame(out);
+  out = cleanExamples(out, word);
+  return out;
 }

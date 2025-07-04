@@ -132,7 +132,7 @@ export const definitions = pgTable(
     wordId: integer("word_id")
       .references(() => words.id, { onDelete: "cascade" })
       .notNull(),
-    pos: varchar("pos", { length: 32 }).notNull(),
+    pos: varchar("pos", { length: 128 }).notNull(),
     sense: text("sense").notNull(),
     examples: jsonb("examples")
       .notNull()

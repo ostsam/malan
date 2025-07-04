@@ -148,9 +148,6 @@ export default function Menu() {
               interlocutor={interlocutor}
               onInterlocutorSelect={setInterlocutor}
             />
-
-            <hr className="border-t border-slate-200 fade-in delay-3" />
-
             {/* --------------------- start button ---------------------- */}
             <button
               onClick={handleStartLearning}

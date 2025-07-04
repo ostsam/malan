@@ -42,6 +42,7 @@ export function Word({
   const [useTarget, setUseTarget] = useState(false);
   const [useGPT, setUseGPT] = useState(false);
   const [hasWiki, setHasWiki] = useState<boolean>(false);
+  const [source, setSource] = useState<string | null>(null);
 
   /* ------------------------------- State ------------------------------ */
   const [open, setOpen] = useState(false);
@@ -77,6 +78,7 @@ export function Word({
     try {
       const resp = await promise;
       setData(resp);
+      setSource(resp.source);
       if (resp.source === "wiktionary") setHasWiki(true);
       return resp;
     } finally {
@@ -163,7 +165,13 @@ export function Word({
               <option value="gpt">GPT</option>
             </select>
           ) : (
-            <span className="text-[10px] opacity-60">via GPT</span>
+            <span className="text-[10px] opacity-60">
+              {source === "db"
+                ? "via DB"
+                : source === "google"
+                  ? "via Gemini"
+                  : "via GPT"}
+            </span>
           )}
         </div>
         {/* Back button */}

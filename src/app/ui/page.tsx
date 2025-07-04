@@ -146,7 +146,7 @@ export default function Chat({
     "fixed bottom-40 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg z-10";
 
   return (
-    <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black overflow-hidden font-inter">
+    <div className="flex flex-col w-full max-w-xl mx-auto h-screen text-lg bg-white dark:bg-black overflow-hidden font-inter">
       <style jsx>{`
         @keyframes fadeIn {
           0% {
