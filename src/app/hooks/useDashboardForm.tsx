@@ -79,6 +79,35 @@ export function useDashboardForm(): {
         selectedLevel: selectedLevel?.value ?? null,
         interlocutor: interlocutor ?? null,
       });
+
+      // Optimistic ghost row into sidebar cache
+      try {
+        let sessionJson: string | null = null;
+        for (const k in window.sessionStorage) {
+          if (k.startsWith("chatHistory:")) {
+            sessionJson = window.sessionStorage.getItem(k);
+            break;
+          }
+        }
+        if (sessionJson) {
+          const payload = JSON.parse(sessionJson);
+          const ghost = {
+            chatId,
+            slug: "New chat…",
+            selectedLanguageLabel: selectedLanguage?.label ?? "",
+            selectedLanguage: selectedLanguage?.value,
+            nativeLanguage: nativeLanguage?.value,
+            lastMessageAt: new Date().toISOString(),
+            isPinned: false,
+          };
+          payload.data = [ghost, ...payload.data];
+          const key = Object.keys(window.sessionStorage).find((k) =>
+            k.startsWith("chatHistory:")
+          )!;
+          window.sessionStorage.setItem(key, JSON.stringify(payload));
+        }
+      } catch {}
+
       router.push(`/chat/${chatId}`);
     } catch (err) {
       console.error("Failed to create chat:", err);

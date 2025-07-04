@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/lib/auth-client";
 import type { Chat } from "@/components/app-sidebar";
 
 interface CachedPayload {
   data: Chat[];
   cachedAt: number;
+  etag?: string;
 }
 
 const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -32,26 +33,45 @@ export function useCachedChatHistory() {
 
   const [history, setHistory] = useState<Chat[]>(readCache());
   const [loading, setLoading] = useState<boolean>(history.length === 0);
+  const isFetching = useRef(false);
 
   const refresh = async () => {
     if (!userId) return;
+    if (isFetching.current) return;
+    isFetching.current = true;
     setLoading(true);
     try {
-      const res = await fetch("/api/history", { credentials: "include" });
+      const headers: HeadersInit = {};
+      const currentEtag = cacheKey
+        ? JSON.parse(sessionStorage.getItem(cacheKey) || "null")?.etag
+        : undefined;
+      if (currentEtag) headers["If-None-Match"] = currentEtag;
+
+      const res = await fetch("/api/history", {
+        credentials: "include",
+        headers,
+      });
+      if (res.status === 304) {
+        setLoading(false);
+        return;
+      }
       if (res.ok) {
         const json = await res.json();
         const sessions: Chat[] = json.sessions ?? [];
+        const etag = res.headers.get("etag") || undefined;
         setHistory(sessions);
         if (cacheKey) {
           const payload: CachedPayload = {
             data: sessions,
             cachedAt: Date.now(),
+            etag,
           };
           sessionStorage.setItem(cacheKey, JSON.stringify(payload));
         }
       }
     } finally {
       setLoading(false);
+      isFetching.current = false;
     }
   };
 

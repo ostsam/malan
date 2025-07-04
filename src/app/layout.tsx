@@ -2,6 +2,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { Inter } from "next/font/google";
 import LazyToaster from "@/components/LazyToaster";
+import { PageTransition } from "@/components/PageTransition";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -27,6 +28,11 @@ export default function RootLayout({
             to { opacity:1; transform: translateY(0);} 
           }
         `}</style>
+        {/* Performance hints for critical third-party domains */}
+        <link rel="dns-prefetch" href="https://api.openai.com" />
+        <link rel="preconnect" href="https://api.openai.com" crossOrigin="" />
+        <link rel="dns-prefetch" href="https://neon.com" />
+        <link rel="preconnect" href="https://neon.com" crossOrigin="" />
       </head>
       <body className="font-sans relative overflow-hidden min-h-screen bg-white">
         {/* Vivid animated conic gradient */}
@@ -76,7 +82,8 @@ export default function RootLayout({
           }}
         />
 
-        {children}
+        {/* Page transition wrapper */}
+        <PageTransition>{children}</PageTransition>
         <Analytics />
         <LazyToaster />
       </body>

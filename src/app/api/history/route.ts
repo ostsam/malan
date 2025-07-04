@@ -21,6 +21,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ifNoneMatch = request.headers.get("if-none-match");
+
   // Delete user sessions that have no messages.
   const chatsWithMessagesSubquery = db
     .selectDistinct({ chatId: messagesTable.chatId })
@@ -62,19 +64,43 @@ export async function GET(request: NextRequest) {
     .where(eq(userSession.userId, a.user.id))
     .orderBy(desc(userSession.isPinned), desc(latestMessages.lastMessageAt));
 
-  return NextResponse.json({
-    sessions: sessions.map((session) => {
-      const { settings, ...rest } = session;
-      const userSettings: UserSessionSettings = settings as UserSessionSettings;
-      return {
-        ...rest,
-        interlocutor: userSettings.interlocutor,
-        selectedLevel: userSettings.selectedLevel,
-        nativeLanguage: userSettings.nativeLanguage,
-        selectedLanguage: userSettings.selectedLanguage,
-        nativeLanguageLabel: userSettings.nativeLanguageLabel,
-        selectedLanguageLabel: userSettings.selectedLanguageLabel,
-      };
-    }),
-  });
+  // Determine ETag based on last update timestamp
+  const lastUpdated =
+    sessions[0]?.lastMessageAt ?? sessions[0]?.createdAt ?? "0";
+  const etag = `W/\"${lastUpdated}\"`;
+
+  if (ifNoneMatch && ifNoneMatch === etag) {
+    return new NextResponse(null, {
+      status: 304,
+      headers: {
+        ETag: etag,
+        "Cache-Control": "private, max-age=0, must-revalidate",
+      },
+    });
+  }
+
+  return NextResponse.json(
+    {
+      sessions: sessions.map((session) => {
+        const { settings, ...rest } = session;
+        const userSettings: UserSessionSettings =
+          settings as UserSessionSettings;
+        return {
+          ...rest,
+          interlocutor: userSettings.interlocutor,
+          selectedLevel: userSettings.selectedLevel,
+          nativeLanguage: userSettings.nativeLanguage,
+          selectedLanguage: userSettings.selectedLanguage,
+          nativeLanguageLabel: userSettings.nativeLanguageLabel,
+          selectedLanguageLabel: userSettings.selectedLanguageLabel,
+        };
+      }),
+    },
+    {
+      headers: {
+        ETag: etag,
+        "Cache-Control": "private, max-age=0, must-revalidate",
+      },
+    }
+  );
 }
