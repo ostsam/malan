@@ -218,7 +218,7 @@ export default function Chat({
             <img
               src="/logo.svg"
               alt="Malan Logo"
-              className="h-16 w-auto inline-block hover:opacity-70"
+              className="h-12 w-auto inline-block hover:opacity-70"
             />
           </a>
           <div className="relative mt-2 flex flex-col">

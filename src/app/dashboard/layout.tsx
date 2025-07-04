@@ -23,7 +23,7 @@ export default function DashboardLayout({
   return (
     <div className="flex">
       <SidebarProvider>
-        <AppSidebar />
+        {!isPending && session?.user && <AppSidebar />}
         <div className="flex-1">
           {isPending || !session?.user ? (
             <div className="flex items-center justify-center h-screen">

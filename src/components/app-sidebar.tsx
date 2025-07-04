@@ -23,6 +23,7 @@ import { LogoutButton } from "./logout";
 import { GroupedChatList } from "./grouped-chat-list";
 import { interfaceColor } from "@/lib/theme";
 import { languageLearningData } from "@/app/dashboard/menu-data/languageLearningData";
+import { useCachedChatHistory } from "@/app/hooks/useCachedChatHistory";
 
 export interface Chat {
   chatId: string;
@@ -57,32 +58,27 @@ export default function AppSidebar({
   initialChatHistory?: Chat[];
 }) {
   const router = useRouter();
+  const {
+    history: cachedHistory,
+    loading,
+    refresh: refreshHistory,
+    persist: persistHistory,
+  } = useCachedChatHistory();
+
   const [chatHistory, setChatHistory] = useState<Chat[]>(
-    initialChatHistory ?? []
+    initialChatHistory ?? cachedHistory
   );
-  const [loading, setLoading] = useState(initialChatHistory ? false : true);
 
-  const fetchChatHistory = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/history", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setChatHistory(data.sessions || []);
-      } else {
-        setChatHistory([]);
-      }
-    } catch (e) {
-      console.error("Failed to fetch chat history:", e);
-      setChatHistory([]);
-    }
-    setLoading(false);
-  };
-
+  // Mount animation flag
+  const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
-    if (initialChatHistory) return; // Skip fetch if data already provided by server
-    fetchChatHistory();
-  }, [initialChatHistory]);
+    setIsMounted(true);
+  }, []);
+
+  // Sync state when cache updates
+  useEffect(() => {
+    setChatHistory(cachedHistory);
+  }, [cachedHistory]);
 
   const handleTogglePin = async (chatId: string, isPinned: boolean) => {
     const originalChatHistory = [...chatHistory];
@@ -94,6 +90,10 @@ export default function AppSidebar({
 
     try {
       await togglePinStatus(chatId);
+      persistHistory(updatedChatHistory);
+      setTimeout(() => {
+        refreshHistory();
+      }, 1500);
     } catch (error) {
       console.error("Failed to toggle pin status:", error);
       setChatHistory(originalChatHistory);
@@ -113,6 +113,8 @@ export default function AppSidebar({
 
       try {
         await updateChatSlug(chatId, newSlug);
+        persistHistory(updatedChatHistory);
+        setTimeout(() => refreshHistory(), 1500);
       } catch (error) {
         console.error("Failed to update slug:", error);
         setChatHistory(originalChatHistory);
@@ -132,6 +134,8 @@ export default function AppSidebar({
 
       try {
         await deleteChat(chatId);
+        persistHistory(updatedChatHistory);
+        setTimeout(() => refreshHistory(), 1500);
       } catch (error) {
         console.error("Failed to delete chat:", error);
         setChatHistory(originalChatHistory);
@@ -251,12 +255,31 @@ export default function AppSidebar({
 
   return (
     <>
+      <style jsx global>{`
+        @keyframes fadeInSidebar {
+          0% {
+            opacity: 0;
+            transform: translateY(24px) scale(0.98);
+            filter: blur(4px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            filter: blur(0);
+          }
+        }
+        .fade-in-sidebar {
+          animation: fadeInSidebar 0.25s ease-out forwards;
+        }
+      `}</style>
       <SidebarTrigger />
       <Sidebar side="left" collapsible="offcanvas" className="group">
-        <SidebarContent className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50">
+        <SidebarContent
+          className={`fade-in-sidebar bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50`}
+        >
           <SidebarGroup>
             <SidebarGroupContent className="p-1">
-              {loading ? (
+              {loading && chatHistory.length === 0 ? (
                 <div className="p-1 text-sm text-center text-slate-500">
                   Loading history...
                 </div>

@@ -74,7 +74,7 @@ export default function Menu() {
       {/* --------------------------- logo --------------------------- */}
       <header className="flex flex-col items-center mb-3 fade-in">
         <a href="/" className="hover:opacity-70">
-          <img src="/logo.svg" alt="Malan Logo" className="h-16 w-auto" />
+          <img src="/logo.svg" alt="Malan Logo" className="h-12 w-auto" />
         </a>
       </header>
 
@@ -148,8 +148,6 @@ export default function Menu() {
               interlocutor={interlocutor}
               onInterlocutorSelect={setInterlocutor}
             />
-
-            <hr className="border-t border-slate-200 fade-in delay-3" />
 
             {/* --------------------- start button ---------------------- */}
             <button
