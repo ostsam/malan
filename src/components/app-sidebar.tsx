@@ -24,6 +24,8 @@ import { GroupedChatList } from "./grouped-chat-list";
 import { interfaceColor } from "@/lib/theme";
 import { languageLearningData } from "@/app/dashboard/menu-data/languageLearningData";
 import { useCachedChatHistory } from "@/app/hooks/useCachedChatHistory";
+import { MobileSidebar } from "@/components/MobileSidebar";
+import { useIsMobile } from "@/app/hooks/useMobile";
 
 export interface Chat {
   chatId: string;
@@ -58,6 +60,7 @@ export default function AppSidebar({
   initialChatHistory?: Chat[];
 }) {
   const router = useRouter();
+  const isMobile = useIsMobile();
   const {
     history: cachedHistory,
     loading,
@@ -253,72 +256,94 @@ export default function AppSidebar({
     </ul>
   );
 
-  return (
-    <>
-      <style jsx global>{`
-        @keyframes fadeInSidebar {
-          0% {
-            opacity: 0;
-            transform: translateY(24px) scale(0.98);
-            filter: blur(4px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            filter: blur(0);
-          }
-        }
-        .fade-in-sidebar {
-          animation: fadeInSidebar 0.25s ease-out forwards;
-        }
-      `}</style>
-      <SidebarTrigger />
-      <Sidebar side="left" collapsible="offcanvas" className="group">
-        <SidebarContent
-          className={`fade-in-sidebar bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50`}
-        >
-          <SidebarGroup>
-            <SidebarGroupContent className="p-1">
-              {loading && chatHistory.length === 0 ? (
-                <div className="p-1 text-sm text-center text-slate-500">
-                  Loading history...
-                </div>
-              ) : chatHistory.length > 0 ? (
-                <>
-                  {pinnedChats.length > 0 && (
-                    <div className="mb-2">
-                      <SidebarGroupLabel
-                        className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 px-1"
-                        style={{ color: interfaceColor }}
-                      >
-                        Bookmarked
-                      </SidebarGroupLabel>
-                      {renderChatList(pinnedChats)}
-                    </div>
-                  )}
-                  <div>
-                    <GroupedChatList
-                      chats={recentChats}
-                      onTogglePin={handleTogglePin}
-                      onUpdateSlug={handleUpdateSlug}
-                      onDeleteChat={handleDeleteChat}
-                    />
-                  </div>
-                </>
-              ) : (
-                <div className="p-1 text-sm text-center text-slate-500">
-                  No chat history.
+  /* ------------------ pane content --------------- */
+  function PaneContent() {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="flex-1 overflow-y-auto">{InnerContent()}</div>
+        <SidebarFooter className="border-t border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-xl">
+          <LogoutButton />
+        </SidebarFooter>
+      </div>
+    );
+  }
+
+  function InnerContent() {
+    return (
+      <SidebarGroup>
+        <SidebarGroupContent className="p-1">
+          {loading && chatHistory.length === 0 ? (
+            <div className="p-1 text-sm text-center text-slate-500">
+              Loading history...
+            </div>
+          ) : chatHistory.length > 0 ? (
+            <>
+              {pinnedChats.length > 0 && (
+                <div className="mb-2">
+                  <SidebarGroupLabel
+                    className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1 px-1"
+                    style={{ color: interfaceColor }}
+                  >
+                    Bookmarked
+                  </SidebarGroupLabel>
+                  {renderChatList(pinnedChats)}
                 </div>
               )}
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarFooter className="border-t border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-xl">
-          <div>
-            <LogoutButton />
-          </div>
-        </SidebarFooter>
-      </Sidebar>
-    </>
-  );
+              <div>
+                <GroupedChatList
+                  chats={recentChats}
+                  onTogglePin={handleTogglePin}
+                  onUpdateSlug={handleUpdateSlug}
+                  onDeleteChat={handleDeleteChat}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="p-1 text-sm text-center text-slate-500">
+              No chat history.
+            </div>
+          )}
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  }
+
+  /* ------------------ Desktop / Tablet ------------------ */
+  function renderDesktop() {
+    return (
+      <>
+        <style jsx global>{`
+          @keyframes fadeInSidebar {
+            0% {
+              opacity: 0;
+              transform: translateY(24px) scale(0.98);
+              filter: blur(4px);
+            }
+            100% {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+              filter: blur(0);
+            }
+          }
+          .fade-in-sidebar {
+            animation: fadeInSidebar 0.25s ease-out forwards;
+          }
+        `}</style>
+        <SidebarTrigger onClick={() => {}} />
+        <Sidebar side="left" collapsible="offcanvas" className="group">
+          <SidebarContent
+            className={`fade-in-sidebar bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50`}
+          >
+            {PaneContent()}
+          </SidebarContent>
+        </Sidebar>
+      </>
+    );
+  }
+
+  if (isMobile) {
+    return <MobileSidebar>{PaneContent()}</MobileSidebar>;
+  }
+
+  return renderDesktop();
 }
