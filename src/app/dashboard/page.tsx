@@ -74,7 +74,7 @@ export default function Menu() {
       {/* --------------------------- logo --------------------------- */}
       <header className="flex flex-col items-center mb-3 fade-in">
         <a href="/" className="hover:opacity-70">
-          <img src="/logo.svg" alt="Malan Logo" className="h-16 w-auto" />
+          <img src="/logo.svg" alt="Malan Logo" className="h-12 w-auto" />
         </a>
       </header>
 

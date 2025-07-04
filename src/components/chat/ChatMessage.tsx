@@ -3,6 +3,7 @@ import { Volume2 } from "lucide-react";
 import { useRTL } from "@/app/hooks/useRTL";
 import React from "react";
 import { interfaceColor } from "@/app/layout";
+import { Word } from "./Word";
 
 interface ChatMessageProps {
   message: Message;
@@ -23,14 +24,39 @@ function ChatMessageBase({
   });
 
   const isUser = message.role === "user";
-  const messageContent = renderMessageContent(message.content);
+  const rawContent = renderMessageContent(message.content);
+
+  const langCode = settings?.selectedLanguage || "en";
+
+  const tokenize = (text: string) => {
+    // Updated regex to include Unicode categories for combining marks (Mn), spacing marks (Mc), and enclosing marks (Me)
+    const parts = text.match(
+      /([\p{L}\p{Mn}\p{Mc}\p{Me}'']+|\s+|[^\p{L}\p{Mn}\p{Mc}\p{Me}\s]+)/gu
+    ) || [text];
+    return parts.map((token, idx) => {
+      // Updated word test to include diacritical marks
+      const isWord = /^[\p{L}\p{Mn}\p{Mc}\p{Me}'']+$/u.test(token);
+      if (isWord) {
+        return (
+          <Word
+            key={idx}
+            initialWord={token}
+            lang={langCode}
+            targetLang={settings?.nativeLanguage || null}
+            isUser={isUser}
+          />
+        );
+      }
+      return <React.Fragment key={idx}>{token}</React.Fragment>;
+    });
+  };
+
+  const messageContent =
+    typeof rawContent === "string" ? tokenize(rawContent) : rawContent;
 
   const handleSpeak = () => {
-    if (
-      typeof messageContent === "string" &&
-      messageContent.trim().length > 0
-    ) {
-      onSpeak(messageContent);
+    if (typeof rawContent === "string" && rawContent.trim().length > 0) {
+      onSpeak(rawContent);
     }
   };
 
