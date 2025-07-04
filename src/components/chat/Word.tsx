@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils";
 import type { Definition } from "@/server/dictionary/types";
 import { interfaceColor } from "@/lib/theme";
 import Switch from "react-switch";
+import { Star, StarOff } from "lucide-react";
+import { useWordSaved } from "@/hooks/useWordlist";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -51,6 +53,8 @@ export function Word({
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const [wordStack, setWordStack] = useState<string[]>([]);
   const [currentWord, setCurrentWord] = useState<string>(initialWord);
+
+  const { saved, toggle } = useWordSaved(currentWord, lang);
 
   const computeKey = () =>
     `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}:$${useGPT ? "gpt" : "wiki"}`;
@@ -130,10 +134,70 @@ export function Word({
       return <p className="text-sm text-center">No definition found.</p>;
     if (!data) return null;
 
+    const providerPill = (
+      <span
+        className={cn(
+          "text-[10px] px-2 py-0.5 rounded-full font-semibold",
+          source === "db"
+            ? "bg-gray-100 text-gray-600"
+            : source === "google"
+              ? "bg-indigo-100 text-indigo-600"
+              : "bg-emerald-100 text-emerald-600"
+        )}
+      >
+        {source === "db" ? "DB" : source === "google" ? "Gemini" : "GPT"}
+      </span>
+    );
+
     return (
-      <div className="relative space-y-2 max-w-xs pb-10 text-center">
+      <div className="flex flex-col h-full w-full justify-center">
+        {/* Header bar */}
+        <div
+          className="relative px-3 py-1.5 rounded-t-md flex items-center"
+          style={{ background: "#3C18D9", color: "#fff" }}
+        >
+          {/* Back / close */}
+          <button
+            className="text-xs underline z-10"
+            onClick={() => {
+              if (wordStack.length) {
+                const prev = wordStack[wordStack.length - 1];
+                setWordStack((s) => s.slice(0, -1));
+                setCurrentWord(prev);
+                setData(null);
+              } else {
+                setOpen(false);
+              }
+            }}
+          >
+            {wordStack.length ? "← back" : "×"}
+          </button>
+
+          {/* Center word */}
+          <span className="absolute inset-0 flex items-center justify-center text-med font-bold truncate">
+            {currentWord}
+          </span>
+
+          {/* Right actions */}
+          <div className="flex items-center gap-2 ml-auto z-10">
+            {providerPill}
+            <button
+              aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
+              onClick={toggle}
+              className="text-yellow-300"
+            >
+              {saved ? (
+                <Star fill="currentColor" size={16} />
+              ) : (
+                <StarOff size={16} />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Language toggle (Switch) */}
         {targetLang && targetLang !== lang && (
-          <div className="flex items-center justify-center gap-2 mb-2 text-xs font-bold select-none">
+          <div className="flex items-center justify-center gap-1 py-2 mt-1 text-xs font-bold select-none">
             <span style={{ opacity: !useTarget ? 1 : 0.5 }}>
               {lang.toUpperCase()}
             </span>
@@ -144,61 +208,25 @@ export function Word({
               checkedIcon={false}
               onColor={interfaceColor}
               offColor={interfaceColor}
-              height={16}
-              width={32}
-              handleDiameter={14}
+              height={14}
+              width={28}
+              handleDiameter={12}
             />
             <span style={{ opacity: useTarget ? 1 : 0.5 }}>
               {targetLang.toUpperCase()}
             </span>
           </div>
         )}
-        {/* Provider selector or GPT label */}
-        <div className="absolute bottom-1 right-1 flex items-center justify-center">
-          {hasWiki ? (
-            <select
-              value={useGPT ? "gpt" : "wiki"}
-              onChange={(e) => setUseGPT(e.target.value === "gpt")}
-              className="bg-white dark:bg-slate-800 border border-solid border-gray-300 dark:border-slate-600 text-xs rounded p-1 pr-5 focus:outline-none"
-            >
-              <option value="wiki">Wiki</option>
-              <option value="gpt">GPT</option>
-            </select>
-          ) : (
-            <span className="text-[10px] opacity-60">
-              {source === "db"
-                ? "via DB"
-                : source === "google"
-                  ? "via Gemini"
-                  : "via GPT"}
-            </span>
-          )}
-        </div>
-        {/* Back button */}
-        <button
-          className="absolute left-1 top-1 text-xs text-blue-600 dark:text-blue-400 underline"
-          onClick={() => {
-            if (wordStack.length) {
-              const prev = wordStack[wordStack.length - 1];
-              setWordStack((s) => s.slice(0, -1));
-              setCurrentWord(prev);
-              setData(null);
-            } else {
-              setOpen(false);
-            }
-          }}
-        >
-          {wordStack.length ? "← back" : "×"}
-        </button>
-        <div className="px-6">
+
+        {/* Definitions list */}
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 text-left text-med">
           {data.defs.map((d, i) => (
-            <div key={i} className="text-sm">
-              <p className="font-semibold">
-                {d.pos}:{" "}
-                <span className="font-normal">{tokenizeDef(d.sense)}</span>
+            <div key={i} className="">
+              <p className="font-semibold mb-1">
+                {d.pos}: {tokenizeDef(d.sense)}
               </p>
               {d.examples.length > 0 && (
-                <ul className="list-disc list-inside">
+                <ul className="list-disc list-inside space-y-0.5">
                   {d.examples.map((ex, j) => (
                     <li key={j} className="italic opacity-80">
                       {tokenizeDef(ex)}
@@ -232,7 +260,7 @@ export function Word({
               isUser
                 ? "hover:decoration-white hover:underline hover:decoration-2"
                 : "hover:decoration-[#170664] hover:underline hover:decoration-2",
-              "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+              "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
             )}
             onClick={() => {
               setWordStack((s) => [...s, currentWord]);
@@ -257,8 +285,8 @@ export function Word({
     isUser
       ? "hover:decoration-white hover:underline hover:decoration-2"
       : "hover:decoration-[#3C18D9] hover:underline hover:decoration-2",
-    // animated underline bar thicker
-    "after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+    // animated underline bar thicker; trigger on hover AND active (touch)
+    "after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
   );
 
   const animatedStyle = {

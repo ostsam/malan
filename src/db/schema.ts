@@ -163,6 +163,23 @@ export const translations = pgTable(
   })
 );
 
+export const wordlist = pgTable(
+  "wordlist",
+  {
+    id: serial("id").primaryKey(),
+    userId: text("user_id")
+      .references(() => user.id, { onDelete: "cascade" })
+      .notNull(),
+    wordId: integer("word_id")
+      .references(() => words.id, { onDelete: "cascade" })
+      .notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => ({
+    uniqueUserWord: { columns: [t.userId, t.wordId], unique: true },
+  })
+);
+
 export const schema = {
   user,
   session,
@@ -173,4 +190,5 @@ export const schema = {
   words,
   definitions,
   translations,
+  wordlist,
 };

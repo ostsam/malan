@@ -1,6 +1,6 @@
 "use client";
 
-import { Bookmark, EditIcon, TrashIcon } from "lucide-react";
+import { Bookmark, EditIcon, TrashIcon, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -291,7 +291,14 @@ export default function AppSidebar({
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter className="border-t border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-xl">
-          <div>
+          <div className="flex flex-col gap-1 p-1">
+            <Link
+              href="/wordlist"
+              className="flex items-center justify-center gap-2 px-1 py-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
+            >
+              <BookOpen className="h-4 w-4" />
+              <span>Wordlist</span>
+            </Link>
             <LogoutButton />
           </div>
         </SidebarFooter>
