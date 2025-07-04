@@ -97,6 +97,38 @@ export default function Chat({
       return;
     }
 
+    // Add optimistic ghost row to sidebar cache on first message
+    if (messages.length === 0 && id) {
+      try {
+        let sessionJson: string | null = null;
+        for (const k in window.sessionStorage) {
+          if (k.startsWith("chatHistory:")) {
+            sessionJson = window.sessionStorage.getItem(k);
+            break;
+          }
+        }
+        if (sessionJson) {
+          const payload = JSON.parse(sessionJson);
+          const ghost = {
+            chatId: id,
+            slug:
+              content.length > 50 ? content.substring(0, 50) + "…" : content,
+            selectedLanguageLabel:
+              chatObject?.settings?.selectedLanguageLabel ?? "",
+            selectedLanguage: chatObject?.settings?.selectedLanguage,
+            nativeLanguage: chatObject?.settings?.nativeLanguage,
+            lastMessageAt: new Date().toISOString(),
+            isPinned: false,
+          };
+          payload.data = [ghost, ...payload.data];
+          const key = Object.keys(window.sessionStorage).find((k) =>
+            k.startsWith("chatHistory:")
+          )!;
+          window.sessionStorage.setItem(key, JSON.stringify(payload));
+        }
+      } catch {}
+    }
+
     // The AI SDK's append function handles adding a unique ID.
     await append(message);
 
