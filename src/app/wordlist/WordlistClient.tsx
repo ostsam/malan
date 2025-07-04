@@ -140,7 +140,7 @@ function WordItem({
         className="w-full p-2 flex justify-between items-start gap-3 text-left"
       >
         <div className="min-w-0">
-          <p className="font-semibold truncate mb-2">{entry.word}</p>
+          <p className="font-semibold truncate mb-4">{entry.word}</p>
           <div className="space-y-3">
             {entry.defs.map((d, i) => (
               <div

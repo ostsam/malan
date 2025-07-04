@@ -13,8 +13,10 @@ import WordlistClient from "./WordlistClient";
 export const dynamic = "force-dynamic";
 
 export default async function WordlistPage({
+  params,
   searchParams,
 }: {
+  params: Record<string, string | string[]>;
   searchParams: { lang?: string };
 }) {
   const session = await auth.api.getSession({
