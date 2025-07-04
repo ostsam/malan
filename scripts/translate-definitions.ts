@@ -10,10 +10,8 @@ import { translateDefinitions } from "@/server/dictionary/helpers";
 /*                       Configuration (edit as needed)                       */
 /* -------------------------------------------------------------------------- */
 
-// Language of the existing dictionary words (e.g. "en")
-const SOURCE_LANG = process.env.SOURCE_LANG || "en";
-// One or more native languages to translate the senses into (comma-separated)
-const NATIVE_LANGS = (process.env.NATIVE_LANGS || "ru").split(/,\s*/);
+// Full set of languages present in the dictionary
+const LANGS = ["en", "es", "fr", "de", "it", "ja", "zh", "ko", "ru", "pt"];
 
 const BATCH_SIZE = 20; // number of definitions per LLM call
 const CONCURRENCY = 10; // parallel LLM calls / DB inserts
@@ -31,6 +29,7 @@ const limit = pLimit(CONCURRENCY);
 
 async function loadPendingDefinitionBatches(
   db: ReturnType<typeof drizzle>,
+  sourceLang: string,
   targetLang: string
 ) {
   // Pull definitions for SOURCE_LANG whose sense isn't yet translated into targetLang
@@ -45,7 +44,7 @@ async function loadPendingDefinitionBatches(
     .innerJoin(words, eq(definitions.wordId, words.id))
     .where(
       and(
-        eq(words.lang, SOURCE_LANG),
+        eq(words.lang, sourceLang),
         // not exists translation row
         sql`${definitions.id} NOT IN (SELECT definition_id FROM translations WHERE target_lang = ${targetLang})`
       )
@@ -73,9 +72,14 @@ async function loadPendingDefinitionBatches(
 
 async function translateInto(
   db: ReturnType<typeof drizzle>,
+  sourceLang: string,
   targetLang: string
 ) {
-  const batches = await loadPendingDefinitionBatches(db, targetLang);
+  const batches = await loadPendingDefinitionBatches(
+    db,
+    sourceLang,
+    targetLang
+  );
   if (batches.length === 0) {
     console.log(`✔️  Nothing to translate into ${targetLang}`);
     return;
@@ -129,8 +133,11 @@ async function translateInto(
   await pgClient.connect();
   const db = drizzle(pgClient);
 
-  for (const lang of NATIVE_LANGS) {
-    await translateInto(db, lang);
+  for (const source of LANGS) {
+    for (const target of LANGS) {
+      if (target === source) continue;
+      await translateInto(db, source, target);
+    }
   }
 
   await pgClient.end();
