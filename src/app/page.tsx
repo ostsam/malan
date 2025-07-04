@@ -14,7 +14,7 @@ export default async function Homepage() {
 
   return (
     <main className="flex h-dvh flex-col items-center justify-center bg-gray-50 p-4">
-      <div>
+      <div className="flex flex-col items-center justify-center mb-7">
         <img src="/logo.svg" alt="Logo" className="h-50 w-auto" />
       </div>
       <div className="text-center">
