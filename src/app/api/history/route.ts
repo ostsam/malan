@@ -13,13 +13,15 @@ interface UserSessionSettings {
   nativeLanguageLabel: string;
 }
 
-export const revalidate = 60;
+export const revalidate = 0; // No caching - always fresh
 
 export async function GET(request: NextRequest) {
   const a = await auth.api.getSession({ headers: request.headers });
   if (!a?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  console.log(`[API_HISTORY_ROUTE] GET /api/history for user: ${a.user.id}`);
 
   const ifNoneMatch = request.headers.get("if-none-match");
 

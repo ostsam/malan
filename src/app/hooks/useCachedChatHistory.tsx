@@ -34,12 +34,18 @@ export function useCachedChatHistory() {
   const [history, setHistory] = useState<Chat[]>(readCache());
   const [loading, setLoading] = useState<boolean>(history.length === 0);
   const isFetching = useRef(false);
+  const hasInitialized = useRef(false);
 
   const refresh = async () => {
     if (!userId) return;
     if (isFetching.current) return;
     isFetching.current = true;
     setLoading(true);
+
+    console.log(
+      `[CLIENT_HOOK:useCachedChatHistory] Fetching chat history for user: ${userId}`
+    );
+
     try {
       const headers: HeadersInit = {};
       const currentEtag = cacheKey
@@ -50,11 +56,15 @@ export function useCachedChatHistory() {
       const res = await fetch("/api/history", {
         credentials: "include",
         headers,
+        // Add a unique timestamp to prevent browser caching
+        cache: "no-store",
       });
+
       if (res.status === 304) {
         setLoading(false);
         return;
       }
+
       if (res.ok) {
         const json = await res.json();
         const sessions: Chat[] = json.sessions ?? [];
@@ -69,6 +79,8 @@ export function useCachedChatHistory() {
           sessionStorage.setItem(cacheKey, JSON.stringify(payload));
         }
       }
+    } catch (error) {
+      console.error("Failed to fetch chat history:", error);
     } finally {
       setLoading(false);
       isFetching.current = false;
@@ -86,20 +98,23 @@ export function useCachedChatHistory() {
   };
 
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || hasInitialized.current) return;
+    hasInitialized.current = true;
 
     // Re-read cache for this user (first time session becomes available)
     const cached = readCache();
     if (cached.length) {
       setHistory(cached);
       setLoading(false);
-    }
-
-    if (cached.length === 0) {
-      // Only fetch if cache empty
-      refresh();
+      // Only refresh in background if cache is stale (older than 5 minutes)
+      const cacheAge =
+        Date.now() -
+        (JSON.parse(sessionStorage.getItem(cacheKey!) || "{}").cachedAt || 0);
+      if (cacheAge > 5 * 60 * 1000) {
+        refresh();
+      }
     } else {
-      // Fetch in background without affecting loading state
+      // Only fetch if cache empty
       refresh();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

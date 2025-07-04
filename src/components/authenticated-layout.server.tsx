@@ -32,6 +32,7 @@ export default async function AuthenticatedLayout({
       const res = await fetch(`${protocol}://${host}/api/history`, {
         headers: { Cookie: cookieHeader },
         cache: "no-store", // always fresh for logged-in user
+        next: { revalidate: 0 }, // Ensure no caching
       });
 
       if (!res.ok) return [];

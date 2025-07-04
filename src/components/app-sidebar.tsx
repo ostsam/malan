@@ -180,7 +180,6 @@ export default function AppSidebar({
               href={`/chat/${chat.chatId}`}
               className="flex-grow overflow-hidden pr-1 min-w-0"
               prefetch={false}
-              onMouseEnter={() => router.prefetch(`/chat/${chat.chatId}`)}
             >
               <div
                 className="truncate font-medium text-sm text-slate-800 dark:text-slate-200"

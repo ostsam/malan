@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { userSession, messagesTable } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import OpenAI from "openai";
+import { deduplicateRequest } from "@/lib/request-deduplication";
 
 export interface ChatSettings {
   nativeLanguage: string | null;
@@ -30,20 +31,25 @@ export interface ChatMetadata {
   settings: ChatSettings;
 }
 
-export async function generateDescriptiveSlug(firstMessage: string, selectedLanguageLabel?: string): Promise<string> {
+export async function generateDescriptiveSlug(
+  firstMessage: string,
+  selectedLanguageLabel?: string
+): Promise<string> {
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const prompt = `Generate a sentence in ${selectedLanguageLabel} explaining the topic of this message: "${firstMessage}" in order to summarize this conversation. ONLY WRITE IN ${selectedLanguageLabel}!.`;
-  
+
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
-    messages: [{
-      role: "user",
-      content: prompt
-    }],
+    messages: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
     max_tokens: 8,
     temperature: 0.2,
   });
-  
+
   return response.choices[0].message.content?.trim() || "";
 }
 
@@ -56,13 +62,25 @@ export async function createChat(
 
   const slug = "New Chat";
 
+  const now = new Date();
+
   await db.insert(userSession).values({
     chatId: chatId,
     userId: userId,
     slug: slug,
     settings: JSON.stringify(finalSettings),
-    createdAt: new Date(),
+    createdAt: now,
   });
+
+  // Warm the in-memory cache so the very first loadChat hits memory, not the DB.
+  const warmChatData: ChatData = {
+    settings: finalSettings,
+    messages: [],
+    id: chatId,
+    slug,
+    createdAt: now,
+  };
+  chatCache.set(chatId, { data: warmChatData, timestamp: Date.now() });
 
   return chatId;
 }
@@ -85,40 +103,68 @@ export async function loadUserChatHistory(
     id: session.id,
     slug: session.slug,
     createdAt: session.createdAt ?? new Date(),
-    settings: parseChatSettings(session.settings as Partial<ChatSettings> | null),
+    settings: parseChatSettings(
+      session.settings as Partial<ChatSettings> | null
+    ),
   }));
 }
 
+// In-memory cache for chat data to prevent duplicate database calls
+const chatCache = new Map<string, { data: ChatData; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 export async function loadChat(id: string): Promise<ChatData> {
-  const sessionResult = await db
-    .select()
-    .from(userSession)
-    .where(eq(userSession.chatId, id))
-    .limit(1);
+  console.log(`[CHAT_STORE:loadChat] Loading chat with id: ${id}`);
+  return deduplicateRequest(`loadChat:${id}`, async () => {
+    // Check cache first
+    const cached = chatCache.get(id);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
 
-  if (sessionResult.length === 0) {
-    throw new Error(`Chat session with id ${id} not found.`);
-  }
+    const sessionResult = await db
+      .select()
+      .from(userSession)
+      .where(eq(userSession.chatId, id))
+      .limit(1);
 
-  const settings = parseChatSettings(sessionResult[0].settings as Partial<ChatSettings> | null);
-  const slug = sessionResult[0].slug;
+    if (sessionResult.length === 0) {
+      throw new Error(`Chat session with id ${id} not found.`);
+    }
 
-  const messageRecords = await db
-    .select()
-    .from(messagesTable)
-    .where(eq(messagesTable.chatId, id))
-    .orderBy(messagesTable.createdAt);
+    const settings = parseChatSettings(
+      sessionResult[0].settings as Partial<ChatSettings> | null
+    );
+    const slug = sessionResult[0].slug;
 
-  const messages: Message[] = messageRecords.map((record) => ({
-    id: record.messageId!,
-    chatId: record.chatId!,
-    role: record.role as Message["role"],
-    createdAt: record.createdAt || undefined,
-    content: record.content!,
-    parts: record.parts as any,
-  }));
+    const messageRecords = await db
+      .select()
+      .from(messagesTable)
+      .where(eq(messagesTable.chatId, id))
+      .orderBy(messagesTable.createdAt);
 
-  return { settings, messages, id, slug, createdAt: sessionResult[0].createdAt };
+    const messages: Message[] = messageRecords.map((record) => ({
+      id: record.messageId!,
+      chatId: record.chatId!,
+      role: record.role as Message["role"],
+      createdAt: record.createdAt || undefined,
+      content: record.content!,
+      parts: record.parts as any,
+    }));
+
+    const chatData = {
+      settings,
+      messages,
+      id,
+      slug,
+      createdAt: sessionResult[0].createdAt,
+    };
+
+    // Cache the result
+    chatCache.set(id, { data: chatData, timestamp: Date.now() });
+
+    return chatData;
+  });
 }
 
 export async function appendNewMessages({
@@ -145,8 +191,8 @@ export async function appendNewMessages({
       msg.createdAt instanceof Date
         ? msg.createdAt
         : msg.createdAt
-        ? new Date(msg.createdAt)
-        : new Date(),
+          ? new Date(msg.createdAt)
+          : new Date(),
     parts: msg.parts || [], // Ensure parts is an array, even if undefined in msg
     content:
       typeof msg.content === "string"
@@ -157,26 +203,36 @@ export async function appendNewMessages({
   // Insert only the new messages
   await db.insert(messagesTable).values(messagesToInsert);
 
+  // Invalidate cache for this chat since messages have changed
+  chatCache.delete(id);
+
   if (existingMessages.length === 0) {
     const firstUserMessage = newMessages.find((msg) => msg.role === "user");
     if (firstUserMessage) {
-      const sessionResult = await db.select({ settings: userSession.settings })
+      const sessionResult = await db
+        .select({ settings: userSession.settings })
         .from(userSession)
         .where(eq(userSession.chatId, id))
         .limit(1);
-      
+
       if (sessionResult.length === 0) return;
-      
-      const settings = parseChatSettings(sessionResult[0].settings as Partial<ChatSettings> | null);
-      
+
+      const settings = parseChatSettings(
+        sessionResult[0].settings as Partial<ChatSettings> | null
+      );
+
       const descriptiveSlug = await generateDescriptiveSlug(
         firstUserMessage.content as string,
         settings.selectedLanguageLabel ?? undefined
       );
-      
-      await db.update(userSession)
+
+      await db
+        .update(userSession)
         .set({ slug: descriptiveSlug })
         .where(eq(userSession.chatId, id));
+
+      // Invalidate cache since slug has changed
+      chatCache.delete(id);
     }
   }
 }
@@ -198,7 +254,7 @@ function parseChatSettings(
   if (typeof settings === "string") {
     try {
       const parsedJson = JSON.parse(settings);
-      if (typeof parsedJson === 'object' && parsedJson !== null) {
+      if (typeof parsedJson === "object" && parsedJson !== null) {
         parsed = parsedJson;
       }
     } catch {
