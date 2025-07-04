@@ -13,12 +13,15 @@ import WordlistClient from "./WordlistClient";
 export const dynamic = "force-dynamic";
 
 export default async function WordlistPage({
-  params,
+  params: _paramsPromise,
   searchParams,
 }: {
-  params: Record<string, string | string[]>;
+  params: Promise<Record<string, string>>;
   searchParams: { lang?: string };
 }) {
+  // Await params promise to satisfy streaming type requirements (unused)
+  await _paramsPromise;
+
   const session = await auth.api.getSession({
     headers: await headers(),
   });
