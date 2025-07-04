@@ -22,6 +22,7 @@ import {
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 
 import { z } from "zod";
 import { useRouter } from "next/navigation";
@@ -83,7 +84,7 @@ export function SignUpForm({
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <Card>
+      <Card className="py-4">
         <CardHeader className="text-center">
           <CardTitle className="text-xl">Create an account</CardTitle>
           <CardDescription>Sign up with your Google account</CardDescription>
@@ -185,8 +186,17 @@ export function SignUpForm({
             </form>
           </Form>
         </CardContent>
+        <div className="text-center text-sm pt-1 pb-0 text-slate-600 dark:text-slate-300">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="font-semibold underline hover:text-slate-900 dark:hover:text-white"
+          >
+            Sign in
+          </Link>
+        </div>
       </Card>
-      <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
+      <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4 mt-2">
         By clicking continue, you agree to our <a href="#">Terms of Service</a>{" "}
         and <a href="#">Privacy Policy</a>.
       </div>
