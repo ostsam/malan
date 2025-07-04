@@ -86,7 +86,7 @@ async function translateInto(
   }
 
   console.log(
-    `▶️  Translating into ${targetLang} – ${batches.length} batches…`
+    `▶️  Translating ${sourceLang} → ${targetLang} – ${batches.length} batches…`
   );
 
   const tasks: Promise<void>[] = [];
@@ -111,17 +111,20 @@ async function translateInto(
               .onConflictDoNothing();
           }
           console.log(
-            `✅  ${targetLang} batch ${batchIdx + 1}/${batches.length}`
+            `✅  ${sourceLang}→${targetLang} batch ${batchIdx + 1}/${batches.length}`
           );
         } catch (err) {
-          console.error(`❌  ${targetLang} batch ${batchIdx + 1} failed`, err);
+          console.error(
+            `❌  ${sourceLang}→${targetLang} batch ${batchIdx + 1} failed`,
+            err
+          );
         }
       })
     );
   });
 
   await Promise.all(tasks);
-  console.log(`🎉 Completed ${targetLang}`);
+  console.log(`🎉 Completed ${sourceLang} → ${targetLang}`);
 }
 
 /* -------------------------------------------------------------------------- */

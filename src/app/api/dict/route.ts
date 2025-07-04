@@ -55,33 +55,55 @@ export async function GET(req: NextRequest) {
   /* ---------------------------------------------------------------------- */
 
   async function getDefsFromDB(): Promise<Definition[]> {
-    const rows = await db
-      .select({
-        defId: defsTable.id,
-        pos: defsTable.pos,
-        sense:
-          sql`COALESCE(${transTable.translatedSense}, ${defsTable.sense})`.as(
-            "sense"
-          ),
-        examples: defsTable.examples,
-      })
-      .from(wordsTable)
-      .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
-      .leftJoin(
-        transTable,
-        and(
-          eq(transTable.definitionId, defsTable.id),
-          eq(transTable.targetLang, target ?? lang)
+    if (target && target !== lang) {
+      // Query with translation join when target language differs
+      const rows = await db
+        .select({
+          defId: defsTable.id,
+          pos: defsTable.pos,
+          sense:
+            sql`COALESCE(${transTable.translatedSense}, ${defsTable.sense})`.as(
+              "sense"
+            ),
+          examples: defsTable.examples,
+        })
+        .from(wordsTable)
+        .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
+        .leftJoin(
+          transTable,
+          and(
+            eq(transTable.definitionId, defsTable.id),
+            eq(transTable.targetLang, target)
+          )
         )
-      )
-      .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
-      .limit(3);
+        .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
+        .limit(3);
 
-    return rows.map((r) => ({
-      pos: r.pos,
-      sense: r.sense,
-      examples: r.examples,
-    })) as Definition[];
+      return rows.map((r) => ({
+        pos: r.pos,
+        sense: r.sense,
+        examples: r.examples,
+      })) as Definition[];
+    } else {
+      // Query without translation join when no target or target = source
+      const rows = await db
+        .select({
+          defId: defsTable.id,
+          pos: defsTable.pos,
+          sense: defsTable.sense,
+          examples: defsTable.examples,
+        })
+        .from(wordsTable)
+        .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
+        .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
+        .limit(3);
+
+      return rows.map((r) => ({
+        pos: r.pos,
+        sense: r.sense,
+        examples: r.examples,
+      })) as Definition[];
+    }
   }
 
   // Always attempt DB first unless explicitly bypassed

@@ -6,7 +6,7 @@ import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { useChatInteraction } from "../hooks/useChatInteraction";
 import { useInputControls } from "../hooks/useInputControls";
 import { type DotLottie } from "@lottiefiles/dotlottie-react";
-import { EditIcon, ArrowLeft } from "lucide-react";
+import { EditIcon, ArrowLeft, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { createIdGenerator } from "ai";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
@@ -195,25 +195,35 @@ export default function Chat({
       `}</style>
 
       <div className="relative flex justify-center fade-in">
-        {/* Return to dashboard */}
-        <Link
-          href="/dashboard"
-          aria-label="Back to Dashboard"
-          className="mt-2 ml-0.5 absolute left-4 top-4 flex items-center gap-2 px-2 py-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 rounded-md shadow text-slate-600 dark:text-slate-300 hover:text-white transition-colors duration-200"
-          style={{ backgroundColor: "rgba(23,6,100,0.05)" }}
-        >
-          <ArrowLeft
-            className="h-5 w-5 flex-shrink-0"
-            style={{ color: interfaceColor }}
-          />
-          <span
-            className="text-sm font-medium hidden sm:inline"
-            style={{ color: interfaceColor }}
+        {/* Header with navigation buttons */}
+        <div className="absolute top-4 left-0 right-0 flex justify-between items-center px-4">
+          {/* Return to dashboard */}
+          <Link
+            href="/dashboard"
+            aria-label="Back to Dashboard"
+            className="flex items-center gap-2 px-3 py-2 bg-[#3C18D9] text-white rounded-lg shadow-md hover:bg-[#2A0F9E] transition-colors duration-200"
           >
-            Dashboard
-          </span>
-        </Link>
-        <div className="text-center">
+            <ArrowLeft className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm font-medium hidden sm:inline">
+              Dashboard
+            </span>
+          </Link>
+
+          {/* Wordlist link */}
+          <Link
+            href={`/wordlist?lang=${settings?.selectedLanguage || "en"}`}
+            aria-label="View Wordlist"
+            className="flex items-center gap-2 px-3 py-2 bg-[#3C18D9] text-white rounded-lg shadow-md hover:bg-[#2A0F9E] transition-colors duration-200"
+          >
+            <BookOpen className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm font-medium hidden sm:inline">
+              Wordlist
+            </span>
+          </Link>
+        </div>
+
+        {/* Centered logo and title */}
+        <div className="text-center pt-16">
           <a href="/">
             <img
               src="/logo.svg"
@@ -228,8 +238,7 @@ export default function Chat({
               lang={languageCode}
             >
               {slug}
-            </h2>{" "}
-            <br />
+            </h2>
             <button
               onClick={async () => {
                 const newSlug = prompt("Enter new chat title:", slug);
@@ -237,19 +246,7 @@ export default function Chat({
                   await handleSlugUpdate(newSlug);
                 }
               }}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200"
-              style={
-                {
-                  color: "rgb(156 163 175)",
-                  "--hover-color": interfaceColor,
-                } as React.CSSProperties
-              }
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.color = interfaceColor)
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.color = "rgb(156 163 175)")
-              }
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3C18D9] transition-colors duration-200"
             >
               <EditIcon className="h-5 w-5" />
             </button>
