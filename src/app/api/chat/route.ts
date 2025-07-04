@@ -16,14 +16,9 @@ import { auth } from "@/app/api/auth/[...all]/auth";
 
 import { formatSystemPrompt } from "@/app/lib/prompt-templates";
 import { NextRequest } from "next/server";
-import OpenAI from "openai"; // Added for TTS
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
-
-const ttsOpenai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 export async function GET(req: NextRequest) {
   const session = await auth.api.getSession({
