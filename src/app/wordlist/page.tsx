@@ -29,6 +29,7 @@ export default async function WordlistPage({
       word: wordsTable.word,
       pos: defsTable.pos,
       sense: defsTable.sense,
+      examples: defsTable.examples,
     })
     .from(wordlist)
     .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))

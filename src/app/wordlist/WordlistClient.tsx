@@ -7,10 +7,22 @@ import { useWordSaved } from "@/hooks/useWordlist";
 import { interfaceColor } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 
-interface Item {
+interface RawItem {
   word: string;
   pos: string;
   sense: string;
+  examples: string[];
+}
+
+interface Definition {
+  pos: string;
+  sense: string;
+  examples: string[];
+}
+
+interface WordEntry {
+  word: string;
+  defs: Definition[];
 }
 
 interface SummaryItem {
@@ -26,12 +38,12 @@ export default function WordlistClient({
   summary,
 }: {
   initialLang: string;
-  initialItems: Item[];
+  initialItems: RawItem[];
   summary: SummaryItem[];
 }) {
   const [lang, setLang] = useState(initialLang);
 
-  const { data: itemsData, mutate } = useSWR<{ items: Item[] }>(
+  const { data: itemsData, mutate } = useSWR<{ items: RawItem[] }>(
     `/api/wordlist?lang=${lang}`,
     fetcher,
     {
@@ -40,7 +52,22 @@ export default function WordlistClient({
     }
   );
 
-  const items = itemsData?.items ?? [];
+  const rawItems = itemsData?.items ?? [];
+
+  // Group definitions per word
+  const map = new Map<string, Definition[]>();
+  for (const it of rawItems) {
+    if (!map.has(it.word)) map.set(it.word, []);
+    const list = map.get(it.word)!;
+    // deduplicate by pos + sense
+    if (!list.some((d) => d.pos === it.pos && d.sense === it.sense)) {
+      list.push({ pos: it.pos, sense: it.sense, examples: it.examples });
+    }
+  }
+  const items: WordEntry[] = Array.from(map.entries()).map(([word, defs]) => ({
+    word,
+    defs,
+  }));
 
   return (
     <div className="max-w-lg mx-auto p-4">
@@ -75,10 +102,10 @@ export default function WordlistClient({
         <p>No words saved yet for {lang.toUpperCase()}.</p>
       ) : (
         <ul className="space-y-3">
-          {items.map((it) => (
+          {items.map((entry) => (
             <WordItem
-              key={`${it.word}-${it.pos}`}
-              item={it}
+              key={entry.word}
+              entry={entry}
               lang={lang}
               onToggle={mutate}
             />
@@ -90,15 +117,16 @@ export default function WordlistClient({
 }
 
 function WordItem({
-  item,
+  entry,
   lang,
   onToggle,
 }: {
-  item: Item;
+  entry: WordEntry;
   lang: string;
   onToggle: () => void;
 }) {
-  const { saved, toggle } = useWordSaved(item.word, lang);
+  const { saved, toggle } = useWordSaved(entry.word, lang);
+  const [open, setOpen] = useState(false);
 
   const handleToggle = async () => {
     await toggle();
@@ -106,19 +134,56 @@ function WordItem({
   };
 
   return (
-    <li className="border p-2 rounded flex justify-between gap-3">
-      <div className="min-w-0">
-        <p className="font-semibold truncate">
-          {item.word} <span className="text-xs opacity-70">({item.pos})</span>
-        </p>
-        <p className="text-sm opacity-80 break-words">{item.sense}</p>
-      </div>
+    <li className="border rounded-xl shadow-sm bg-white/80 dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
       <button
-        onClick={handleToggle}
-        className="text-yellow-400 flex-shrink-0"
-        aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
+        onClick={() => setOpen((v) => !v)}
+        className="w-full p-2 flex justify-between items-start gap-3 text-left"
       >
-        {saved ? <Star fill="currentColor" size={20} /> : <StarOff size={20} />}
+        <div className="min-w-0">
+          <p className="font-semibold truncate mb-2">{entry.word}</p>
+          <div className="space-y-3">
+            {entry.defs.map((d, i) => (
+              <div
+                key={i}
+                className={cn(
+                  "text-sm break-words",
+                  i > 0 &&
+                    "pt-2 border-t border-slate-200 dark:border-slate-700"
+                )}
+              >
+                <div className="flex items-start gap-2">
+                  <span className="inline-block bg-[#3C18D9]/10 text-[#3C18D9] text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase">
+                    {d.pos}
+                  </span>
+                  <span>{d.sense}</span>
+                </div>
+                {open && d.examples.length > 0 && (
+                  <div className="mt-1 ml-6 space-y-1">
+                    {d.examples.map((ex, idx) => (
+                      <p key={idx} className="italic opacity-80 break-words">
+                        {ex}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggle();
+          }}
+          className="text-yellow-400 flex-shrink-0 mt-1"
+          aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
+        >
+          {saved ? (
+            <Star fill="currentColor" size={20} />
+          ) : (
+            <StarOff size={20} />
+          )}
+        </button>
       </button>
     </li>
   );
