@@ -50,11 +50,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: Request) {
   // Destructure new parameters for audio generation
-  const {
-    message: userMessage,
-    id: chatId,
-    voice,
-  } = await req.json();
+  const { message: userMessage, id: chatId, voice } = await req.json();
 
   const { settings, messages } = await loadChat(chatId);
 

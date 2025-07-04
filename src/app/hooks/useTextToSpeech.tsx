@@ -45,7 +45,7 @@ function getDisplayText(content: string): string {
     let i = valueStartIndex;
     while (i < content.length) {
       if (content[i] === '"') {
-        if (i > 0 && content[i - 1] === '\\') {
+        if (i > 0 && content[i - 1] === "\\") {
           i++;
           continue;
         }
@@ -96,7 +96,9 @@ export function useTextToSpeech({
 } {
   const [audioQueue, setAudioQueue] = useState<AudioQueueItem[]>([]);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [currentSpokenMessageId, setCurrentSpokenMessageId] = useState<string | null>(null);
+  const [currentSpokenMessageId, setCurrentSpokenMessageId] = useState<
+    string | null
+  >(null);
 
   const textBufferRef = useRef("");
   const processedContentRef = useRef("");
@@ -142,7 +144,11 @@ export function useTextToSpeech({
         const lastPeriod = buffer.lastIndexOf(". ");
         const lastQuestion = buffer.lastIndexOf("? ");
         const lastExclamation = buffer.lastIndexOf("! ");
-        const lastSentenceEnd = Math.max(lastPeriod, lastQuestion, lastExclamation);
+        const lastSentenceEnd = Math.max(
+          lastPeriod,
+          lastQuestion,
+          lastExclamation
+        );
 
         if (lastSentenceEnd !== -1) {
           textToProcess = buffer.substring(0, lastSentenceEnd + 1);
@@ -152,7 +158,8 @@ export function useTextToSpeech({
 
       if (textToProcess.trim()) {
         didProcessSomething = true;
-        const sentences = textToProcess.match(/[^.!?]+[.!?]*/g) || [];
+        const sentences =
+          textToProcess.match(/[^.!?؟،؛。！？：]+[.!?؟،؛。！？：]*/g) || [];
         for (const sentence of sentences) {
           if (generation !== generationRef.current) break;
           const trimmedSentence = sentence.trim();
@@ -165,8 +172,10 @@ export function useTextToSpeech({
               generationRef
             );
             if (audioUrl && generation === generationRef.current) {
-              const pauseAfterMs = 150; // Pause for natural cadence
-              console.log(`TTS: Queuing audio for '${trimmedSentence}', pause: ${pauseAfterMs}ms`);
+              const pauseAfterMs = 180; // Pause for natural cadence
+              console.log(
+                `TTS: Queuing audio for '${trimmedSentence}', pause: ${pauseAfterMs}ms`
+              );
               setAudioQueue((prev) => [
                 ...prev,
                 { url: audioUrl, textFragment: trimmedSentence, pauseAfterMs },
@@ -183,8 +192,14 @@ export function useTextToSpeech({
       isProcessingAudioRef.current = false;
       // If we processed a chunk and there's more text in the buffer,
       // schedule another run. This makes the processing "greedy".
-      if (didProcessSomething && generation === generationRef.current && textBufferRef.current.trim()) {
-        console.log("TTS: Re-triggering processQueue for remaining buffered text.");
+      if (
+        didProcessSomething &&
+        generation === generationRef.current &&
+        textBufferRef.current.trim()
+      ) {
+        console.log(
+          "TTS: Re-triggering processQueue for remaining buffered text."
+        );
         processQueue();
       }
     }
@@ -218,7 +233,11 @@ export function useTextToSpeech({
       };
 
       audio.play().catch((e) => {
-        console.error("Audio playback failed:", e, currentAudioItem.textFragment);
+        console.error(
+          "Audio playback failed:",
+          e,
+          currentAudioItem.textFragment
+        );
         cleanupAndProceed(currentAudioItem);
       });
       audio.onended = () => {
@@ -268,7 +287,11 @@ export function useTextToSpeech({
 
   // Effect to process remaining buffer when loading is finished
   useEffect(() => {
-    if (!isLoading && textBufferRef.current.trim() && !isProcessingAudioRef.current) {
+    if (
+      !isLoading &&
+      textBufferRef.current.trim() &&
+      !isProcessingAudioRef.current
+    ) {
       console.log("TTS: Loading finished, processing remaining buffer.");
       processQueue();
     }

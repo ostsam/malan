@@ -58,12 +58,6 @@ const getTrustedOrigins = () => {
 
 // Log the base URL for debugging
 const baseURL = getBaseURL();
-console.log("Better Auth Base URL:", baseURL);
-console.log("GitHub Redirect URI:", `${baseURL}/api/auth/callback/github`);
-console.log("Google Redirect URI:", `${baseURL}/api/auth/callback/google`);
-console.log("GitHub Client ID exists:", !!process.env.GITHUB_CLIENT_ID);
-console.log("GitHub Client Secret exists:", !!process.env.GITHUB_CLIENT_SECRET);
-console.log("Environment:", process.env.NODE_ENV);
 
 export const auth = betterAuth({
   baseURL: baseURL,

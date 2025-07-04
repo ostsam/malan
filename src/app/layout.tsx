@@ -1,9 +1,11 @@
 import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
-import { Toaster } from "sonner";
 import { Inter } from "next/font/google";
+import LazyToaster from "@/components/LazyToaster";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+
+export const interfaceColor = "#170664";
 
 export default function RootLayout({
   children,
@@ -38,7 +40,7 @@ export default function RootLayout({
             className="w-[1600px] h-[1600px] rounded-full blur-[160px] opacity-60 animate-[spin-slow_45s_linear_infinite]"
             style={{
               background:
-                "conic-gradient(from_180deg_at_50%_50%,rgba(13,139,255,0.85)_0%,rgba(27,152,255,0.75)_25%,rgba(87,181,255,0.65)_50%,rgba(152,214,255,0.6)_75%,rgba(13,139,255,0.85)_100%)",
+                "conic-gradient(from_180deg_at_50%_50%,rgba(23,6,100,0.85)_0%,rgba(35,12,120,0.75)_25%,rgba(55,20,140,0.65)_50%,rgba(75,30,160,0.6)_75%,rgba(23,6,100,0.85)_100%)",
             }}
           />
         </div>
@@ -49,7 +51,7 @@ export default function RootLayout({
             className="w-[650px] h-[650px] rounded-full blur-[90px] opacity-55 animate-[pulse-float_12s_ease-in-out_infinite]"
             style={{
               background:
-                "radial-gradient(circle at 30% 30%,rgba(13,139,255,0.85) 0%,rgba(13,139,255,0) 70%)",
+                "radial-gradient(circle at 30% 30%,rgba(23,6,100,0.85) 0%,rgba(23,6,100,0) 70%)",
             }}
           />
         </div>
@@ -60,7 +62,7 @@ export default function RootLayout({
             className="w-[600px] h-[600px] rounded-full blur-[90px] opacity-50 animate-[pulse-float_14s_ease-in-out_infinite]"
             style={{
               background:
-                "radial-gradient(circle at 70% 70%,rgba(87,181,255,0.75) 0%,rgba(87,181,255,0) 70%)",
+                "radial-gradient(circle at 70% 70%,rgba(55,20,140,0.75) 0%,rgba(55,20,140,0) 70%)",
               animationDelay: "2s",
             }}
           />
@@ -72,13 +74,13 @@ export default function RootLayout({
           className="fixed inset-0 -z-10 mix-blend-multiply opacity-[0.22]"
           style={{
             backgroundImage:
-              "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22%3E%3Crect width=%22160%22 height=%22160%22 fill=%22%23FFFFFF%22/%3E%3Ccircle cx=%2240%22 cy=%2240%22 r=%221.2%22 fill=%22%230d8bff%22 opacity=%22.1%22/%3E%3Ccircle cx=%2280%22 cy=%2280%22 r=%221.2%22 fill=%22%230d8bff%22 opacity=%22.1%22/%3E%3Ccircle cx=%22120%22 cy=%22120%22 r=%221.2%22 fill=%22%230d8bff%22 opacity=%22.1%22/%3E%3C/svg%3E')",
+              "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22%3E%3Crect width=%22160%22 height=%22160%22 fill=%22%23FFFFFF%22/%3E%3Ccircle cx=%2240%22 cy=%2240%22 r=%221.2%22 fill=%22%23170664%22 opacity=%22.1%22/%3E%3Ccircle cx=%2280%22 cy=%2280%22 r=%221.2%22 fill=%22%23170664%22 opacity=%22.1%22/%3E%3Ccircle cx=%22120%22 cy=%22120%22 r=%221.2%22 fill=%22%23170664%22 opacity=%22.1%22/%3E%3C/svg%3E')",
           }}
         />
 
         {children}
         <Analytics />
-        <Toaster />
+        <LazyToaster />
       </body>
     </html>
   );

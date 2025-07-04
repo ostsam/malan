@@ -12,7 +12,7 @@ const chunkText = (text: string): string[] => {
   if (sentences.length === 0 && text.length > 0) {
     return [text];
   }
-  return sentences.map(s => s.trim()).filter(s => s.length > 0);
+  return sentences.map((s) => s.trim()).filter((s) => s.length > 0);
 };
 
 export async function POST(req: NextRequest) {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
     for (const chunk of textChunks) {
       if (chunk.trim().length === 0) continue;
       const audioResponse = await openai.audio.speech.create({
-        model: "gpt-4o-mini-tts",
+        model: "tts-1",
         voice: voice || "nova",
         input: chunk,
         response_format: "opus",
@@ -40,7 +40,9 @@ export async function POST(req: NextRequest) {
 
     if (audioBuffers.length === 0) {
       // This can happen if the input text is only whitespace
-      return new NextResponse("No valid text to generate speech from", { status: 400 });
+      return new NextResponse("No valid text to generate speech from", {
+        status: 400,
+      });
     }
 
     const combinedBuffer = Buffer.concat(audioBuffers);
@@ -53,7 +55,14 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Error in TTS route:", error);
-    const errorMessage = error instanceof Error ? error.message : "An unknown error occurred";
-    return new NextResponse(JSON.stringify({ error: "Error generating speech", details: errorMessage }), { status: 500 });
+    const errorMessage =
+      error instanceof Error ? error.message : "An unknown error occurred";
+    return new NextResponse(
+      JSON.stringify({
+        error: "Error generating speech",
+        details: errorMessage,
+      }),
+      { status: 500 }
+    );
   }
 }

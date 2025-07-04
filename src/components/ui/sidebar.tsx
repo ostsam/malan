@@ -5,11 +5,12 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, VariantProps } from "class-variance-authority";
 import { PanelLeftIcon } from "lucide-react";
 
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/app/hooks/useMobile";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { interfaceColor } from "@/app/layout";
 import {
   Sheet,
   SheetContent,
@@ -329,7 +330,7 @@ function SidebarTrigger({
           "h-5 w-5 transition-transform duration-250",
           (isOpen || openMobile) && "rotate-180"
         )}
-        style={{ color: "#0d8bff" }}
+        style={{ color: interfaceColor }}
       />
       <span className="sr-only">
         {isOpen || openMobile ? "Close" : "Open"} Sidebar

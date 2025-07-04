@@ -16,20 +16,22 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isPending && !session?.user) {
-      router.push('/');
+      router.push("/");
     }
   }, [session, isPending, router]);
-
-  if (isPending || !session?.user) {
-    return null; // or a loading spinner
-  }
 
   return (
     <div className="flex">
       <SidebarProvider>
         <AppSidebar />
         <div className="flex-1">
-          {children}
+          {isPending || !session?.user ? (
+            <div className="flex items-center justify-center h-screen">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+          ) : (
+            children
+          )}
         </div>
       </SidebarProvider>
     </div>

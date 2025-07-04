@@ -13,6 +13,8 @@ interface UserSessionSettings {
   nativeLanguageLabel: string;
 }
 
+export const revalidate = 60;
+
 export async function GET(request: NextRequest) {
   const a = await auth.api.getSession({ headers: request.headers });
   if (!a?.user?.id) {
@@ -24,18 +26,22 @@ export async function GET(request: NextRequest) {
     .selectDistinct({ chatId: messagesTable.chatId })
     .from(messagesTable);
 
-  await db.delete(userSession).where(
-    and(
-      eq(userSession.userId, a.user.id),
-      notInArray(userSession.chatId, chatsWithMessagesSubquery)
-    )
-  );
+  await db
+    .delete(userSession)
+    .where(
+      and(
+        eq(userSession.userId, a.user.id),
+        notInArray(userSession.chatId, chatsWithMessagesSubquery)
+      )
+    );
 
   // Now, fetch the remaining sessions and sort them.
   const latestMessages = db
     .select({
       chatId: messagesTable.chatId,
-      lastMessageAt: sql<string>`MAX(${messagesTable.createdAt})`.as('lastMessageAt'),
+      lastMessageAt: sql<string>`MAX(${messagesTable.createdAt})`.as(
+        "lastMessageAt"
+      ),
     })
     .from(messagesTable)
     .groupBy(messagesTable.chatId)
@@ -57,7 +63,7 @@ export async function GET(request: NextRequest) {
     .orderBy(desc(userSession.isPinned), desc(latestMessages.lastMessageAt));
 
   return NextResponse.json({
-    sessions: sessions.map(session => {
+    sessions: sessions.map((session) => {
       const { settings, ...rest } = session;
       const userSettings: UserSessionSettings = settings as UserSessionSettings;
       return {
@@ -69,6 +75,6 @@ export async function GET(request: NextRequest) {
         nativeLanguageLabel: userSettings.nativeLanguageLabel,
         selectedLanguageLabel: userSettings.selectedLanguageLabel,
       };
-    })
+    }),
   });
 }

@@ -120,3 +120,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+@layer utilities {
+  .font-inter {
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+}

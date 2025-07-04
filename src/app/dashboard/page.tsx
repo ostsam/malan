@@ -1,9 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import { CustomPopover } from "./menu-components/CustomPopover";
 import type { PopoverItem } from "./menu-components/CustomPopover";
 import { nativeLanguageData } from "./menu-data/nativeLanguageData";
@@ -12,56 +9,37 @@ import {
   type LanguageOption,
 } from "./menu-data/languageLearningData";
 import { levelsData } from "./menu-data/levelsData";
-import { Loader2 } from "lucide-react";
-import { createChat } from "@/app/actions/chat";
+import { interfaceColor } from "@/app/layout";
+import { useDashboardForm } from "@/app/hooks/useDashboardForm";
+import { InterlocutorSelector } from "@/components/dashboard/InterlocutorSelector";
 
 export default function Menu() {
-  /* ----------------------- state + handlers (unchanged) -------------------- */
-  const [nativeLanguage, setNativeLanguage] = useState<PopoverItem | undefined>(
-    nativeLanguageData[0]
-  );
-  const [selectedLanguage, setSelectedLanguage] = useState<
-    LanguageOption | undefined
-  >(languageLearningData[0]);
-  const [selectedLevel, setSelectedLevel] = useState<PopoverItem | undefined>(
-    levelsData[0]
-  );
-  const [nativeLanguagePopoverOpen, setNativeLanguagePopoverOpen] =
-    useState(false);
-  const [languagePopoverOpen, setLanguagePopoverOpen] = useState(false);
-  const [levelPopoverOpen, setLevelPopoverOpen] = useState(false);
-  const [interlocutor, setInterlocutor] = useState<string | undefined>();
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
-
-  const isFormComplete =
-    !!nativeLanguage && !!selectedLanguage && !!selectedLevel && !!interlocutor;
-
-  const handleStartLearning = async () => {
-    if (!isFormComplete || isLoading) return;
-    setIsLoading(true);
-    try {
-      const chatId = await createChat({
-        nativeLanguage: nativeLanguage?.value ?? null,
-        nativeLanguageLabel: nativeLanguage?.label ?? null,
-        selectedLanguage: selectedLanguage?.value ?? null,
-        selectedLanguageLabel: selectedLanguage?.label ?? null,
-        selectedLevel: selectedLevel?.value ?? null,
-        interlocutor: interlocutor ?? null,
-      });
-      router.push(`/chat/${chatId}`);
-    } catch (err) {
-      console.error("Failed to create chat:", err);
-      setIsLoading(false);
-    }
-  };
+  const {
+    state: { nativeLanguage, selectedLanguage, selectedLevel, interlocutor },
+    actions: {
+      setNativeLanguage,
+      setSelectedLanguage,
+      setSelectedLevel,
+      setInterlocutor,
+      handleStartLearning,
+    },
+    isFormComplete,
+    isLoading,
+    popoverStates: {
+      nativeLanguagePopoverOpen,
+      languagePopoverOpen,
+      levelPopoverOpen,
+    },
+    setPopoverStates: {
+      setNativeLanguagePopoverOpen,
+      setLanguagePopoverOpen,
+      setLevelPopoverOpen,
+    },
+  } = useDashboardForm();
 
   /* ------------------------------ markup ---------------------------------- */
   return (
-    <div
-      className="text-slate-800 min-h-screen flex flex-col items-center justify-center p-4"
-
-    >
+    <div className="text-slate-800 min-h-screen flex flex-col items-center justify-center p-4">
       {/* ------------- global CSS, lives ONLY in this component ------------- */}
       <style jsx global>{`
         @keyframes fadeIn {
@@ -107,7 +85,7 @@ export default function Menu() {
             {/* title */}
             <h1
               className="text-center text-4xl sm:text-5xl font-semibold tracking-tight"
-              style={{ color: "#0d8bff" }}
+              style={{ color: interfaceColor }}
             >
               Malan
             </h1>
@@ -165,46 +143,11 @@ export default function Menu() {
             </section>
 
             {/* ---------------------- interlocutor --------------------- */}
-            <section className="p-3 rounded-xl bg-white border border-slate-200 space-y-4 fade-in delay-3">
-              <h2
-                className="text-center text-base sm:text-lg font-medium"
-                style={{ color: "#0d8bff" }}
-              >
-                Your Interlocutor
-              </h2>
-              {selectedLanguage && (
-                <div className="flex flex-wrap items-center justify-center gap-4">
-                  {Object.entries(selectedLanguage.interlocutors ?? {}).map(
-                    ([gender, name]) => (
-                      <button
-                        key={gender}
-                        aria-pressed={interlocutor === name}
-                        onClick={() => setInterlocutor(name)}
-                        className={cn(
-                          "group relative focus:outline-none focus-visible:ring-2 rounded-lg border transition-all cursor-pointer",
-                          interlocutor === name
-                            ? "border-[#0d8bff] bg-[rgba(13,139,255,0.08)] shadow-sm"
-                            : "border-slate-200 bg-white"
-                        )}
-                        style={{ minWidth: 90 }}
-                      >
-                        <span className="relative flex flex-col items-center px-4 py-2 rounded-lg">
-                          <span className="text-xs sm:text-sm text-slate-500 capitalize">
-                            {gender}
-                          </span>
-                          <span
-                            className="text-lg sm:text-xl font-semibold"
-                            style={{ color: "#0d8bff" }}
-                          >
-                            {name}
-                          </span>
-                        </span>
-                      </button>
-                    )
-                  )}
-                </div>
-              )}
-            </section>
+            <InterlocutorSelector
+              selectedLanguage={selectedLanguage}
+              interlocutor={interlocutor}
+              onInterlocutorSelect={setInterlocutor}
+            />
 
             <hr className="border-t border-slate-200 fade-in delay-3" />
 
@@ -213,20 +156,12 @@ export default function Menu() {
               onClick={handleStartLearning}
               disabled={!isFormComplete || isLoading}
               className={cn(
-                "w-full flex items-center justify-center gap-2 text-lg sm:text-xl font-semibold text-white py-3 rounded-xl shadow-md transition-colors fade-in delay-4 cursor-pointer active:bg-slate-500 active:text-white",
+                "w-full flex items-center justify-center gap-2 text-lg sm:text-xl font-semibold text-white py-3 rounded-xl shadow-md transition-colors fade-in delay-4",
                 isFormComplete && !isLoading
-                  ? "cursor-pointer"
+                  ? "cursor-pointer hover:bg-[#120b4a] active:bg-slate-500"
                   : "cursor-not-allowed opacity-60"
               )}
-              style={{ background: "#0d8bff" }}
-              onMouseOver={(e) =>
-                (e.currentTarget.style.background = "#0972d4")
-              }
-              onMouseOut={(e) => (e.currentTarget.style.background = "#0d8bff")}
-              onMouseDown={(e) =>
-                (e.currentTarget.style.background = "#64748b")
-              }
-              onMouseUp={(e) => (e.currentTarget.style.background = "#0972d4")}
+              style={{ backgroundColor: interfaceColor }}
             >
               {isLoading ? (
                 <>

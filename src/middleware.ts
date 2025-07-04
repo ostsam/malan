@@ -8,7 +8,12 @@ export async function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.startsWith("/dashboard")) {
     console.log("Checking session for /dashboard");
     const sessionCookie = getSessionCookie(request);
-    console.log("Session cookie found:", sessionCookie ? JSON.stringify(sessionCookie).substring(0, 100) + '...' : 'No session cookie');
+    console.log(
+      "Session cookie found:",
+      sessionCookie
+        ? JSON.stringify(sessionCookie).substring(0, 100) + "..."
+        : "No session cookie"
+    );
 
     if (!sessionCookie) {
       console.log("No session cookie, redirecting to /login");

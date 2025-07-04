@@ -1,22 +1,24 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useChat, Message } from "@ai-sdk/react";
 import { useTextToSpeech } from "../hooks/useTextToSpeech";
 import { useChatInteraction } from "../hooks/useChatInteraction";
 import { useInputControls } from "../hooks/useInputControls";
-import { DotLottieReact, type DotLottie } from "@lottiefiles/dotlottie-react";
-import { EditIcon, Volume2 } from "lucide-react";
-import {
-  getChat,
-  updateChatSlug,
-  generateAndAssignSlug,
-} from "../actions/chat";
+import { type DotLottie } from "@lottiefiles/dotlottie-react";
+import { EditIcon, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { createIdGenerator } from "ai";
-import { languageLearningData } from "../dashboard/menu-data/languageLearningData";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
-import Switch from "react-switch";
+import { interfaceColor } from "@/app/layout";
+import { useRTL } from "@/app/hooks/useRTL";
+import { useChatSlug } from "@/app/hooks/useChatSlug";
+import { useChatMessages } from "@/app/hooks/useChatMessages";
+import { useChatTTS } from "@/app/hooks/useChatTTS";
+import { useChatErrors } from "@/app/hooks/useChatErrors";
+import { ChatMessage } from "@/components/chat/ChatMessage";
+import { ChatControls } from "@/components/chat/ChatControls";
+import { Virtuoso } from "react-virtuoso";
 
 // Define a version of ChatData where dates are strings for serialization
 interface SerializableChatData
@@ -42,7 +44,6 @@ const defaultChatObject: SerializableChatData = {
 
 export default function Chat({
   slug: initialSlug,
-
   id,
   chatObject = defaultChatObject,
 }: {
@@ -50,10 +51,15 @@ export default function Chat({
   id?: string | undefined;
   chatObject?: SerializableChatData;
 }) {
-  const router = useRouter();
-  const [slug, setSlug] = useState(initialSlug || "New Chat");
-  const [uiError, setUiError] = useState<string | null>(null);
   const { messages: serializableMessages, settings } = chatObject;
+
+  // Initialize hooks
+  const { slug, handleSlugUpdate, generateSlugFromMessage } = useChatSlug(
+    initialSlug,
+    id
+  );
+  const { uiError, showError } = useChatErrors();
+  const { ttsVoice } = useChatTTS(settings);
 
   // Deserialize messages before passing them to the useChat hook
   const initialMessages: Message[] = serializableMessages.map((message) => ({
@@ -80,10 +86,6 @@ export default function Chat({
     },
   });
 
-  const dotLottiePlayerRef = useRef<DotLottie>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
-  const endOfMessagesRef = useRef<HTMLDivElement>(null);
-
   const handleAppend = async (message: Omit<Message, "id">) => {
     const content =
       typeof message.content === "string"
@@ -91,31 +93,15 @@ export default function Chat({
         : message.content;
 
     if (!content) {
-      setUiError("Cannot send an empty message.");
-      setTimeout(() => setUiError(null), 5000); // Hide after 5 seconds
+      showError("Cannot send an empty message.");
       return;
     }
 
     // The AI SDK's append function handles adding a unique ID.
     await append(message);
 
-    // We only want to generate a slug for the very first user message in a new chat.
-    // If the slug is the default, generate a new one from the first message.
-    if (slug === "New Chat" && id) {
-      console.log("Attempting to generate slug for chat ID:", id);
-      try {
-        const newSlug = await generateAndAssignSlug(
-          id,
-          message.content as string
-        );
-        console.log("Successfully generated new slug:", newSlug);
-        setSlug(newSlug);
-        router.refresh();
-      } catch (error) {
-        console.error("Failed to generate or assign slug:", error);
-        // Optionally, show a toast notification to the user about the failure
-      }
-    }
+    // Generate slug from the first message
+    await generateSlugFromMessage(message.content as string);
   };
 
   const {
@@ -126,21 +112,6 @@ export default function Chat({
     isTranscribing,
     transcriptionHookError,
   } = useChatInteraction({ append: handleAppend });
-
-  const selectedLanguageData = languageLearningData.find(
-    (lang) => lang.value === settings.selectedLanguage
-  );
-
-  let ttsVoice: "nova" | "ash" = "nova";
-  if (selectedLanguageData && settings.interlocutor) {
-    if (settings.interlocutor === selectedLanguageData.interlocutors.male) {
-      ttsVoice = "ash";
-    } else if (
-      settings.interlocutor === selectedLanguageData.interlocutors.female
-    ) {
-      ttsVoice = "nova";
-    }
-  }
 
   const { stopAudioPlayback, speak } = useTextToSpeech({
     messages,
@@ -164,65 +135,18 @@ export default function Chat({
     stopAudioPlayback,
   });
 
-  const [isOverflowing, setIsOverflowing] = useState(false);
+  const { rtlStyles, centerRTLStyles, languageCode } = useRTL({
+    selectedLanguage: settings?.selectedLanguage,
+    nativeLanguage: settings?.nativeLanguage,
+  });
 
-  useLayoutEffect(() => {
-    const container = messagesContainerRef.current;
-    if (container) {
-      const hasOverflow = container.scrollHeight > container.clientHeight;
-      setIsOverflowing(hasOverflow);
-    }
-  }, [messages]);
-
-  useEffect(() => {
-    if (id) {
-      getChat(id).then((chat) => {
-        if (chat?.slug) {
-          setSlug(chat.slug);
-        }
-      });
-    }
-  }, [id]);
-
-  useEffect(() => {
-    const player = dotLottiePlayerRef.current;
-    if (player) {
-      if (isRecording) {
-        player.play();
-      } else {
-        player.stop();
-      }
-    }
-  }, [isRecording]);
-
-  useEffect(() => {
-    if (endOfMessagesRef.current) {
-      endOfMessagesRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
-  const renderMessageContent = (content: Message["content"]) => {
-    if (typeof content === "string") {
-      try {
-        if (content.startsWith("[") && content.endsWith("]")) {
-          const parsed = JSON.parse(content);
-          if (Array.isArray(parsed) && parsed[0]?.type === "text") {
-            return parsed.map((p) => p.text).join("");
-          }
-        }
-      } catch (e) {
-        return content;
-      }
-    }
-    return content;
-  };
+  const { renderMessageContent } = useChatMessages(messages);
 
   const errorMessageStyling =
     "fixed bottom-40 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg z-10";
-  const micCaptionStyling = "text-md text-gray-600 dark:text-gray-400 mb-1";
 
   return (
-    <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black overflow-hidden">
+    <div className="flex flex-col w-full max-w-xl mx-auto h-screen bg-white dark:bg-black overflow-hidden font-inter">
       <style jsx>{`
         @keyframes fadeIn {
           0% {
@@ -248,9 +172,47 @@ export default function Chat({
         .delay-3 {
           animation-delay: 0.15s;
         }
+
+        /* Arabic and RTL language text sizing */
+        [dir="rtl"] {
+          font-size: 1.1em;
+          line-height: 1.6;
+        }
+
+        /* Specific Arabic script languages */
+        [lang="ar"],
+        [lang="fa"],
+        [lang="ur"] {
+          font-size: 1.15em;
+          line-height: 1.7;
+        }
+
+        /* Ensure RTL alignment for Hebrew */
+        [lang="he"] {
+          text-align: right !important;
+          direction: rtl !important;
+        }
       `}</style>
 
-      <div className="flex justify-center fade-in">
+      <div className="relative flex justify-center fade-in">
+        {/* Return to dashboard */}
+        <Link
+          href="/dashboard"
+          aria-label="Back to Dashboard"
+          className="mt-2 ml-0.5 absolute left-4 top-4 flex items-center gap-2 px-2 py-1 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 rounded-md shadow text-slate-600 dark:text-slate-300 hover:text-white transition-colors duration-200"
+          style={{ backgroundColor: "rgba(23,6,100,0.05)" }}
+        >
+          <ArrowLeft
+            className="h-5 w-5 flex-shrink-0"
+            style={{ color: interfaceColor }}
+          />
+          <span
+            className="text-sm font-medium hidden sm:inline"
+            style={{ color: interfaceColor }}
+          >
+            Dashboard
+          </span>
+        </Link>
         <div className="text-center">
           <a href="/">
             <img
@@ -260,98 +222,75 @@ export default function Chat({
             />
           </a>
           <div className="relative mt-2 flex flex-col">
-            <h2 className="text-lg text-center font-semibold text-gray-700 dark:text-gray-300 break-words px-8">
+            <h2
+              className="text-lg text-center font-semibold text-gray-700 dark:text-gray-300 break-words px-8"
+              style={centerRTLStyles}
+              lang={languageCode}
+            >
               {slug}
             </h2>{" "}
             <br />
             <button
               onClick={async () => {
                 const newSlug = prompt("Enter new chat title:", slug);
-                if (id && newSlug) {
-                  const updatedSlug = await updateChatSlug(id, newSlug);
-                  setSlug(updatedSlug);
-                  router.refresh();
+                if (newSlug) {
+                  await handleSlugUpdate(newSlug);
                 }
               }}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"
+              className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200"
+              style={
+                {
+                  color: "rgb(156 163 175)",
+                  "--hover-color": interfaceColor,
+                } as React.CSSProperties
+              }
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.color = interfaceColor)
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.color = "rgb(156 163 175)")
+              }
             >
               <EditIcon className="h-5 w-5" />
             </button>
           </div>
         </div>
       </div>
-      <div
-        ref={messagesContainerRef}
-        className={`flex-grow w-full pt-4 px-4 pb-4 fade-in delay-1 ${
-          isOverflowing ? "overflow-y-auto" : "overflow-y-hidden"
-        }`}
-      >
-        <div className="relative h-full">
-          {messages.length > 0 ? (
-            messages.map((m) => (
-              <div
+      <div className="flex-grow w-full pt-4 px-4 pb-4 fade-in delay-1 overflow-y-auto">
+        {messages.length > 0 ? (
+          <Virtuoso
+            data={messages}
+            followOutput="auto"
+            initialTopMostItemIndex={messages.length - 1}
+            increaseViewportBy={{ top: 400, bottom: 800 }}
+            itemContent={(index: number, m: Message) => (
+              <ChatMessage
                 key={m.id}
-                className={`flex flex-col my-2 ${
-                  m.role === "user" ? "items-end" : "items-start"
-                }`}
-              >
-                <div
-                  className={`relative group max-w-[85%] rounded-2xl p-3 text-md break-words shadow-md whitespace-pre-wrap ${
-                    m.role === "user"
-                      ? "bg-sky-400 dark:bg-sky-900 text-white"
-                      : "bg-gray-200 dark:bg-gray-800"
-                  }`}
-                  style={{
-                    direction: languageLearningData.find(
-                      (lang) =>
-                        lang.label === settings?.selectedLanguage ||
-                        lang.value === settings?.nativeLanguage
-                    )?.rtl
-                      ? "rtl"
-                      : "ltr",
-                  }}
-                >
-                  <div className="pb-5">{renderMessageContent(m.content)}</div>
-                  <button
-                    onClick={() => {
-                      const textToSpeak = renderMessageContent(m.content);
-                      if (
-                        typeof textToSpeak === "string" &&
-                        textToSpeak.trim().length > 0
-                      ) {
-                        speak(textToSpeak);
-                      }
-                    }}
-                    className={`absolute bottom-1 ${
-                      m.role === "user" ? "left-1" : "right-1"
-                    } p-1 rounded-full text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-white opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200`}
-                    aria-label="Read message aloud"
-                  >
-                    <Volume2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="flex h-full flex-col justify-between py-8 text-center text-gray-600 dark:text-gray-400">
-              <div>
-                <p className="text-2xl">Instructions:</p>
-                <p className="text-l mt-3">
-                  Begin speaking {settings.selectedLanguageLabel}.{" "}
-                  {settings.interlocutor} will have you speaking fluidly about
-                  your day, your interests, or anything else you'd like in no
-                  time!
-                </p>
-              </div>
-              <div className="text-md pb-4">
-                <p>1. Press the button and speak to begin</p>
-                <p>2. Release it to end the transmission.</p>
-                <p>3. Await response from {settings.interlocutor}.</p>
-              </div>
+                message={m}
+                settings={settings}
+                onSpeak={speak}
+                renderMessageContent={renderMessageContent}
+              />
+            )}
+          />
+        ) : (
+          <div className="flex h-full flex-col justify-between py-8 text-center text-gray-600 dark:text-gray-400">
+            <div>
+              <p className="text-2xl">Instructions:</p>
+              <p className="text-l mt-3">
+                Begin speaking {settings.selectedLanguageLabel}.{" "}
+                {settings.interlocutor} will have you speaking fluidly about
+                your day, your interests, or anything else you'd like in no
+                time!
+              </p>
             </div>
-          )}
-          <div ref={endOfMessagesRef} />
-        </div>
+            <div className="text-md pb-4">
+              <p>1. Press the button and speak to begin</p>
+              <p>2. Release it to end the transmission.</p>
+              <p>3. Await response from {settings.interlocutor}.</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {uiError && <div className={errorMessageStyling}>{uiError}</div>}
@@ -370,69 +309,16 @@ export default function Chat({
           Chat Error: {chatError.message}
         </div>
       )}
-      <div className="relative flex items-center justify-center bg-white dark:bg-black border-t border-gray-300 dark:border-zinc-800 fade-in delay-2">
-        <div className="absolute left-1 flex flex-col items-center">
-          <Switch
-            id="push-to-talk-toggle"
-            checked={pushToTalk}
-            onChange={() => setPushToTalk(!pushToTalk)}
-            checkedIcon={false}
-            uncheckedIcon={false}
-            onColor="#2196F3"
-            height={20}
-            width={40}
-          />
-          <label
-            htmlFor="push-to-talk-toggle"
-            className="mt-1 text-xs text-center text-gray-900 dark:text-gray-300 w-24 whitespace-normal"
-          >
-            {isMobile
-              ? pushToTalk
-                ? "Hold Mic to Talk"
-                : "Tap Mic to Toggle"
-              : pushToTalk
-                ? "Hold Shift+Z to Talk"
-                : "Toggle Shift+Z"}
-          </label>
-        </div>
-
-        <div className="flex flex-col items-center justify-center">
-          <div
-            onMouseDown={handleMicInteractionStart}
-            onMouseUp={handleMicInteractionEnd}
-            onTouchStart={handleMicInteractionStart}
-            onTouchEnd={handleMicInteractionEnd}
-            onClick={handleMicClick}
-            role="button"
-            tabIndex={0}
-            aria-pressed={isRecording}
-            className={`${
-              isTranscribing || status === "submitted"
-                ? "opacity-50 cursor-not-allowed"
-                : "cursor-pointer"
-            }`}
-          >
-            <DotLottieReact
-              dotLottieRefCallback={(playerInstance) => {
-                dotLottiePlayerRef.current = playerInstance;
-              }}
-              src="/microphonebutton.json"
-              loop={true}
-              autoplay={false}
-              className={`w-25 h-25 pointer-events-none ${
-                isTranscribing || status === "submitted" ? "opacity-50" : ""
-              }`}
-            />
-          </div>
-          {status == "submitted" ? (
-            <p className={micCaptionStyling}>Processing Speech</p>
-          ) : isRecording ? (
-            <p className={micCaptionStyling}>Recording</p>
-          ) : (
-            <p className={micCaptionStyling}>Press to Record</p>
-          )}
-        </div>
-      </div>
+      <ChatControls
+        isRecording={isRecording}
+        isTranscribing={isTranscribing}
+        status={status}
+        pushToTalk={pushToTalk}
+        setPushToTalk={setPushToTalk}
+        startRecording={startRecording}
+        stopRecording={stopRecording}
+        stopAudioPlayback={stopAudioPlayback}
+      />
     </div>
   );
 }
