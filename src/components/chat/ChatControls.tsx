@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import Switch from "react-switch";
 import type { DotLottie } from "@lottiefiles/dotlottie-react";
 import { useInputControls } from "@/app/hooks/useInputControls";
-import { interfaceColor } from "@/app/layout";
+import { interfaceColor } from "@/lib/theme";
 
 // Dynamically import the player so it only loads in the browser.
 const DotLottieReact = dynamic(

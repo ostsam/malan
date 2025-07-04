@@ -9,7 +9,7 @@ import {
   type LanguageOption,
 } from "./menu-data/languageLearningData";
 import { levelsData } from "./menu-data/levelsData";
-import { interfaceColor } from "@/app/layout";
+import { interfaceColor } from "@/lib/theme";
 import { useDashboardForm } from "@/app/hooks/useDashboardForm";
 import { InterlocutorSelector } from "@/components/dashboard/InterlocutorSelector";
 
