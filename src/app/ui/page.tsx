@@ -194,9 +194,9 @@ export default function Chat({
         }
       `}</style>
 
-      <div className="relative flex justify-center fade-in">
-        {/* Header with navigation buttons */}
-        <div className="absolute top-4 left-0 right-0 flex justify-between items-center px-4">
+      <div className="relative flex flex-col items-center fade-in">
+        {/* Header with logo and navigation buttons */}
+        <div className="flex items-center justify-between w-full px-4 py-2">
           {/* Return to dashboard */}
           <Link
             href="/dashboard"
@@ -208,6 +208,15 @@ export default function Chat({
               Dashboard
             </span>
           </Link>
+
+          {/* Centered logo */}
+          <a href="/">
+            <img
+              src="/logo.svg"
+              alt="Malan Logo"
+              className="h-12 w-auto hover:opacity-70"
+            />
+          </a>
 
           {/* Wordlist link */}
           <Link
@@ -222,35 +231,26 @@ export default function Chat({
           </Link>
         </div>
 
-        {/* Centered logo and title */}
-        <div className="text-center pt-16">
-          <a href="/">
-            <img
-              src="/logo.svg"
-              alt="Malan Logo"
-              className="h-12 w-auto inline-block hover:opacity-70"
-            />
-          </a>
-          <div className="relative mt-2 flex flex-col">
-            <h2
-              className="text-lg text-center font-semibold text-gray-700 dark:text-gray-300 break-words px-8"
-              style={centerRTLStyles}
-              lang={languageCode}
-            >
-              {slug}
-            </h2>
-            <button
-              onClick={async () => {
-                const newSlug = prompt("Enter new chat title:", slug);
-                if (newSlug) {
-                  await handleSlugUpdate(newSlug);
-                }
-              }}
-              className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#3C18D9] transition-colors duration-200"
-            >
-              <EditIcon className="h-5 w-5" />
-            </button>
-          </div>
+        {/* Slug/title underneath */}
+        <div className="text-center px-4 mt-1">
+          <h2
+            className="text-lg font-semibold text-gray-700 dark:text-gray-300 break-words"
+            style={centerRTLStyles}
+            lang={languageCode}
+          >
+            {slug}
+          </h2>
+          <button
+            onClick={async () => {
+              const newSlug = prompt("Enter new chat title:", slug);
+              if (newSlug) {
+                await handleSlugUpdate(newSlug);
+              }
+            }}
+            className=" text-gray-400 hover:text-[#3C18D9] transition-colors duration-200"
+          >
+            <EditIcon className="h-5 w-5" />
+          </button>
         </div>
       </div>
       <div className="flex-grow w-full pt-4 px-4 pb-4 fade-in delay-1 overflow-y-auto">
