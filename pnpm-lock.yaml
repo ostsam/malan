@@ -144,6 +144,9 @@ importers:
       '@types/node':
         specifier: ^20
         version: 20.19.1
+      '@types/pg':
+        specifier: ^8.15.4
+        version: 8.15.4
       '@types/react':
         specifier: ^19
         version: 19.1.8
@@ -2796,9 +2799,6 @@ packages:
     peerDependencies:
       pg: '>=8.0'
 
-  pg-protocol@1.10.2:
-    resolution: {integrity: sha512-Ci7jy8PbaWxfsck2dwZdERcDG2A0MG8JoQILs+uZNjABFuBuItAZCWUNz8sXRDMoui24rJw7WlXqgpMdBSN/vQ==}
-
   pg-protocol@1.10.3:
     resolution: {integrity: sha512-6DIBgBQaTKDJyxnXaLiLR8wBpQQcGWuAESkRBX/t6OwA8YsqP+iVSiond2EDy6Y/dsGk8rh/jtax3js5NeV7JQ==}
 
@@ -4562,7 +4562,7 @@ snapshots:
   '@types/pg@8.15.4':
     dependencies:
       '@types/node': 20.19.1
-      pg-protocol: 1.10.2
+      pg-protocol: 1.10.3
       pg-types: 2.2.0
 
   '@types/react-dom@19.1.6(@types/react@19.1.8)':
@@ -5789,8 +5789,6 @@ snapshots:
   pg-pool@3.10.1(pg@8.16.3):
     dependencies:
       pg: 8.16.3
-
-  pg-protocol@1.10.2: {}
 
   pg-protocol@1.10.3: {}
 
