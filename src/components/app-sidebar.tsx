@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/sidebar";
 import { LogoutButton } from "./logout";
 import { GroupedChatList } from "./grouped-chat-list";
-import { interfaceColor } from "@/app/layout";
+import { interfaceColor } from "@/lib/theme";
 import { languageLearningData } from "@/app/dashboard/menu-data/languageLearningData";
 
 export interface Chat {

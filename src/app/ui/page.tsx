@@ -10,7 +10,7 @@ import { EditIcon, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { createIdGenerator } from "ai";
 import type { ChatData, ChatSettings } from "../tools/chat-store";
-import { interfaceColor } from "@/app/layout";
+import { interfaceColor } from "@/lib/theme";
 import { useRTL } from "@/app/hooks/useRTL";
 import { useChatSlug } from "@/app/hooks/useChatSlug";
 import { useChatMessages } from "@/app/hooks/useChatMessages";

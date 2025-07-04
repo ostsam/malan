@@ -9,9 +9,9 @@ import {
   type LanguageOption,
 } from "./menu-data/languageLearningData";
 import { levelsData } from "./menu-data/levelsData";
-import { interfaceColor } from "@/app/layout";
 import { useDashboardForm } from "@/app/hooks/useDashboardForm";
 import { InterlocutorSelector } from "@/components/dashboard/InterlocutorSelector";
+import { interfaceColor } from "@/lib/theme";
 
 export default function Menu() {
   const {

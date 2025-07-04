@@ -4,12 +4,14 @@ import { cookies, headers } from "next/headers";
 
 async function fetchInitialChatHistory(): Promise<any[]> {
   try {
-    const cookieHeader = cookies()
+    const cookieStore = await cookies();
+    const cookieHeader = cookieStore
       .getAll()
       .map((c) => `${c.name}=${c.value}`)
       .join("; ");
 
-    const host = headers().get("host") || "localhost:3000";
+    const headerStore = await headers();
+    const host = headerStore.get("host") || "localhost:3000";
     const protocol = process.env.NODE_ENV === "production" ? "https" : "http";
     const res = await fetch(`${protocol}://${host}/api/history`, {
       headers: {
@@ -37,7 +39,6 @@ export default async function AuthenticatedLayout({
     <SidebarProvider>
       <div className="flex">
         {/* Pass pre-fetched history as prop to the client sidebar */}
-        {/* @ts-expect-error Async Server Component prop */}
         <AppSidebar initialChatHistory={initialChatHistory} />
         <SidebarTrigger />
         <div className="flex-1">

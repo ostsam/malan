@@ -5,8 +5,6 @@ import LazyToaster from "@/components/LazyToaster";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
-export const interfaceColor = "#170664";
-
 export default function RootLayout({
   children,
 }: {

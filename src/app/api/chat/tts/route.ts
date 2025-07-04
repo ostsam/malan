@@ -1,9 +1,17 @@
 import OpenAI from "openai";
 import { NextRequest, NextResponse } from "next/server";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+function getOpenAI() {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENAI_API_KEY is not set in environment variables.");
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 // A simple text chunker that splits text by sentences.
 const chunkText = (text: string): string[] => {
@@ -28,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     for (const chunk of textChunks) {
       if (chunk.trim().length === 0) continue;
-      const audioResponse = await openai.audio.speech.create({
+      const audioResponse = await getOpenAI().audio.speech.create({
         model: "tts-1",
         voice: voice || "nova",
         input: chunk,

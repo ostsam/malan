@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Bookmark, EditIcon, TrashIcon } from "lucide-react";
 import { Chat } from "./app-sidebar";
 import { groupChatsByDate } from "@/lib/chat-helpers";
-import { interfaceColor } from "@/app/layout";
+import { interfaceColor } from "@/lib/theme";
 import { languageLearningData } from "@/app/dashboard/menu-data/languageLearningData";
 import { useRouter } from "next/navigation";
 

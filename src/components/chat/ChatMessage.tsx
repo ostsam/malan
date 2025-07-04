@@ -2,7 +2,7 @@ import { Message } from "ai";
 import { Volume2 } from "lucide-react";
 import { useRTL } from "@/app/hooks/useRTL";
 import React from "react";
-import { interfaceColor } from "@/app/layout";
+import { interfaceColor } from "@/lib/theme";
 import { Word } from "./Word";
 
 interface ChatMessageProps {

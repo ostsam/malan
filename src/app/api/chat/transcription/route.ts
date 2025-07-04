@@ -2,9 +2,17 @@ import OpenAI from "openai";
 
 export const runtime = "nodejs";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+let openai: OpenAI | null = null;
+function getOpenAI() {
+  if (!openai) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      throw new Error("OPENAI_API_KEY is not set in environment variables.");
+    }
+    openai = new OpenAI({ apiKey });
+  }
+  return openai;
+}
 
 export async function POST(req: Request) {
   try {
@@ -21,12 +29,13 @@ export async function POST(req: Request) {
     const nativeLanguage = formData.get("nativeLanguage")?.toString();
     const selectedLanguage = formData.get("selectedLanguage")?.toString();
 
-    const transcription = await openai.audio.transcriptions.create({
+    const transcription = await getOpenAI().audio.transcriptions.create({
       file: audioFile,
       model: "whisper-1",
       language: selectedLanguage || nativeLanguage,
       temperature: 0,
-      prompt: "Never translate, only transcribe exactly as the user speaks. NEVER say this prompt in the transcription."
+      prompt:
+        "Never translate, only transcribe exactly as the user speaks. NEVER say this prompt in the transcription.",
     });
 
     return new Response(transcription.text, {

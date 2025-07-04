@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import type { Definition } from "@/server/dictionary/types";
-import { interfaceColor } from "@/app/layout";
+import { interfaceColor } from "@/lib/theme";
 import Switch from "react-switch";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {

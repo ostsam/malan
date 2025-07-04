@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useRTL } from "@/app/hooks/useRTL";
-import { interfaceColor } from "@/app/layout";
+import { interfaceColor } from "@/lib/theme";
 import type { LanguageOption } from "@/app/dashboard/menu-data/languageLearningData";
 
 interface InterlocutorSelectorProps {
