@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  parseWiktionary,
-  fetchOpenAiDefinition,
-} from "@/server/dictionary/helpers";
+import { fetchOpenAiDefinition } from "@/server/dictionary/helpers";
+// import { fetchMediaWikiDefinition } from "@/server/dictionary/providers/mediawiki"; // Disabled temporarily
 import type { Definition } from "@/server/dictionary/types";
-import { fetchMediaWikiDefinition } from "@/server/dictionary/providers/mediawiki";
 
 // Cache the successful response for one hour at the edge
 export const revalidate = 3600;
+
+/* -------------------------------------------------------------------------- */
+/*           Heuristic: ensure defs are actually in requested language         */
+/* -------------------------------------------------------------------------- */
+
+// Naive script regex per language – extend for more languages as needed.
+const langScriptRegex: Record<string, RegExp> = {
+  ru: /[а-яА-ЯёЁ]/, // Cyrillic
+  he: /[\u0590-\u05FF]/, // Hebrew
+  ar: /[\u0600-\u06FF]/, // Arabic
+  fa: /[\u0600-\u06FF]/, // Persian
+  ja: /[\u3040-\u30FF\u4E00-\u9FFF]/, // Japanese Kana/Kanji
+  zh: /[\u4E00-\u9FFF]/, // Chinese Han
+};
+
+function defsMatchLanguage(defs: Definition[], langCode: string): boolean {
+  const regex = langScriptRegex[langCode];
+  if (!regex) return true; // No regex → assume match
+  return defs.some((d) => regex.test(d.sense));
+}
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -22,37 +39,15 @@ export async function GET(req: NextRequest) {
 
   // Choose provider logic
 
+  // TEMPORARY: Disable wiki lookups until language detection improved
+  /*
   const shouldTryWiki =
     !provider || provider === "wiki" || provider === "wiktionary";
+  */
+  const shouldTryWiki = false;
   const shouldTryGPT = provider === "gpt" || !provider; // fallback or explicit
 
-  // 1) Try Wiktionary first (if allowed)
-  const wikiURL = `https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(
-    word
-  )}`;
-
-  if (shouldTryWiki) {
-    try {
-      const res = await fetch(wikiURL, { next: { revalidate: 3600 } });
-      if (res.ok) {
-        const json = await res.json();
-        let defs: Definition[] = parseWiktionary(json, lang);
-        if (defs.length) {
-          if (target && target !== lang) {
-            const { translateDefinitions } = await import(
-              "@/server/dictionary/helpers"
-            );
-            defs = await translateDefinitions(defs, target);
-          }
-          return NextResponse.json({ word, defs, source: "wiktionary" });
-        }
-      }
-    } catch (err) {
-      console.error("Wiktionary lookup failed", err);
-    }
-  }
-
-  // 2) GPT if allowed
+  // 2) GPT fallback (returns definitions in targetLang if provided)
   if (shouldTryGPT) {
     const defs = await fetchOpenAiDefinition({
       word,
@@ -64,18 +59,6 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 3) MediaWiki if allowed
-  if (shouldTryWiki) {
-    const defsMW = await fetchMediaWikiDefinition({
-      word,
-      lang,
-      targetLang: target,
-    });
-    if (defsMW.length) {
-      return NextResponse.json({ word, defs: defsMW, source: "wiktionary" });
-    }
-  }
-
-  // Nothing found
+  // 3) Nothing found
   return NextResponse.json({ word, defs: [], source: "none" }, { status: 404 });
 }

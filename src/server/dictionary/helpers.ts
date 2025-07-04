@@ -137,3 +137,98 @@ export function stripHtml(raw: string): string {
     .replace(/&#39;/g, "'");
   return text.trim();
 }
+
+/* -------------------------------------------------------------------------- */
+/*                 Helper to translate "sense" field into target               */
+/* -------------------------------------------------------------------------- */
+
+/** Translate ONLY the "sense" fields of existing Definition objects into targetLang via OpenAI.
+ *  Keeps part-of-speech and examples intact. If translation fails, returns input.
+ */
+export async function translateDefinitions(
+  defs: Definition[],
+  targetLang: string
+): Promise<Definition[]> {
+  if (!targetLang || defs.length === 0) return defs;
+  try {
+    const openai = getOpenAIClient();
+    const prompt = `Translate ONLY the \"sense\" values of each item in the following JSON array into ${targetLang}. Keep the \"pos\" and \"examples\" fields unchanged. Return ONLY the translated JSON array.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4.1-nano",
+      temperature: 0.2,
+      messages: [
+        { role: "user", content: prompt },
+        { role: "user", content: JSON.stringify(defs) },
+      ],
+    });
+
+    const content = response.choices[0]?.message?.content?.trim();
+    if (!content) return defs;
+
+    const fenceClean = content.replace(/```[a-z]*[\s\n]*([\s\S]*?)```/i, "$1");
+    let data: any;
+    try {
+      data = JSON.parse(fenceClean);
+    } catch {
+      return defs;
+    }
+
+    if (Array.isArray(data)) {
+      return data as Definition[];
+    }
+  } catch (err) {
+    console.error("Definition translation failed", err);
+  }
+  return defs;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                     Generate example sentences via GPT                      */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Ensure each definition has at least one example sentence. If an item has fewer
+ * than `minExamples`, we ask OpenAI to generate up to `maxExamples` examples in
+ * the original word language (not targetLang!).
+ */
+export async function fillMissingExamples(
+  defs: Definition[],
+  lang: string,
+  { minExamples = 1, maxExamples = 2 } = {}
+): Promise<Definition[]> {
+  const needGeneration = defs.some(
+    (d) => (d.examples ?? []).length < minExamples
+  );
+  if (!needGeneration) return defs;
+
+  try {
+    const openai = getOpenAIClient();
+    const prompt = `You are a lexicographer. For each JSON object with keys pos and sense, add an \"examples\" array with up to ${maxExamples} example sentences written in ${lang}. Do NOT translate or change the sense text. Keep the JSON structure identical.`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4.1-nano",
+      temperature: 0.2,
+      messages: [
+        { role: "user", content: prompt },
+        { role: "user", content: JSON.stringify(defs) },
+      ],
+    });
+
+    const content = response.choices[0]?.message?.content?.trim();
+    if (!content) return defs;
+
+    const fenceClean = content.replace(/```[a-z]*[\s\n]*([\s\S]*?)```/i, "$1");
+    let data: any;
+    try {
+      data = JSON.parse(fenceClean);
+    } catch {
+      return defs;
+    }
+
+    if (Array.isArray(data)) return data as Definition[];
+  } catch (err) {
+    console.error("Failed to generate example sentences", err);
+  }
+  return defs;
+}
