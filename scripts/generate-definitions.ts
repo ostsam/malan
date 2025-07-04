@@ -6,6 +6,7 @@ import OpenAI from "openai";
 import { Client } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { words, definitions } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 
 /**
  * This script pre-generates dictionary definitions for the most-frequent
@@ -22,12 +23,24 @@ import { words, definitions } from "@/db/schema";
  *    columns: rank,word,lang
  */
 
-const TOP_N = 10_000;
+const TOP_N = 50_000;
 const BATCH_SIZE = 20;
-const CONCURRENCY = 3;
-const TARGET_LANGS = ["fr", "es", "de"];
+const CONCURRENCY = 8;
+const TARGET_LANGS = [
+  "en",
+  "es",
+  "fr",
+  "de",
+  "it",
+  "ja",
+  "zh",
+  "ko",
+  "ru",
+  "pt",
+];
 
-const db = drizzle(new Client({ connectionString: process.env.DATABASE_URL }));
+const pgClient = new Client({ connectionString: process.env.DATABASE_URL });
+const db = drizzle(pgClient);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 const limit = pLimit(CONCURRENCY);
 
@@ -36,7 +49,7 @@ async function upsertWord(word: string, lang: string) {
   const [{ id }] = await db
     .select({ id: words.id })
     .from(words)
-    .where((w, { eq, and }) => and(eq(w.word, word), eq(w.lang, lang)));
+    .where(and(eq(words.word, word), eq(words.lang, lang)));
   return id;
 }
 
@@ -56,7 +69,7 @@ async function upsertDefs(wordId: number, defs: any[]) {
 }
 
 async function fetchDefsBatch(lang: string, batch: string[]) {
-  const prompt = `For each ${lang} word below give 1 short sense plus 2 example sentences. Return STRICT JSON array matching: [{\"word\":w,\"defs\":[{\"pos\":\"noun\",\"sense\":\"...\",\"examples\":[\"...\"]}]}]. Words: ${batch.join(", ")}`;
+  const prompt = `For each ${lang} word below give up to 5 short senses plus 2 example sentences. Return STRICT JSON array matching: [{\"word\":w,\"defs\":[{\"pos\":\"noun\",\"sense\":\"...\",\"examples\":[\"...\"]}]}]. Words: ${batch.join(", ")}`;
   const { choices } = await openai.chat.completions.create({
     model: "gpt-4.1-nano",
     temperature: 0.2,
@@ -91,6 +104,6 @@ async function processLanguage(lang: string) {
   for (const lang of TARGET_LANGS) {
     await processLanguage(lang);
   }
-  await db.end();
+  await pgClient.end();
   console.log("Done");
 })();

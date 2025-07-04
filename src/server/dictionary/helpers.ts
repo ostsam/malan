@@ -1,5 +1,23 @@
 import type { Definition, FetchDefinitionParams } from "./types";
-import OpenAI from "openai";
+import { generateText } from "ai";
+import { google } from "@ai-sdk/google";
+
+// Centralised Gemini model accessor. Defaults to the public flash model but can
+// be overridden via env (e.g. GEMINI_MODEL_ID=gemini-2.5-flash-preview-04-17)
+const geminiModelId = process.env.GEMINI_MODEL_ID || "gemini-2.5-flash";
+
+function getGeminiModel() {
+  return google(geminiModelId);
+}
+
+async function runGeminiPrompt(prompt: string, temperature: number = 0.2) {
+  const { text } = await generateText({
+    model: getGeminiModel(),
+    prompt,
+    temperature,
+  });
+  return text.trim();
+}
 
 /**
  * Extract up to the first three definitions from the Wiktionary REST API JSON
@@ -53,20 +71,8 @@ export function parseWiktionary(json: any, filterLang?: string): Definition[] {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                         OpenAI fallback (simplified)                       */
+/*                   LLM fallback with Google Gemini via AI SDK               */
 /* -------------------------------------------------------------------------- */
-
-let openaiClient: OpenAI | null = null;
-
-function getOpenAIClient(): OpenAI {
-  if (openaiClient) return openaiClient;
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not set in environment variables.");
-  }
-  openaiClient = new OpenAI({ apiKey });
-  return openaiClient;
-}
 
 /**
  * Fetch a concise dictionary definition using OpenAI when Wiktionary has none.
@@ -78,22 +84,10 @@ export async function fetchOpenAiDefinition({
   targetLang,
 }: FetchDefinitionParams): Promise<Definition[]> {
   try {
-    const openai = getOpenAIClient();
     const target = targetLang && targetLang !== lang ? targetLang : lang;
     const prompt = `Return a concise dictionary definition for the ${lang} word \"${word}\" as STRICT JSON. Requirements:\n1. The array (max 3) items must have keys: pos, sense, examples (array max 2).\n2. The \"sense\" field text MUST be written in ${target}.\n3. The \"examples\" MUST remain in ${lang}.\n4. Keep the \"pos\" value in English.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-nano",
-      temperature: 0.2,
-      messages: [
-        {
-          role: "user",
-          content: prompt,
-        },
-      ],
-    });
-
-    const content = response.choices[0]?.message?.content?.trim();
+    const content = await runGeminiPrompt(prompt, 0.2);
     if (!content) return [];
 
     // Extract JSON from content (remove code fences, text before/after)
@@ -151,19 +145,12 @@ export async function translateDefinitions(
 ): Promise<Definition[]> {
   if (!targetLang || defs.length === 0) return defs;
   try {
-    const openai = getOpenAIClient();
     const prompt = `Translate ONLY the \"sense\" values of each item in the following JSON array into ${targetLang}. Keep the \"pos\" and \"examples\" fields unchanged. Return ONLY the translated JSON array.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-nano",
-      temperature: 0.2,
-      messages: [
-        { role: "user", content: prompt },
-        { role: "user", content: JSON.stringify(defs) },
-      ],
-    });
-
-    const content = response.choices[0]?.message?.content?.trim();
+    const content = await runGeminiPrompt(
+      `${prompt}\n${JSON.stringify(defs)}`,
+      0.2
+    );
     if (!content) return defs;
 
     const fenceClean = content.replace(/```[a-z]*[\s\n]*([\s\S]*?)```/i, "$1");
@@ -203,19 +190,12 @@ export async function fillMissingExamples(
   if (!needGeneration) return defs;
 
   try {
-    const openai = getOpenAIClient();
     const prompt = `You are a lexicographer. For each JSON object with keys pos and sense, add an \"examples\" array with up to ${maxExamples} example sentences written in ${lang}. Do NOT translate or change the sense text. Keep the JSON structure identical.`;
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-nano",
-      temperature: 0.2,
-      messages: [
-        { role: "user", content: prompt },
-        { role: "user", content: JSON.stringify(defs) },
-      ],
-    });
-
-    const content = response.choices[0]?.message?.content?.trim();
+    const content = await runGeminiPrompt(
+      `${prompt}\n${JSON.stringify(defs)}`,
+      0.2
+    );
     if (!content) return defs;
 
     const fenceClean = content.replace(/```[a-z]*[\s\n]*([\s\S]*?)```/i, "$1");
