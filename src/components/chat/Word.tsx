@@ -266,6 +266,34 @@ export function Word({
     textDecoration: "none", // Ensure no default underline
   } as React.CSSProperties;
 
+  /* ------------------------- Draggable popover ------------------------ */
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const onMouseDownDrag = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragStart.current = { x: e.clientX - drag.x, y: e.clientY - drag.y };
+    setIsDragging(true);
+    window.addEventListener("mousemove", onMouseMoveDrag);
+    window.addEventListener("mouseup", onMouseUpDrag);
+  };
+
+  const onMouseMoveDrag = (e: MouseEvent) => {
+    if (!dragStart.current) return;
+    setDrag({
+      x: e.clientX - dragStart.current.x,
+      y: e.clientY - dragStart.current.y,
+    });
+  };
+
+  const onMouseUpDrag = () => {
+    dragStart.current = null;
+    window.removeEventListener("mousemove", onMouseMoveDrag);
+    window.removeEventListener("mouseup", onMouseUpDrag);
+    setIsDragging(false);
+  };
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -291,8 +319,19 @@ export function Word({
           {initialWord}
         </span>
       </PopoverTrigger>
-      <PopoverContent className="bg-white dark:bg-slate-800" sideOffset={4}>
-        {renderContent()}
+      <PopoverContent asChild sideOffset={4}>
+        <div
+          onMouseDown={onMouseDownDrag}
+          style={{
+            width: 320,
+            height: 260,
+            transform: `translate(${drag.x}px, ${drag.y}px)`,
+            cursor: isDragging ? "grabbing" : "grab",
+          }}
+          className="bg-white dark:bg-slate-800 overflow-y-auto rounded-md shadow-lg"
+        >
+          {renderContent()}
+        </div>
       </PopoverContent>
     </Popover>
   );
