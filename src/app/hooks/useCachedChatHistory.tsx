@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useSession } from "@/lib/auth-client";
 import type { Chat } from "@/components/app-sidebar";
 
@@ -9,13 +9,14 @@ interface CachedPayload {
 }
 
 const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const STALE_THRESHOLD = 5 * 60 * 1000; // 5 minutes
 
 export function useCachedChatHistory() {
   const { data: session } = useSession();
   const userId = session?.user?.id;
   const cacheKey = userId ? `chatHistory:${userId}` : null;
 
-  const readCache = (): Chat[] => {
+  const readCache = useCallback((): Chat[] => {
     if (!cacheKey) return [];
     try {
       const raw = sessionStorage.getItem(cacheKey);
@@ -29,22 +30,18 @@ export function useCachedChatHistory() {
     } catch {
       return [];
     }
-  };
+  }, [cacheKey]);
 
-  const [history, setHistory] = useState<Chat[]>(readCache());
+  const [history, setHistory] = useState<Chat[]>(() => readCache());
   const [loading, setLoading] = useState<boolean>(history.length === 0);
   const isFetching = useRef(false);
   const hasInitialized = useRef(false);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const refresh = async () => {
-    if (!userId) return;
-    if (isFetching.current) return;
+  const refresh = useCallback(async () => {
+    if (!userId || isFetching.current) return;
     isFetching.current = true;
     setLoading(true);
-
-    console.log(
-      `[CLIENT_HOOK:useCachedChatHistory] Fetching chat history for user: ${userId}`
-    );
 
     try {
       const headers: HeadersInit = {};
@@ -56,7 +53,6 @@ export function useCachedChatHistory() {
       const res = await fetch("/api/history", {
         credentials: "include",
         headers,
-        // Add a unique timestamp to prevent browser caching
         cache: "no-store",
       });
 
@@ -69,6 +65,7 @@ export function useCachedChatHistory() {
         const json = await res.json();
         const sessions: Chat[] = json.sessions ?? [];
         const etag = res.headers.get("etag") || undefined;
+
         setHistory(sessions);
         if (cacheKey) {
           const payload: CachedPayload = {
@@ -85,17 +82,33 @@ export function useCachedChatHistory() {
       setLoading(false);
       isFetching.current = false;
     }
-  };
+  }, [userId, cacheKey]);
 
-  const persist = (data: Chat[]) => {
-    setHistory(data);
-    if (cacheKey) {
-      const payload: CachedPayload = { data, cachedAt: Date.now() };
-      try {
-        sessionStorage.setItem(cacheKey, JSON.stringify(payload));
-      } catch {}
-    }
-  };
+  // OPTIMIZATION: Debounced refresh to prevent rapid successive calls
+  const debouncedRefresh = useCallback(
+    (delay: number = 1000) => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+      refreshTimeoutRef.current = setTimeout(() => {
+        refresh();
+      }, delay);
+    },
+    [refresh]
+  );
+
+  const persist = useCallback(
+    (data: Chat[]) => {
+      setHistory(data);
+      if (cacheKey) {
+        const payload: CachedPayload = { data, cachedAt: Date.now() };
+        try {
+          sessionStorage.setItem(cacheKey, JSON.stringify(payload));
+        } catch {}
+      }
+    },
+    [cacheKey]
+  );
 
   useEffect(() => {
     if (!userId || hasInitialized.current) return;
@@ -110,20 +123,29 @@ export function useCachedChatHistory() {
       const cacheAge =
         Date.now() -
         (JSON.parse(sessionStorage.getItem(cacheKey!) || "{}").cachedAt || 0);
-      if (cacheAge > 5 * 60 * 1000) {
-        refresh();
+      if (cacheAge > STALE_THRESHOLD) {
+        // OPTIMIZATION: Use debounced refresh for background updates
+        debouncedRefresh(2000);
       }
     } else {
       // Only fetch if cache empty
       refresh();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userId]);
+  }, [userId, readCache, cacheKey, refresh, debouncedRefresh]);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (refreshTimeoutRef.current) {
+        clearTimeout(refreshTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return {
     history,
     loading,
-    refresh,
+    refresh: debouncedRefresh,
     persist,
   } as const;
 }

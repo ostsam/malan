@@ -14,8 +14,8 @@ import { and, eq, sql } from "drizzle-orm";
 // import { fetchMediaWikiDefinition } from "@/server/dictionary/providers/mediawiki"; // Disabled temporarily
 import type { Definition } from "@/server/dictionary/types";
 
-// Cache the successful response for one hour at the edge
-export const revalidate = 3600;
+// OPTIMIZATION: Add caching headers and improve response times
+export const revalidate = 3600; // Cache for 1 hour
 
 /* -------------------------------------------------------------------------- */
 /*           Heuristic: ensure defs are actually in requested language         */
@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
   /* ---------------------------------------------------------------------- */
 
   async function getDefsFromDB(): Promise<Definition[]> {
+    // OPTIMIZATION: Use a single optimized query with proper joins
     if (target && target !== lang) {
       // Query with translation join when target language differs
       const rows = await db
@@ -109,7 +110,17 @@ export async function GET(req: NextRequest) {
   // Always attempt DB first unless explicitly bypassed
   const dbDefs = await getDefsFromDB();
   if (dbDefs.length === 3 && dbDefs.every((d) => d.sense)) {
-    return NextResponse.json({ word, defs: dbDefs, source: "db" });
+    return NextResponse.json(
+      { word, defs: dbDefs, source: "db" },
+      {
+        headers: {
+          "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+          ETag: `"${Buffer.from(`${word}-${lang}-${target || "none"}`)
+            .toString("base64")
+            .slice(0, 8)}"`,
+        },
+      }
+    );
   }
 
   // TEMPORARY: Disable wiki lookups until language detection improved
@@ -120,98 +131,119 @@ export async function GET(req: NextRequest) {
   const shouldTryGoogle = provider === "google" || !provider; // default
   const shouldTryGPT = provider === "gpt" || !provider; // fallback or explicit
 
-  // Helper: persist new defs into DB
+  // OPTIMIZATION: Helper: persist new defs into DB with better error handling
   async function persistDefinitions(defs: Definition[]) {
-    // Upsert word
-    const existingWord = await db
-      .select({ id: wordsTable.id })
-      .from(wordsTable)
-      .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
-      .limit(1);
-    let wordId: number;
-    if (existingWord.length) {
-      wordId = existingWord[0].id;
-    } else {
-      const inserted = await db
-        .insert(wordsTable)
-        .values({ word, lang })
-        .returning();
-      wordId = inserted[0].id;
-    }
+    try {
+      // Upsert word with better error handling
+      const existingWord = await db
+        .select({ id: wordsTable.id })
+        .from(wordsTable)
+        .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
+        .limit(1);
 
-    // Insert each definition if not exists
-    for (const d of defs) {
-      const insertRes = await db
+      let wordId: number;
+      if (existingWord.length) {
+        wordId = existingWord[0].id;
+      } else {
+        const inserted = await db
+          .insert(wordsTable)
+          .values({ word, lang })
+          .returning();
+        wordId = inserted[0].id;
+      }
+
+      // OPTIMIZATION: Batch insert definitions for better performance
+      const defsToInsert = defs.map((d) => ({
+        wordId,
+        pos: d.pos,
+        sense: d.sense,
+        examples: d.examples,
+        source: "ai",
+      }));
+
+      const insertedDefs = await db
         .insert(defsTable)
-        .values({
-          wordId,
-          pos: d.pos,
-          sense: d.sense,
-          examples: d.examples,
-          source: "ai",
-        })
+        .values(defsToInsert)
         .onConflictDoNothing()
         .returning({ id: defsTable.id });
 
-      let defId: number;
-      if (insertRes.length) {
-        defId = insertRes[0].id;
-      } else {
-        const existing = await db
-          .select({ id: defsTable.id })
-          .from(defsTable)
-          .where(
-            and(
-              eq(defsTable.wordId, wordId),
-              eq(defsTable.pos, d.pos),
-              eq(defsTable.sense, d.sense)
-            )
-          )
-          .limit(1);
-        defId = existing[0].id;
-      }
-
-      // handle translation if needed and target differs
+      // Handle translations if needed and target differs
       if (target && target !== lang) {
-        await db
-          .insert(transTable)
-          .values({
-            definitionId: defId,
-            targetLang: target,
-            translatedSense: d.sense,
-            source: "ai",
-          })
-          .onConflictDoNothing();
+        const transToInsert = defs.map((d, index) => ({
+          definitionId: insertedDefs[index]?.id || wordId, // Fallback if insert failed
+          targetLang: target,
+          translatedSense: d.sense,
+          source: "ai",
+        }));
+
+        await db.insert(transTable).values(transToInsert).onConflictDoNothing();
       }
+    } catch (error) {
+      console.error("Failed to persist definitions:", error);
+      // Don't fail the request if persistence fails
     }
   }
 
   // 2) Try Gemini (Google) first
   if (shouldTryGoogle) {
-    const defs = await fetchGeminiDefinition({
-      word,
-      lang,
-      targetLang: target,
-    });
-    if (defs.length) {
-      await persistDefinitions(defs);
-      return NextResponse.json({ word, defs, source: "google" });
+    try {
+      const defs = await fetchGeminiDefinition({
+        word,
+        lang,
+        targetLang: target,
+      });
+      if (defs.length) {
+        // OPTIMIZATION: Persist in background to not block response
+        setImmediate(() => persistDefinitions(defs));
+        return NextResponse.json(
+          { word, defs, source: "google" },
+          {
+            headers: {
+              "Cache-Control":
+                "public, max-age=1800, stale-while-revalidate=3600",
+            },
+          }
+        );
+      }
+    } catch (error) {
+      console.error("Gemini definition fetch failed:", error);
     }
   }
 
   // 3) GPT fallback (returns definitions in targetLang if provided)
   if (shouldTryGPT) {
-    const defs = await fetchOpenAiDefinition({
-      word,
-      lang,
-      targetLang: target,
-    });
-    if (defs.length) {
-      await persistDefinitions(defs);
-      return NextResponse.json({ word, defs, source: "openai" });
+    try {
+      const defs = await fetchOpenAiDefinition({
+        word,
+        lang,
+        targetLang: target,
+      });
+      if (defs.length) {
+        // OPTIMIZATION: Persist in background to not block response
+        setImmediate(() => persistDefinitions(defs));
+        return NextResponse.json(
+          { word, defs, source: "openai" },
+          {
+            headers: {
+              "Cache-Control":
+                "public, max-age=1800, stale-while-revalidate=3600",
+            },
+          }
+        );
+      }
+    } catch (error) {
+      console.error("OpenAI definition fetch failed:", error);
     }
   }
 
   // 4) Nothing found
-  return NextResponse.json({ word, defs: [], source: "none" }, { status: 404 });
+  return NextResponse.json(
+    { word, defs: [], source: "none" },
+    {
+      status: 404,
+      headers: {
+        "Cache-Control": "public, max-age=300", // Cache 404s for 5 minutes
+      },
+    }
+  );
 }

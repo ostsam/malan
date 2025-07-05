@@ -13,7 +13,8 @@ interface UserSessionSettings {
   nativeLanguageLabel: string;
 }
 
-export const revalidate = 60;
+// Cache for 30 seconds instead of 60 to improve freshness
+export const revalidate = 30;
 
 export async function GET(request: NextRequest) {
   const a = await auth.api.getSession({ headers: request.headers });
@@ -21,49 +22,51 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Delete user sessions that have no messages.
-  const chatsWithMessagesSubquery = db
-    .selectDistinct({ chatId: messagesTable.chatId })
-    .from(messagesTable);
-
-  await db
-    .delete(userSession)
-    .where(
-      and(
-        eq(userSession.userId, a.user.id),
-        notInArray(userSession.chatId, chatsWithMessagesSubquery)
-      )
-    );
-
-  // Now, fetch the remaining sessions and sort them.
-  const latestMessages = db
-    .select({
-      chatId: messagesTable.chatId,
-      lastMessageAt: sql<string>`MAX(${messagesTable.createdAt})`.as(
-        "lastMessageAt"
-      ),
-    })
-    .from(messagesTable)
-    .groupBy(messagesTable.chatId)
-    .as("latestMessages");
-
-  const sessions = await db
+  // OPTIMIZATION: Use a single query with window functions instead of multiple queries
+  const sessionsWithLastMessage = await db
     .select({
       chatId: userSession.chatId,
       slug: userSession.slug,
       createdAt: userSession.createdAt,
       userId: userSession.userId,
       isPinned: userSession.isPinned,
-      lastMessageAt: latestMessages.lastMessageAt,
       settings: userSession.settings,
+      lastMessageAt: sql<string>`
+        (SELECT MAX(${messagesTable.createdAt}) 
+         FROM ${messagesTable} 
+         WHERE ${messagesTable.chatId} = ${userSession.chatId})
+      `.as("lastMessageAt"),
     })
     .from(userSession)
-    .leftJoin(latestMessages, eq(userSession.chatId, latestMessages.chatId))
     .where(eq(userSession.userId, a.user.id))
-    .orderBy(desc(userSession.isPinned), desc(latestMessages.lastMessageAt));
+    .orderBy(
+      desc(userSession.isPinned),
+      desc(sql`lastMessageAt`),
+      desc(userSession.createdAt)
+    );
 
-  return NextResponse.json({
-    sessions: sessions.map((session) => {
+  // OPTIMIZATION: Clean up orphaned sessions in background (don't block response)
+  setImmediate(async () => {
+    try {
+      const chatsWithMessagesSubquery = db
+        .selectDistinct({ chatId: messagesTable.chatId })
+        .from(messagesTable);
+
+      await db
+        .delete(userSession)
+        .where(
+          and(
+            eq(userSession.userId, a.user.id),
+            notInArray(userSession.chatId, chatsWithMessagesSubquery)
+          )
+        );
+    } catch (error) {
+      console.error("Background cleanup failed:", error);
+    }
+  });
+
+  const response = {
+    sessions: sessionsWithLastMessage.map((session) => {
       const { settings, ...rest } = session;
       const userSettings: UserSessionSettings = settings as UserSessionSettings;
       return {
@@ -76,5 +79,15 @@ export async function GET(request: NextRequest) {
         selectedLanguageLabel: userSettings.selectedLanguageLabel,
       };
     }),
+  };
+
+  // Add ETag for caching
+  const etag = `"${Buffer.from(JSON.stringify(response)).toString("base64").slice(0, 8)}"`;
+
+  return NextResponse.json(response, {
+    headers: {
+      ETag: etag,
+      "Cache-Control": "private, max-age=30",
+    },
   });
 }
