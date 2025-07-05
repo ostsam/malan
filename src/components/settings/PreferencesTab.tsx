@@ -88,77 +88,16 @@ export function PreferencesTab({
     <div className="space-y-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          {/* Native Language */}
-          <FormField
-            control={form.control}
-            name="nativeLanguage"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <Languages className="h-4 w-4" />
-                  Native Language
-                </FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select your native language" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {nativeLanguageData.map((language) => (
-                      <SelectItem key={language.value} value={language.value}>
-                        {language.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* Target Language */}
-          <FormField
-            control={form.control}
-            name="targetLanguage"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  Target Language
-                </FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select language to learn" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {languageLearningData.map((language) => (
-                      <SelectItem key={language.value} value={language.value}>
-                        {language.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
           {/* Daily Goal */}
           <FormField
             control={form.control}
             name="dailyGoal"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Daily Learning Goal (words)</FormLabel>
+                <FormLabel className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Daily Learning Goal (words)
+                </FormLabel>
                 <FormControl>
                   <Input
                     {...field}
@@ -166,44 +105,18 @@ export function PreferencesTab({
                     min="1"
                     max="100"
                     placeholder="10"
-                    onChange={(e) =>
-                      field.onChange(parseInt(e.target.value) || 0)
-                    }
+                    value={field.value || ""}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      field.onChange(value ? parseInt(value) : undefined);
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {/* TTS Voice */}
-          <FormField
-            control={form.control}
-            name="ttsVoice"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel className="flex items-center gap-2">
-                  <Volume2 className="h-4 w-4" />
-                  Text-to-Speech Voice
-                </FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select TTS voice" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {ttsVoices.map((voice) => (
-                      <SelectItem key={voice.value} value={voice.value}>
-                        {voice.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  Set how many words you want to save to your wordlist each day.
+                  This helps track your learning progress.
+                </p>
               </FormItem>
             )}
           />

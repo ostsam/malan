@@ -16,6 +16,7 @@ import { auth } from "@/app/api/auth/[...all]/auth";
 
 import { formatSystemPrompt } from "@/app/lib/prompt-templates";
 import { NextRequest } from "next/server";
+import { updateUserStreak } from "@/lib/streak-utils";
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -46,6 +47,10 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   // Destructure new parameters for audio generation
   const { message: userMessage, id: chatId, voice } = await req.json();
+
+  // Get user session for streak updates
+  const session = await auth.api.getSession({ headers: req.headers });
+  const userId = session?.user?.id;
 
   const { settings, messages } = await loadChat(chatId);
 
@@ -81,6 +86,11 @@ export async function POST(req: Request) {
           id: chatId,
           newMessages: messagesToSaveThisTurn,
         });
+      }
+
+      // Update streak when user sends a message
+      if (userId && userMessage) {
+        await updateUserStreak(userId);
       }
     },
   });

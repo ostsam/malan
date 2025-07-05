@@ -11,7 +11,8 @@ import {
 } from "@/components/ui/card";
 import { ProfileTab } from "@/components/settings/ProfileTab";
 import { SecurityTab } from "@/components/settings/SecurityTab";
-import { getUserProfile } from "@/app/actions/profile";
+import { PreferencesTab } from "@/components/settings/PreferencesTab";
+import { getUserProfile, getUserPreferences } from "@/app/actions/profile";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
@@ -19,12 +20,13 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [preferences, setPreferences] = useState<any>(null);
+  const [prefsLoading, setPrefsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const profileResult = await getUserProfile();
-
         if (profileResult.success) {
           setProfile(profileResult.profile);
         }
@@ -34,11 +36,26 @@ export default function SettingsPage() {
         setLoading(false);
       }
     };
-
     loadData();
   }, []);
 
-  if (loading) {
+  useEffect(() => {
+    const loadPrefs = async () => {
+      try {
+        const prefsResult = await getUserPreferences();
+        if (prefsResult.success) {
+          setPreferences(prefsResult.preferences);
+        }
+      } catch (error) {
+        toast.error("Failed to load preferences");
+      } finally {
+        setPrefsLoading(false);
+      }
+    };
+    loadPrefs();
+  }, []);
+
+  if (loading || prefsLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="flex items-center gap-2">
@@ -54,7 +71,7 @@ export default function SettingsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Settings</h1>
         <p className="text-muted-foreground">
-          Manage your profile and account security.
+          Manage your profile, preferences, and account security.
         </p>
       </div>
 
@@ -63,8 +80,9 @@ export default function SettingsPage() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
 
@@ -80,6 +98,25 @@ export default function SettingsPage() {
               <ProfileTab
                 profile={profile}
                 onProfileUpdate={(updatedProfile) => setProfile(updatedProfile)}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="preferences" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Learning Preferences</CardTitle>
+              <CardDescription>
+                Set your language, daily goal, and notification preferences.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PreferencesTab
+                preferences={preferences}
+                onPreferencesUpdate={(updatedPrefs) =>
+                  setPreferences(updatedPrefs)
+                }
               />
             </CardContent>
           </Card>
@@ -102,4 +139,3 @@ export default function SettingsPage() {
     </div>
   );
 }
- 
