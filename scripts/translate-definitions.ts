@@ -13,7 +13,7 @@ import { translateDefinitions } from "@/server/dictionary/helpers";
 // Full set of languages present in the dictionary
 const LANGS = ["en", "es", "fr", "de", "it", "ja", "zh", "ko", "ru", "pt"];
 
-const BATCH_SIZE = 20; // number of definitions per LLM call
+const BATCH_SIZE = 35; // number of definitions per LLM call
 const CONCURRENCY = 10; // parallel LLM calls / DB inserts
 
 /* -------------------------------------------------------------------------- */

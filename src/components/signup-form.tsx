@@ -20,7 +20,7 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Mail, CheckCircle } from "lucide-react";
 import { useState } from "react";
 
 import { z } from "zod";
@@ -39,6 +39,8 @@ export function SignUpForm({
 }: React.ComponentProps<"div">) {
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<"google" | null>(null);
+  const [emailSent, setEmailSent] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -73,12 +75,55 @@ export function SignUpForm({
     );
     console.log(values);
     if (success) {
-      toast.success("User signed up successfully");
-      router.push("/dashboard");
+      setEmailSent(true);
+      setUserEmail(values.email);
+      toast.success(
+        "Account created! Please check your email to verify your account."
+      );
     } else {
       toast.error("Signup failed");
     }
     setLoading(false);
+  }
+
+  if (emailSent) {
+    return (
+      <div className={cn("flex flex-col gap-6", className)} {...props}>
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
+              <Mail className="h-8 w-8 text-green-600" />
+            </div>
+            <CardTitle className="text-xl">Check your email</CardTitle>
+            <CardDescription>
+              We've sent a verification link to <strong>{userEmail}</strong>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Click the link in your email to verify your account and start
+                using Malan.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setEmailSent(false);
+                    form.reset();
+                  }}
+                >
+                  Back to sign up
+                </Button>
+                <Button variant="link" onClick={() => router.push("/login")}>
+                  Already verified? Sign in
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -91,7 +136,7 @@ export function SignUpForm({
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <div className="grid gap-4">
+              <div className="grid gap-6">
                 <div className="flex flex-col gap-4">
                   <Button
                     type="button"
@@ -184,6 +229,15 @@ export function SignUpForm({
               </div>
             </form>
           </Form>
+          <div className="text-center text-sm mt-2">
+            Already have an account?{" "}
+            <a
+              href="/login"
+              className="text-primary underline-offset-4 underline"
+            >
+              Sign in
+            </a>
+          </div>
         </CardContent>
       </Card>
       <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">

@@ -239,7 +239,7 @@ export const languageLearningData: LanguageOption[] = [
   },
   {
     value: "sr",
-    label: "Српски / Srpski",
+    label: "Српски / Serbian",
     interlocutors: { male: "Никола (Nikola)", female: "Јована (Jovana)" },
   },
   {

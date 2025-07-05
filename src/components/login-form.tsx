@@ -20,12 +20,12 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { useState } from "react";
 
 import { z } from "zod";
 import { useRouter } from "next/navigation";
-import { googleSignIn } from "@/lib/auth-client";
+import { googleSignIn, resendVerificationEmail } from "@/lib/auth-client";
 
 const formSchema = z.object({
   email: z.string().min(6).max(50),
@@ -38,6 +38,9 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<"google" | null>(null);
+  const [verificationError, setVerificationError] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+  const [resending, setResending] = useState(false);
   const router = useRouter();
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -62,17 +65,93 @@ export function LoginForm({
     }
   };
 
+  const handleResendVerification = async () => {
+    setResending(true);
+    try {
+      const result = await resendVerificationEmail(userEmail);
+      if (result.success) {
+        toast.success("Verification email sent! Please check your inbox.");
+      } else {
+        toast.error("Failed to send verification email. Please try again.");
+      }
+    } catch (error) {
+      toast.error("Failed to send verification email. Please try again.");
+    } finally {
+      setResending(false);
+    }
+  };
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setLoading(true);
-    const { success } = await signIn(values.email, values.password);
+    setVerificationError(false);
+    const { success, message } = await signIn(values.email, values.password);
     console.log(values);
     if (success) {
       toast.success("User signed in successfully");
       router.push("/dashboard");
     } else {
-      toast.error("Login unsuccessful");
+      // Check if it's an email verification error
+      if (message?.includes("verify") || message?.includes("verification")) {
+        setVerificationError(true);
+        setUserEmail(values.email);
+        toast.error("Please verify your email address before signing in");
+      } else {
+        toast.error("Login unsuccessful");
+      }
     }
     setLoading(false);
+  }
+
+  if (verificationError) {
+    return (
+      <div className={cn("flex flex-col gap-6", className)} {...props}>
+        <Card>
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100">
+              <AlertCircle className="h-8 w-8 text-yellow-600" />
+            </div>
+            <CardTitle className="text-xl">
+              Email verification required
+            </CardTitle>
+            <CardDescription>
+              Please verify your email address to continue
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-center">
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                We sent a verification link to <strong>{userEmail}</strong>.
+                Please check your email and click the verification link.
+              </p>
+              <div className="flex flex-col gap-2">
+                <Button
+                  onClick={handleResendVerification}
+                  disabled={resending}
+                  className="w-full"
+                >
+                  {resending && (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  )}
+                  Resend verification email
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setVerificationError(false);
+                    form.reset();
+                  }}
+                >
+                  Back to login
+                </Button>
+                <Button variant="link" onClick={() => router.push("/signup")}>
+                  Need to sign up?
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -166,6 +245,15 @@ export function LoginForm({
               </div>
             </form>
           </Form>
+          <div className="text-center text-sm mt-2">
+            Don't have an account?{" "}
+            <a
+              href="/signup"
+              className="text-primary underline-offset-4 underline"
+            >
+              Sign up
+            </a>
+          </div>
         </CardContent>
       </Card>
       <div className="text-muted-foreground *:[a]:hover:text-primary text-center text-xs text-balance *:[a]:underline *:[a]:underline-offset-4">
