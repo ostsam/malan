@@ -18,8 +18,7 @@ import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatControls } from "@/components/chat/ChatControls";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useSession } from "@/lib/auth-client";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // Types for real and demo chat
 export interface SerializableChatData {
@@ -56,6 +55,8 @@ export function ChatSession({
   messageLimit = 6,
   onSignupPrompt,
 }: ChatSessionProps) {
+  const router = useRouter();
+
   // Initialize hooks based on mode
   const demoSlugHook = useDemoChatSlug("", "demo");
   const realSlugHook = useChatSlug(chatObject?.slug, id);
@@ -266,51 +267,35 @@ export function ChatSession({
         }
       `}</style>
 
-      {/* Header Section - Fixed height */}
-      <div className="relative flex flex-col items-center fade-in flex-shrink-0 mobile-compact-header">
-        {/* Header with navigation buttons for authenticated users */}
+      <div className="relative flex flex-col items-center fade-in">
+        {/* Header with navigation buttons and centered logo */}
         <div className="flex items-center justify-between w-full px-4 py-2">
-          {/* Left side - Back to dashboard button for authenticated users */}
-          {isAuthenticated && (
-            <Link href="/dashboard">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10 w-10 p-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-2 border-slate-200/60 dark:border-slate-600/60 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-xl"
-                title="Back to dashboard"
-              >
-                <ArrowLeft className="h-5 w-5 text-slate-700 dark:text-slate-300" />
-              </Button>
-            </Link>
-          )}
+          {/* Dashboard button - left side */}
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+            title="Go to Dashboard"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
 
-          {/* Center - Logo */}
-          <div className="flex-1 flex justify-center">
-            <a href="/">
-              <img
-                src="/logo.svg"
-                alt="Malan Logo"
-                className="h-12 w-auto hover:opacity-70"
-              />
-            </a>
-          </div>
+          {/* Centered logo */}
+          <a href="/" className="flex items-center justify-center">
+            <img
+              src="/logo.svg"
+              alt="Malan Logo"
+              className="h-12 w-auto hover:opacity-70"
+            />
+          </a>
 
-          {/* Right side - Wordlist button for authenticated users */}
-          {isAuthenticated && (
-            <Link href="/wordlist">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-10 w-10 p-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-2 border-slate-200/60 dark:border-slate-600/60 hover:bg-white dark:hover:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-500 rounded-xl transition-all duration-300 hover:scale-110 shadow-lg hover:shadow-xl"
-                title="Go to wordlist"
-              >
-                <BookOpen className="h-5 w-5 text-slate-700 dark:text-slate-300" />
-              </Button>
-            </Link>
-          )}
-
-          {/* Spacer for non-authenticated users to keep logo centered */}
-          {!isAuthenticated && <div className="w-10" />}
+          {/* Wordlist button - right side */}
+          <button
+            onClick={() => router.push("/wordlist")}
+            className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+            title="Go to Wordlist"
+          >
+            <BookOpen className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Slug/title underneath */}
