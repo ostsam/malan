@@ -18,8 +18,8 @@ import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatControls } from "@/components/chat/ChatControls";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
+import Link from "next/link";
 
 // Types for real and demo chat
 export interface SerializableChatData {

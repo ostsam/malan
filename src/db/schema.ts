@@ -197,6 +197,7 @@ export const translations = pgTable(
   (t) => ({
     pk: primaryKey(t.definitionId, t.targetLang),
     targetLangIndex: index("translations_target_lang_idx").on(t.targetLang),
+
   })
 );
 
@@ -214,6 +215,9 @@ export const wordlist = pgTable(
   },
   (t) => ({
     uniqueUserWord: { columns: [t.userId, t.wordId], unique: true },
+    userIdIdx: index("wordlist_user_id_idx").on(t.userId),
+    wordIdIdx: index("wordlist_word_id_idx").on(t.wordId),
+    createdAtIdx: index("wordlist_created_at_idx").on(t.createdAt),
   })
 );
 
