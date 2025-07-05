@@ -66,7 +66,7 @@ export async function updateUserStreak(userId: string) {
         userId,
         currentStreak: newCurrentStreak,
         longestStreak: newLongestStreak,
-        lastActivityDate: today,
+        lastActivityDate: today.toISOString().slice(0, 10),
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -74,7 +74,7 @@ export async function updateUserStreak(userId: string) {
         set: {
           currentStreak: newCurrentStreak,
           longestStreak: newLongestStreak,
-          lastActivityDate: today,
+          lastActivityDate: today.toISOString().slice(0, 10),
           updatedAt: new Date(),
         },
       });
