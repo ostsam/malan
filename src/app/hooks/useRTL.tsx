@@ -11,6 +11,28 @@ interface RTLStyles {
   textAlign: "right" | "left" | "center";
 }
 
+// Consolidated RTL language codes - moved from duplicated components
+const rtlLanguageCodes = [
+  "ar", // Arabic
+  "he", // Hebrew
+  "iw", // Hebrew (old code)
+  "fa", // Persian/Farsi
+  "ur", // Urdu
+  "ps", // Pashto
+  "syr", // Syriac
+  "dv", // Divehi/Maldivian
+];
+
+/**
+ * Check if a language code represents an RTL language
+ * @param code - Language code to check
+ * @returns boolean indicating if the language is RTL
+ */
+export function isRTLLanguage(code?: string | null): boolean {
+  if (!code) return false;
+  return rtlLanguageCodes.some((rtl) => code.startsWith(rtl));
+}
+
 export function useRTL({ selectedLanguage, nativeLanguage }: UseRTLProps) {
   const isRTL = useMemo(() => {
     const foundLanguage = languageLearningData.find(
@@ -50,5 +72,7 @@ export function useRTL({ selectedLanguage, nativeLanguage }: UseRTLProps) {
     languageCode,
     rtlStyles,
     centerRTLStyles,
+    // Export the utility function for components that need it
+    isRTLLanguage,
   };
 }

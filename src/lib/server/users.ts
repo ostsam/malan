@@ -1,44 +1,59 @@
-"use server"
+"use server";
 import { auth } from "@/app/api/auth/[...all]/auth";
 
 export const signIn = async (email: string, password: string) => {
-    try {
+  try {
     await auth.api.signInEmail({
-    body: {
+      body: {
         email,
-        password
-    },
-}); 
-return {
-    success: true,
-    message: "User signed in successfully"
-}
-} catch (error) {
+        password,
+      },
+    });
     return {
+      success: true,
+      message: "User signed in successfully",
+    };
+  } catch (error: any) {
+    // Check if it's an email verification error
+    if (
+      error?.status === 403 ||
+      error?.message?.includes("verify") ||
+      error?.message?.includes("verification")
+    ) {
+      return {
         success: false,
-        message: "Signin error occurred"
+        message: "Please verify your email address before signing in",
+      };
     }
-}
-}
 
-export const signUp = async (email: string, username: string, password: string) => {
-    try {
+    return {
+      success: false,
+      message: error?.message || "Signin error occurred",
+    };
+  }
+};
+
+export const signUp = async (
+  email: string,
+  username: string,
+  password: string
+) => {
+  try {
     await auth.api.signUpEmail({
-    body: {
+      body: {
         email,
         name: username,
         password,
-    },
-});
-return {
-    success: true,
-    message: "User signed up successfully"
-}
-} catch (error) {
+      },
+    });
     return {
-        success: false,
-        message: "Signup error occurred"
-    }
-}
-}
-    
+      success: true,
+      message: "User signed up successfully",
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      message: error?.message || "Signup error occurred",
+    };
+  }
+};

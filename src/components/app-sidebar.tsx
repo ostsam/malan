@@ -22,7 +22,7 @@ import {
 import { LogoutButton } from "./logout";
 import { GroupedChatList } from "./grouped-chat-list";
 import { interfaceColor } from "@/lib/theme";
-import { languageLearningData } from "@/app/dashboard/menu-data/languageLearningData";
+import { useRTL } from "@/app/hooks/useRTL";
 
 export interface Chat {
   chatId: string;
@@ -32,23 +32,6 @@ export interface Chat {
   nativeLanguage?: string;
   lastMessageAt: string | null;
   isPinned: boolean;
-}
-
-// Helper: detect RTL languages beyond the data file flags
-const rtlLanguageCodes = [
-  "ar",
-  "he",
-  "iw", // old Hebrew code
-  "fa",
-  "ur",
-  "ps",
-  "syr",
-  "dv",
-];
-
-function isRTLLanguage(code?: string | null): boolean {
-  if (!code) return false;
-  return rtlLanguageCodes.some((rtl) => code.startsWith(rtl));
 }
 
 export default function AppSidebar({
@@ -61,6 +44,10 @@ export default function AppSidebar({
     initialChatHistory ?? []
   );
   const [loading, setLoading] = useState(initialChatHistory ? false : true);
+  const { isRTLLanguage } = useRTL({
+    selectedLanguage: null,
+    nativeLanguage: null,
+  });
 
   const fetchChatHistory = async () => {
     setLoading(true);
@@ -146,13 +133,8 @@ export default function AppSidebar({
   const renderChatList = (chats: Chat[]) => (
     <ul className="space-y-0 flex flex-col">
       {chats.map((chat) => {
-        // Calculate RTL logic inline to avoid hook ordering issues
+        // Calculate RTL logic using consolidated function
         const isRTL =
-          languageLearningData.find(
-            (lang) =>
-              lang.value === chat.selectedLanguage ||
-              lang.value === chat.nativeLanguage
-          )?.rtl ||
           isRTLLanguage(chat.selectedLanguage) ||
           isRTLLanguage(chat.nativeLanguage);
 

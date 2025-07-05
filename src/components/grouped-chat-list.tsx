@@ -3,7 +3,7 @@ import { Bookmark, EditIcon, TrashIcon } from "lucide-react";
 import { Chat } from "./app-sidebar";
 import { groupChatsByDate } from "@/lib/chat-helpers";
 import { interfaceColor } from "@/lib/theme";
-import { languageLearningData } from "@/app/dashboard/menu-data/languageLearningData";
+import { useRTL } from "@/app/hooks/useRTL";
 import { useRouter } from "next/navigation";
 
 interface GroupedChatListProps {
@@ -15,13 +15,6 @@ interface GroupedChatListProps {
 
 const groupOrder = ["Today", "Yesterday", "Previous Week"];
 
-const rtlLanguageCodes = ["ar", "he", "iw", "fa", "ur", "ps", "syr", "dv"];
-
-function isRTLLanguage(code?: string | null): boolean {
-  if (!code) return false;
-  return rtlLanguageCodes.some((rtl) => code.startsWith(rtl));
-}
-
 export const GroupedChatList = ({
   chats,
   onTogglePin,
@@ -30,6 +23,10 @@ export const GroupedChatList = ({
 }: GroupedChatListProps) => {
   const groupedChats = groupChatsByDate(chats);
   const router = useRouter();
+  const { isRTLLanguage } = useRTL({
+    selectedLanguage: null,
+    nativeLanguage: null,
+  });
 
   const sortedGroupKeys = Object.keys(groupedChats).sort((a, b) => {
     const aIndex = groupOrder.indexOf(a);
@@ -55,13 +52,8 @@ export const GroupedChatList = ({
           </h3>
           <ul className="space-y-0 flex flex-col">
             {groupedChats[groupTitle].map((chat: Chat) => {
-              // Calculate RTL logic inline to avoid hook ordering issues
+              // Calculate RTL logic using consolidated function
               const isRTL =
-                languageLearningData.find(
-                  (lang) =>
-                    lang.value === chat.selectedLanguage ||
-                    lang.value === chat.nativeLanguage
-                )?.rtl ||
                 isRTLLanguage(chat.selectedLanguage) ||
                 isRTLLanguage(chat.nativeLanguage);
 

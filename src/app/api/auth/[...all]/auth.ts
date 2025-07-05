@@ -3,6 +3,10 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { db } from "@/db";
 import { nextCookies } from "better-auth/next-js";
 import { user, session, account, verification } from "@/db/schema";
+import {
+  sendEmail,
+  createVerificationEmailTemplate,
+} from "@/lib/email-service";
 
 const localhost = "http://localhost:3000";
 
@@ -75,6 +79,25 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: false,
+    requireEmailVerification: true,
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url, token }, request) => {
+      try {
+        const emailData = createVerificationEmailTemplate(user.email, url);
+        await sendEmail(emailData);
+        console.log(`✅ Verification email sent to ${user.email}`);
+      } catch (error) {
+        console.error(
+          `❌ Failed to send verification email to ${user.email}:`,
+          error
+        );
+        // In production, you might want to handle this error differently
+        // For now, we'll just log it
+      }
+    },
   },
   socialProviders: {
     github: {

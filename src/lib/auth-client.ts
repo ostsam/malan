@@ -40,4 +40,17 @@ export const gitHubSignIn = async () => {
   }
 };
 
+export const resendVerificationEmail = async (email: string) => {
+  try {
+    await authClient.sendVerificationEmail({
+      email: email,
+      callbackURL: "/verify-email",
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Resend verification email error:", error);
+    return { success: false, error };
+  }
+};
+
 export const { signIn, signUp, useSession, signOut } = authClient;
