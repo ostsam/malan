@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import {
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<"loading" | "success" | "error">(
@@ -152,5 +152,32 @@ export default function VerifyEmailPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
+          <div className="flex w-full max-w-sm flex-col gap-2">
+            <a href="/" className="flex items-center self-center font-medium">
+              <img src="/malan-caps.svg" alt="Malan" className="h-12 w-auto" />
+            </a>
+            <Card>
+              <CardHeader className="text-center">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                </div>
+                <CardTitle className="text-xl">Loading...</CardTitle>
+                <CardDescription>Please wait...</CardDescription>
+              </CardHeader>
+            </Card>
+          </div>
+        </div>
+      }
+    >
+      <VerifyEmailContent />
+    </Suspense>
   );
 }
