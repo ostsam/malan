@@ -152,7 +152,7 @@ export default function WordlistClient({
 
   return (
     <div className="max-w-lg mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
+      <h1 className="text-2xl font-bold mb-4 flex items-center justify-center gap-2">
         <BookOpen className="h-6 w-6" style={{ color: interfaceColor }} />
         Wordlist
       </h1>
