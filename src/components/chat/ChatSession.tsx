@@ -5,7 +5,7 @@ import { useChat, Message } from "@ai-sdk/react";
 import { useTextToSpeech } from "../../app/hooks/useTextToSpeech";
 import { useChatInteraction } from "../../app/hooks/useChatInteraction";
 import { useInputControls } from "../../app/hooks/useInputControls";
-import { EditIcon, Lock, Star } from "lucide-react";
+import { EditIcon, Lock, Star, ArrowLeft, BookOpen } from "lucide-react";
 import { createIdGenerator } from "ai";
 import { interfaceColor } from "@/lib/theme";
 import { useRTL } from "@/app/hooks/useRTL";
@@ -18,6 +18,8 @@ import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatControls } from "@/components/chat/ChatControls";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { useSession } from "@/lib/auth-client";
 
 // Types for real and demo chat
 export interface SerializableChatData {
@@ -65,6 +67,10 @@ export function ChatSession({
   const { ttsVoice } = useChatTTS(
     demoMode ? demoSettings! : chatObject?.settings
   );
+
+  // Check if user is authenticated
+  const { data: session } = useSession();
+  const isAuthenticated = !!session?.user?.id;
 
   // Ref for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -260,18 +266,6 @@ export function ChatSession({
         }
       `}</style>
 
-<<<<<<< Updated upstream
-      <div className="relative flex flex-col items-center fade-in">
-        {/* Header with centered logo */}
-        <div className="flex items-center justify-center w-full px-4 py-2">
-          <a href="/">
-            <img
-              src="/logo.svg"
-              alt="Malan Logo"
-              className="h-12 w-auto hover:opacity-70"
-            />
-          </a>
-=======
       {/* Header Section - Fixed height */}
       <div className="relative flex flex-col items-center fade-in flex-shrink-0 mobile-compact-header">
         {/* Header with navigation buttons for authenticated users */}
@@ -317,7 +311,6 @@ export function ChatSession({
 
           {/* Spacer for non-authenticated users to keep logo centered */}
           {!isAuthenticated && <div className="w-10" />}
->>>>>>> Stashed changes
         </div>
 
         {/* Slug/title underneath */}
