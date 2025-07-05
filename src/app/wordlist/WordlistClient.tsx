@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useMemo } from "react";
 import useSWR from "swr";
 import { Star, StarOff, BookOpen, Volume2, ArrowUpDown } from "lucide-react";
 import { useWordSaved } from "@/hooks/useWordlist";
@@ -37,7 +37,18 @@ interface SummaryItem {
   count: number;
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+// OPTIMIZATION: Improve fetcher with better error handling and caching
+const fetcher = async (url: string) => {
+  const response = await fetch(url, {
+    headers: {
+      "Cache-Control": "max-age=300",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return response.json();
+};
 
 // Map full part-of-speech labels to abbreviations
 const posAbbrev: Record<string, string> = {
@@ -57,7 +68,7 @@ const posAbbrev: Record<string, string> = {
 
 function abbreviatePOS(pos: string) {
   const key = pos.toLowerCase();
-  return posAbbrev[key] || pos;
+  return posAbbrev[key] || pos.slice(0, 3).toUpperCase();
 }
 
 export default function WordlistClient({
@@ -75,71 +86,114 @@ export default function WordlistClient({
   const [ascending, setAscending] = useState(false);
   const [query, setQuery] = useState("");
 
+  // OPTIMIZATION: Better SWR configuration for performance
   const { data: itemsData, mutate } = useSWR<{ items: RawItem[] }>(
     `/api/wordlist?lang=${lang}&nativeLang=${nativeLang}`,
     fetcher,
     {
       fallbackData: { items: initialItems },
       revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      dedupingInterval: 300000, // 5 minutes
+      errorRetryCount: 2,
+      errorRetryInterval: 1000,
     }
   );
 
   const rawItems = itemsData?.items ?? [];
 
-  // Group definitions per word
-  const map = new Map<
-    string,
-    { defs: Definition[]; createdAt: string; transLang: string | null }
-  >();
-  for (const it of rawItems) {
-    if (!map.has(it.word)) {
-      map.set(it.word, {
-        defs: [],
-        createdAt: it.createdAt || "",
-        transLang: it.transLang ?? null,
-      });
-    }
-    const obj = map.get(it.word)!;
-    const list = obj.defs;
-    const existing = list.find((d) => d.pos === it.pos && d.sense === it.sense);
-    if (existing) {
-      if (!existing.translatedSense && it.translatedSense) {
-        existing.translatedSense = it.translatedSense;
+  // OPTIMIZATION: Memoize expensive data processing
+  const { items, filteredItems } = useMemo(() => {
+    // Group definitions per word
+    const map = new Map<
+      string,
+      { defs: Definition[]; createdAt: string; transLang: string | null }
+    >();
+
+    for (const it of rawItems) {
+      if (!map.has(it.word)) {
+        map.set(it.word, {
+          defs: [],
+          createdAt: it.createdAt || "",
+          transLang: it.transLang ?? null,
+        });
       }
-    } else {
-      list.push({
-        pos: it.pos,
-        sense: it.sense,
-        translatedSense: it.translatedSense,
-        examples: it.examples,
-      });
+      const obj = map.get(it.word)!;
+      const list = obj.defs;
+      const existing = list.find(
+        (d) => d.pos === it.pos && d.sense === it.sense
+      );
+      if (existing) {
+        if (!existing.translatedSense && it.translatedSense) {
+          existing.translatedSense = it.translatedSense;
+        }
+      } else {
+        list.push({
+          pos: it.pos,
+          sense: it.sense,
+          translatedSense: it.translatedSense,
+          examples: it.examples,
+        });
+      }
     }
-  }
-  let items: WordEntry[] = Array.from(map.entries()).map(([word, obj]) => ({
-    word,
-    defs: obj.defs,
-    createdAt: obj.createdAt,
-    transLang: obj.defs.find((d) => d.translatedSense)?.translatedSense
-      ? (obj.transLang ?? null)
-      : null,
-  }));
 
-  // Sorting (make copy to avoid in-place mutations affecting subsequent toggles)
-  items = [...items].sort((a, b) => {
-    const aDate = a.createdAt || "";
-    const bDate = b.createdAt || "";
-    return ascending ? aDate.localeCompare(bDate) : bDate.localeCompare(aDate);
-  });
+    let items: WordEntry[] = Array.from(map.entries()).map(([word, obj]) => ({
+      word,
+      defs: obj.defs,
+      createdAt: obj.createdAt,
+      transLang: obj.defs.find((d) => d.translatedSense)?.translatedSense
+        ? (obj.transLang ?? null)
+        : null,
+    }));
 
-  // Filtering
-  const q = query.trim().toLowerCase();
-  const filteredItems = q
-    ? items.filter(
-        (entry) =>
-          entry.word.toLowerCase().includes(q) ||
-          entry.defs.some((d) => d.sense.toLowerCase().includes(q))
-      )
-    : items;
+    // Sorting (make copy to avoid in-place mutations affecting subsequent toggles)
+    items = [...items].sort((a, b) => {
+      const aDate = a.createdAt || "";
+      const bDate = b.createdAt || "";
+      return ascending
+        ? aDate.localeCompare(bDate)
+        : bDate.localeCompare(aDate);
+    });
+
+    // Filtering
+    const q = query.trim().toLowerCase();
+    const filteredItems = q
+      ? items.filter(
+          (entry) =>
+            entry.word.toLowerCase().includes(q) ||
+            entry.defs.some((d) => d.sense.toLowerCase().includes(q))
+        )
+      : items;
+
+    return { items, filteredItems };
+  }, [rawItems, ascending, query]);
+
+  // OPTIMIZATION: Memoize language tabs to prevent unnecessary re-renders
+  const languageTabs = useMemo(
+    () => (
+      <div className="flex flex-wrap gap-2">
+        {summary.map((s) => {
+          const active = s.lang === lang;
+          return (
+            <button
+              key={s.lang}
+              className={cn(
+                "px-3 py-1 rounded-full text-sm border transition-colors",
+                active
+                  ? "bg-[#3C18D9] text-white border-transparent"
+                  : "bg-white dark:bg-slate-800 border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              )}
+              onClick={() => setLang(s.lang)}
+            >
+              {s.lang.toUpperCase()}{" "}
+              <span className="opacity-70">({s.count})</span>
+            </button>
+          );
+        })}
+      </div>
+    ),
+    [summary, lang]
+  );
 
   // Enable page scrolling (override global overflow-hidden)
   React.useEffect(() => {
@@ -160,26 +214,7 @@ export default function WordlistClient({
       {/* Search & controls */}
       <div className="flex flex-wrap gap-2 mb-4 items-center">
         {/* Language tabs */}
-        <div className="flex flex-wrap gap-2">
-          {summary.map((s) => {
-            const active = s.lang === lang;
-            return (
-              <button
-                key={s.lang}
-                className={cn(
-                  "px-3 py-1 rounded-full text-sm border transition-colors",
-                  active
-                    ? "bg-[#3C18D9] text-white border-transparent"
-                    : "bg-white dark:bg-slate-800 border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                )}
-                onClick={() => setLang(s.lang)}
-              >
-                {s.lang.toUpperCase()}{" "}
-                <span className="opacity-70">({s.count})</span>
-              </button>
-            );
-          })}
-        </div>
+        {languageTabs}
 
         {/* Search */}
         <input
@@ -233,15 +268,15 @@ function WordItem({
   const { saved, toggle } = useWordSaved(entry.word, lang);
   const [open, setOpen] = useState(false);
   const [useTarget, setUseTarget] = useState(false);
-  const [defs, setDefs] = useState(entry.defs);
+  const [defs] = useState(entry.defs); // OPTIMIZATION: Don't recreate defs on every render
 
   // No need for ensureTranslations - translations are already fetched from the API
   const hasTranslations = defs.some((d) => d.translatedSense);
 
-  const handleToggle = async () => {
+  const handleToggle = useCallback(async () => {
     await toggle();
     onToggle();
-  };
+  }, [toggle, onToggle]);
 
   return (
     <li className="border rounded-xl shadow-sm bg-white/80 dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">

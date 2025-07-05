@@ -3,7 +3,13 @@ import { Analytics } from "@vercel/analytics/react";
 import { Inter } from "next/font/google";
 import LazyToaster from "@/components/LazyToaster";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+// OPTIMIZATION: Preload critical fonts and optimize loading
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap", // OPTIMIZATION: Font display swap for better performance
+  preload: true,
+});
 
 export default function RootLayout({
   children,
@@ -13,6 +19,23 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
+        {/* OPTIMIZATION: Preload critical resources */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
+
+        {/* OPTIMIZATION: Preload critical assets for better performance */}
+        <link
+          rel="preload"
+          href="/microphonebutton.json"
+          as="fetch"
+          crossOrigin="anonymous"
+        />
+        <link rel="preload" href="/logo.svg" as="image" type="image/svg+xml" />
+
         <style>{`
           @keyframes spin-slow { 
             from { transform: rotate(0deg);} 
@@ -25,6 +48,15 @@ export default function RootLayout({
           @keyframes fade-in { 
             from { opacity:0; transform: translateY(6px);} 
             to { opacity:1; transform: translateY(0);} 
+          }
+          
+          /* OPTIMIZATION: Reduce motion for users who prefer it */
+          @media (prefers-reduced-motion: reduce) {
+            * {
+              animation-duration: 0.01ms !important;
+              animation-iteration-count: 1 !important;
+              transition-duration: 0.01ms !important;
+            }
           }
         `}</style>
       </head>

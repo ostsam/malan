@@ -69,6 +69,10 @@ export function ChatSession({
     demoMode ? demoSettings! : chatObject?.settings
   );
 
+  // Check if user is authenticated
+  const { data: session } = useSession();
+  const isAuthenticated = !!session?.user?.id;
+
   // Ref for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -234,6 +238,33 @@ export function ChatSession({
           text-align: right !important;
           direction: rtl !important;
         }
+
+        /* Mobile-specific optimizations */
+        @media (max-height: 700px) {
+          .mobile-compact-header {
+            padding: 0.5rem 1rem;
+          }
+          .mobile-compact-title {
+            margin-top: 0.25rem;
+            font-size: 1rem;
+          }
+          .mobile-compact-messages {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+          }
+        }
+
+        /* Ensure microphone button is always visible */
+        .chat-controls-container {
+          min-height: 140px;
+          flex-shrink: 0;
+        }
+
+        @media (max-height: 600px) {
+          .chat-controls-container {
+            min-height: 120px;
+          }
+        }
       `}</style>
 
       <div className="relative flex flex-col items-center fade-in">
@@ -268,7 +299,7 @@ export function ChatSession({
         </div>
 
         {/* Slug/title underneath */}
-        <div className="text-center px-4 mt-1">
+        <div className="text-center px-4 mt-1 mobile-compact-title">
           <h2
             className="text-lg font-semibold text-gray-700 dark:text-gray-300 break-words"
             style={centerRTLStyles}
@@ -292,7 +323,8 @@ export function ChatSession({
         </div>
       </div>
 
-      <div className="flex-grow w-full pt-4 px-4 pb-4 fade-in delay-1 overflow-y-auto">
+      {/* Messages Section - Flexible height with proper overflow */}
+      <div className="flex-1 w-full pt-4 px-4 pb-4 fade-in delay-1 overflow-y-auto mobile-compact-messages min-h-0">
         {messages.length > 0 ? (
           <div className="flex flex-col space-y-4">
             {messages.map((m: Message) => (
@@ -355,6 +387,7 @@ export function ChatSession({
         )}
       </div>
 
+      {/* Error Messages - Fixed positioning */}
       {uiError && <div className={errorMessageStyling}>{uiError}</div>}
       {recordingError && (
         <div className={errorMessageStyling}>
@@ -372,18 +405,20 @@ export function ChatSession({
         </div>
       )}
 
-      {/* Chat Controls - disabled when limit reached in demo mode */}
+      {/* Chat Controls - Fixed height container */}
       {(demoMode ? messageCount < messageLimit : true) ? (
-        <ChatControls
-          isRecording={isRecording}
-          isTranscribing={isTranscribing}
-          status={status}
-          pushToTalk={pushToTalk}
-          setPushToTalk={setPushToTalk}
-          startRecording={startRecording}
-          stopRecording={stopRecording}
-          stopAudioPlayback={stopAudioPlayback}
-        />
+        <div className="chat-controls-container">
+          <ChatControls
+            isRecording={isRecording}
+            isTranscribing={isTranscribing}
+            status={status}
+            pushToTalk={pushToTalk}
+            setPushToTalk={setPushToTalk}
+            startRecording={startRecording}
+            stopRecording={stopRecording}
+            stopAudioPlayback={stopAudioPlayback}
+          />
+        </div>
       ) : null}
     </div>
   );
