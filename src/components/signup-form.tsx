@@ -35,8 +35,9 @@ const formSchema = z.object({
 
 export function SignUpForm({
   className,
+  fromDemo = false,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & { fromDemo?: boolean }) {
   const [loading, setLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState<"google" | null>(null);
   const [emailSent, setEmailSent] = useState(false);
@@ -77,9 +78,16 @@ export function SignUpForm({
     if (success) {
       setEmailSent(true);
       setUserEmail(values.email);
-      toast.success(
-        "Account created! Please check your email to verify your account."
-      );
+
+      if (fromDemo) {
+        toast.success(
+          "Account created! Please check your email to verify your account. Your demo conversation will be waiting for you!"
+        );
+      } else {
+        toast.success(
+          "Account created! Please check your email to verify your account."
+        );
+      }
     } else {
       toast.error("Signup failed");
     }
