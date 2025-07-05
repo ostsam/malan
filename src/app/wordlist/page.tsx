@@ -1,53 +1,71 @@
 import { auth } from "@/app/api/auth/[...all]/auth";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { db } from "@/db";
 import {
   wordlist,
   words as wordsTable,
   definitions as defsTable,
 } from "@/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
+import WordlistClient from "./WordlistClient";
+
+export const dynamic = "force-dynamic";
 
 export default async function WordlistPage({
-  searchParams,
+  params: _paramsPromise,
+  searchParams: _searchParamsPromise,
 }: {
-  searchParams: { lang?: string };
+  params: Promise<Record<string, string>>;
+  searchParams: Promise<{ lang?: string }>;
 }) {
-  const session = await auth();
+  // Await params promise to satisfy streaming type requirements (unused)
+  await _paramsPromise;
+
+  // Extract `lang` from the (now promise-based) search params
+  const { lang } = await _searchParamsPromise;
+
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
-  const lang = searchParams.lang || "en";
+  const initialLang = (lang || "en").toLowerCase();
 
   const items = await db
     .select({
       word: wordsTable.word,
       pos: defsTable.pos,
       sense: defsTable.sense,
+      examples: defsTable.examples,
     })
     .from(wordlist)
     .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
     .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
-    .where(and(eq(wordlist.userId, userId), eq(wordsTable.lang, lang)));
+    .where(and(eq(wordlist.userId, userId), eq(wordsTable.lang, initialLang)))
+    .orderBy(wordsTable.word);
+
+  const rawSummary = await db
+    .select({
+      lang: wordsTable.lang,
+      count: sql`count(*)`.as("count"),
+    })
+    .from(wordlist)
+    .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
+    .where(eq(wordlist.userId, userId))
+    .groupBy(wordsTable.lang);
+
+  // Ensure count is numeric
+  const summary = rawSummary.map((s) => ({
+    ...s,
+    count: Number(s.count),
+  }));
 
   return (
-    <div className="max-w-lg mx-auto p-4">
-      <h1 className="text-xl font-bold mb-4">
-        Wordlist ({lang.toUpperCase()})
-      </h1>
-      {items.length === 0 ? (
-        <p>No words saved yet.</p>
-      ) : (
-        <ul className="space-y-3">
-          {items.map((it) => (
-            <li key={it.word} className="border p-2 rounded">
-              <p className="font-semibold">
-                {it.word} <span className="text-xs opacity-70">({it.pos})</span>
-              </p>
-              <p className="text-sm opacity-80">{it.sense}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <WordlistClient
+      initialLang={initialLang}
+      initialItems={items}
+      summary={summary}
+    />
   );
 }
