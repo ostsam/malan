@@ -180,6 +180,19 @@ export const wordlist = pgTable(
   })
 );
 
+export const userPreferences = pgTable("user_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  nativeLanguage: varchar("native_lang", { length: 8 }),
+  targetLanguage: varchar("target_lang", { length: 8 }),
+  dailyGoal: integer("daily_goal").default(10), // words per day
+  ttsVoice: varchar("tts_voice", { length: 32 }).default("nova"),
+  emailNotifications: boolean("email_notifications").default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 export const schema = {
   user,
   session,
@@ -191,4 +204,5 @@ export const schema = {
   definitions,
   translations,
   wordlist,
+  userPreferences,
 };
