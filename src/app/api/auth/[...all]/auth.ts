@@ -127,7 +127,7 @@ export const auth = betterAuth({
     storeSessionInDatabase: true, // Store session in database when secondary storage is provided (default: `false`)
     preserveSessionInDatabase: false, // Preserve session records in database when deleted from secondary storage (default: `false`)
     cookieCache: {
-      enabled: true, // Enable caching session in cookie (default: `false`)
+      enabled: false, // Disable caching session in cookie to prevent "Session data is too large" error
       maxAge: 300, // 5 minutes
     },
   },

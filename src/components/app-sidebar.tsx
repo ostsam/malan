@@ -1,6 +1,14 @@
 "use client";
 
-import { Bookmark, EditIcon, TrashIcon, BookOpen } from "lucide-react";
+import {
+  Bookmark,
+  EditIcon,
+  TrashIcon,
+  BookOpen,
+  MoreVertical,
+  Settings,
+  LogOut,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
@@ -19,6 +27,13 @@ import {
   SidebarGroupLabel,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { LogoutButton } from "./logout";
 import { GroupedChatList } from "./grouped-chat-list";
 import { interfaceColor } from "@/lib/theme";
@@ -44,6 +59,8 @@ export default function AppSidebar({
     initialChatHistory ?? []
   );
   const [loading, setLoading] = useState(initialChatHistory ? false : true);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { isRTLLanguage } = useRTL({
     selectedLanguage: null,
     nativeLanguage: null,
@@ -66,9 +83,22 @@ export default function AppSidebar({
     setLoading(false);
   };
 
+  const fetchUserProfile = async () => {
+    try {
+      const res = await fetch("/api/profile", { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setUserProfile(data.profile);
+      }
+    } catch (e) {
+      console.error("Failed to fetch user profile:", e);
+    }
+  };
+
   useEffect(() => {
     if (initialChatHistory) return; // Skip fetch if data already provided by server
     fetchChatHistory();
+    fetchUserProfile();
   }, [initialChatHistory]);
 
   const handleTogglePin = async (chatId: string, isPinned: boolean) => {
@@ -129,6 +159,15 @@ export default function AppSidebar({
 
   const pinnedChats = chatHistory.filter((chat) => chat.isPinned);
   const recentChats = chatHistory.filter((chat) => !chat.isPinned);
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const renderChatList = (chats: Chat[]) => (
     <ul className="space-y-0 flex flex-col">
@@ -272,16 +311,78 @@ export default function AppSidebar({
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="border-t border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-xl">
-          <div className="flex flex-col gap-1 p-1">
-            <Link
-              href="/wordlist"
-              className="flex items-center justify-center gap-2 px-1 py-1 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
-            >
-              <BookOpen className="h-4 w-4" />
-              <span>Wordlist</span>
-            </Link>
-            <LogoutButton />
+        <SidebarFooter className="border-t-2 border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-xl">
+          <div className="p-1">
+            {/* User Profile Section - Replaces the old sign out button */}
+            {userProfile && (
+              <div className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage
+                      src={userProfile.image}
+                      alt={userProfile.name}
+                    />
+                    <AvatarFallback className="text-xs">
+                      {getInitials(userProfile.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                      {userProfile.name}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                      {userProfile.email}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Three-dot menu button */}
+                <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-48 p-1"
+                    align="end"
+                    side="top"
+                    sideOffset={8}
+                  >
+                    <div className="flex flex-col gap-1">
+                      <Link
+                        href="/wordlist"
+                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <BookOpen className="h-4 w-4" />
+                        <span>Wordlist</span>
+                      </Link>
+                      <Link
+                        href="/settings"
+                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <Settings className="h-4 w-4" />
+                        <span>Settings</span>
+                      </Link>
+                      <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                      <div
+                        className="flex items-center gap-2 px-2 py-1.5 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200 cursor-pointer"
+                        onClick={() => setMenuOpen(false)}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        <span>Sign out</span>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
           </div>
         </SidebarFooter>
       </Sidebar>

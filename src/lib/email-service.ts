@@ -11,12 +11,20 @@ export interface EmailData {
 // Example implementation with Resend
 export async function sendEmail(data: EmailData) {
   // For development, just log the email
-  if (process.env.NODE_ENV === "development") {
+  // To actually send emails in development, comment out this block or set FORCE_EMAIL_SENDING=true
+  if (
+    process.env.NODE_ENV === "development" &&
+    !process.env.FORCE_EMAIL_SENDING
+  ) {
     console.log("📧 Email would be sent:", {
       to: data.to,
       subject: data.subject,
       html: data.html,
     });
+    console.log(
+      "🔗 Verification URL:",
+      data.html.match(/href="([^"]+)"/)?.[1] || "Not found"
+    );
     return;
   }
 
