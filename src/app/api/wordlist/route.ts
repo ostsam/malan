@@ -4,6 +4,7 @@ import {
   wordlist,
   words as wordsTable,
   definitions as defsTable,
+  translations as transTable,
 } from "@/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { auth } from "@/app/api/auth/[...all]/auth";
@@ -17,6 +18,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const lang = searchParams.get("lang");
   const word = searchParams.get("word");
+  const nativeLang = searchParams.get("nativeLang") || "en";
 
   // 1) If word param -> return saved status
   if (word && lang) {
@@ -43,11 +45,20 @@ export async function GET(req: NextRequest) {
         word: wordsTable.word,
         pos: defsTable.pos,
         sense: defsTable.sense,
+        translatedSense: transTable.translatedSense,
         examples: defsTable.examples,
+        transLang: transTable.targetLang,
       })
       .from(wordlist)
       .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
       .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
+      .leftJoin(
+        transTable,
+        and(
+          eq(transTable.definitionId, defsTable.id),
+          eq(transTable.targetLang, nativeLang)
+        )
+      )
       .where(and(eq(wordlist.userId, userId), eq(wordsTable.lang, lang)));
     return NextResponse.json({ items: rows });
   }
