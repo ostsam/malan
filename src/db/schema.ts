@@ -32,6 +32,7 @@ export const messagesTable = createTable(
       t.chatId,
       t.createdAt
     ),
+    roleIndex: index("messages_role_idx").on(t.role),
     foreignKey: foreignKey({
       columns: [t.chatId],
       foreignColumns: [userSession.chatId],
@@ -40,16 +41,26 @@ export const messagesTable = createTable(
   })
 );
 
-export const userSession = createTable("user-sessions-table", {
-  chatId: varchar("chatId", { length: 256 }).primaryKey(),
-  slug: varchar("slug", { length: 256 }).notNull(),
-  settings: jsonb("settings").notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  userId: varchar("userId", { length: 256 }),
-  isPinned: boolean("isPinned").default(false).notNull(),
-});
+export const userSession = createTable(
+  "user-sessions-table",
+  {
+    chatId: varchar("chatId", { length: 256 }).primaryKey(),
+    slug: varchar("slug", { length: 256 }).notNull(),
+    settings: jsonb("settings").notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    userId: varchar("userId", { length: 256 }),
+    isPinned: boolean("isPinned").default(false).notNull(),
+  },
+  (t) => ({
+    userIdIndex: index("user_sessions_user_id_idx").on(t.userId),
+    pinnedCreatedIndex: index("user_sessions_pinned_created_idx").on(
+      t.isPinned,
+      t.createdAt
+    ),
+  })
+);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -67,49 +78,70 @@ export const user = pgTable("user", {
     .notNull(),
 });
 
-export const session = pgTable("session", {
-  id: text("id").primaryKey(),
-  expiresAt: timestamp("expires_at").notNull(),
-  token: text("token").notNull().unique(),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
-  ipAddress: text("ip_address"),
-  userAgent: text("user_agent"),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-});
+export const session = pgTable(
+  "session",
+  {
+    id: text("id").primaryKey(),
+    expiresAt: timestamp("expires_at").notNull(),
+    token: text("token").notNull().unique(),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+  },
+  (t) => ({
+    tokenIndex: index("session_token_idx").on(t.token),
+    userIdIndex: index("session_user_id_idx").on(t.userId),
+  })
+);
 
-export const account = pgTable("account", {
-  id: text("id").primaryKey(),
-  accountId: text("account_id").notNull(),
-  providerId: text("provider_id").notNull(),
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
-  accessToken: text("access_token"),
-  refreshToken: text("refresh_token"),
-  idToken: text("id_token"),
-  accessTokenExpiresAt: timestamp("access_token_expires_at"),
-  refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
-  scope: text("scope"),
-  password: text("password"),
-  createdAt: timestamp("created_at").notNull(),
-  updatedAt: timestamp("updated_at").notNull(),
-});
+export const account = pgTable(
+  "account",
+  {
+    id: text("id").primaryKey(),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at"),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
+    scope: text("scope"),
+    password: text("password"),
+    createdAt: timestamp("created_at").notNull(),
+    updatedAt: timestamp("updated_at").notNull(),
+  },
+  (t) => ({
+    userIdIndex: index("account_user_id_idx").on(t.userId),
+    providerIndex: index("account_provider_idx").on(t.providerId),
+  })
+);
 
-export const verification = pgTable("verification", {
-  id: text("id").primaryKey(),
-  identifier: text("identifier").notNull(),
-  value: text("value").notNull(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").$defaultFn(
-    () => /* @__PURE__ */ new Date()
-  ),
-  updatedAt: timestamp("updated_at").$defaultFn(
-    () => /* @__PURE__ */ new Date()
-  ),
-});
+export const verification = pgTable(
+  "verification",
+  {
+    id: text("id").primaryKey(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").$defaultFn(
+      () => /* @__PURE__ */ new Date()
+    ),
+    updatedAt: timestamp("updated_at").$defaultFn(
+      () => /* @__PURE__ */ new Date()
+    ),
+  },
+  (t) => ({
+    identifierIndex: index("verification_identifier_idx").on(t.identifier),
+    expiresIndex: index("verification_expires_idx").on(t.expiresAt),
+  })
+);
 
 export const words = pgTable(
   "words",
@@ -122,8 +154,8 @@ export const words = pgTable(
   },
   (t) => ({
     wordLangIdx: { columns: [t.word, t.lang], unique: true },
-    langIdx: index("words_lang_idx").on(t.lang),
-    wordIdx: index("words_word_idx").on(t.word),
+    langIndex: index("words_lang_idx").on(t.lang),
+    frequencyIndex: index("words_frequency_idx").on(t.frequencyRank),
   })
 );
 
@@ -146,7 +178,8 @@ export const definitions = pgTable(
   },
   (t) => ({
     wordPosSenseUnique: { columns: [t.wordId, t.pos, t.sense], unique: true },
-    wordIdIdx: index("definitions_word_id_idx").on(t.wordId),
+    wordIdIndex: index("definitions_word_id_idx").on(t.wordId),
+    sourceIndex: index("definitions_source_idx").on(t.source),
   })
 );
 
@@ -163,8 +196,8 @@ export const translations = pgTable(
   },
   (t) => ({
     pk: primaryKey(t.definitionId, t.targetLang),
-    definitionIdIdx: index("translations_definition_id_idx").on(t.definitionId),
-    targetLangIdx: index("translations_target_lang_idx").on(t.targetLang),
+    targetLangIndex: index("translations_target_lang_idx").on(t.targetLang),
+
   })
 );
 
