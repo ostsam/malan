@@ -45,7 +45,7 @@ export default async function WordlistPage({
     .where(and(eq(wordlist.userId, userId), eq(wordsTable.lang, initialLang)))
     .orderBy(wordsTable.word);
 
-  const summary = await db
+  const rawSummary = await db
     .select({
       lang: wordsTable.lang,
       count: sql`count(*)`.as("count"),
@@ -54,6 +54,12 @@ export default async function WordlistPage({
     .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
     .where(eq(wordlist.userId, userId))
     .groupBy(wordsTable.lang);
+
+  // Ensure count is numeric
+  const summary = rawSummary.map((s) => ({
+    ...s,
+    count: Number(s.count),
+  }));
 
   return (
     <WordlistClient
