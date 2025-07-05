@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { Star, StarOff, BookOpen } from "lucide-react";
+import { Star, StarOff, BookOpen, Volume2 } from "lucide-react";
 import { useWordSaved } from "@/hooks/useWordlist";
 import { interfaceColor } from "@/lib/theme";
 import { cn } from "@/lib/utils";
@@ -140,7 +140,35 @@ function WordItem({
         className="w-full p-2 flex justify-between items-start gap-3 text-left"
       >
         <div className="min-w-0">
-          <p className="font-semibold truncate mb-4">{entry.word}</p>
+          <p className="font-semibold truncate mb-4 flex items-center gap-1">
+            {entry.word}
+            <button
+              aria-label="Play pronunciation"
+              onClick={async (e) => {
+                e.stopPropagation(); // prevent expanding/collapsing
+                try {
+                  const res = await fetch("/api/chat/tts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: entry.word, voice: "nova" }),
+                  });
+                  if (!res.ok) return;
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const audio = new Audio(url);
+                  audio.play();
+                  audio.addEventListener("ended", () =>
+                    URL.revokeObjectURL(url)
+                  );
+                } catch (err) {
+                  console.error("Failed to play TTS", err);
+                }
+              }}
+              className="text-[#3C18D9] dark:text-white/80 hover:opacity-80"
+            >
+              <Volume2 size={14} />
+            </button>
+          </p>
           <div className="space-y-3">
             {entry.defs.map((d, i) => (
               <div
