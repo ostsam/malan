@@ -36,7 +36,7 @@ const BATCH_SIZE = 5; // ≈250 tokens/req → 16.5k tokens/sec @ 66 rps
 const CONCURRENCY = 66; // parallel requests cap
 
 // For now we only need English definitions
-const TARGET_LANGS = ["ja", "zh", "ko", "ru", "pt"];
+const TARGET_LANGS = ["ru", "pt"];
 
 const pgClient = new Client({ connectionString: process.env.DATABASE_URL });
 let db: ReturnType<typeof drizzle>;

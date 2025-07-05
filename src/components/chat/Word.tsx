@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import type { Definition } from "@/server/dictionary/types";
 import { interfaceColor } from "@/lib/theme";
 import Switch from "react-switch";
-import { Star, StarOff } from "lucide-react";
+import { Star, StarOff, Volume2 } from "lucide-react";
 import { useWordSaved } from "@/hooks/useWordlist";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
@@ -173,10 +173,35 @@ export function Word({
             {wordStack.length ? "← back" : "×"}
           </button>
 
-          {/* Center word */}
-          <span className="absolute inset-0 flex items-center justify-center text-med font-bold truncate">
-            {currentWord}
-          </span>
+          {/* Center word with pronunciation button */}
+          <div className="absolute inset-0 flex items-center justify-center gap-1 text-med font-bold truncate">
+            <span>{currentWord}</span>
+            <button
+              aria-label="Play pronunciation"
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/chat/tts", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: currentWord, voice: "nova" }),
+                  });
+                  if (!res.ok) return;
+                  const blob = await res.blob();
+                  const url = URL.createObjectURL(blob);
+                  const audio = new Audio(url);
+                  audio.play();
+                  audio.addEventListener("ended", () =>
+                    URL.revokeObjectURL(url)
+                  );
+                } catch (e) {
+                  console.error("Failed to play TTS", e);
+                }
+              }}
+              className="text-white hover:text-gray-200 focus:outline-none"
+            >
+              <Volume2 size={14} />
+            </button>
+          </div>
 
           {/* Right actions */}
           <div className="flex items-center gap-2 ml-auto z-10">

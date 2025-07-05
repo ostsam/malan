@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
   if (lang) {
     const rows = await db
       .select({
+        createdAt: wordlist.createdAt,
         word: wordsTable.word,
         pos: defsTable.pos,
         sense: defsTable.sense,
