@@ -209,7 +209,7 @@ export function Word({
             <button
               aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
               onClick={toggle}
-              className="text-yellow-300"
+              className="text-yellow-300 cursor-pointer"
             >
               {saved ? (
                 <Star fill="currentColor" size={16} />

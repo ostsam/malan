@@ -393,7 +393,7 @@ function WordItem({
             e.stopPropagation();
             handleToggle();
           }}
-          className="text-yellow-400 flex-shrink-0 mt-1"
+          className="text-yellow-400 flex-shrink-0 mt-1 cursor-pointer"
           aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
         >
           {saved ? (
