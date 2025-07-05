@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     // Support both {message, settings} and {messages, settings} formats
     let userMessage = body.message;
     let messages = body.messages || [];
-    let settings = body.settings;
+    const settings = body.settings;
 
     // If no message field, check if it's in the messages array
     if (!userMessage && Array.isArray(messages) && messages.length > 0) {

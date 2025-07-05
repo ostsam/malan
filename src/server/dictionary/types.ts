@@ -5,6 +5,8 @@ export interface Definition {
   sense: string;
   /** Example sentences illustrating the usage */
   examples: string[];
+  /** Optional translated sense for bilingual wordlists */
+  translatedSense?: string;
 }
 
 export interface FetchDefinitionParams {

@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useChat, Message } from "@ai-sdk/react";
 import { useTextToSpeech } from "../../app/hooks/useTextToSpeech";
 import { useChatInteraction } from "../../app/hooks/useChatInteraction";
 import { useInputControls } from "../../app/hooks/useInputControls";
-import { type DotLottie } from "@lottiefiles/dotlottie-react";
 import { EditIcon, Lock, Star } from "lucide-react";
 import { createIdGenerator } from "ai";
 import { interfaceColor } from "@/lib/theme";
@@ -17,12 +16,12 @@ import { useChatTTS } from "@/app/hooks/useChatTTS";
 import { useChatErrors } from "@/app/hooks/useChatErrors";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatControls } from "@/components/chat/ChatControls";
-import { Virtuoso } from "react-virtuoso";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 // Types for real and demo chat
 export interface SerializableChatData {
+  slug?: string;
   settings: any;
   messages: Array<Omit<Message, "createdAt"> & { createdAt?: string }>;
   createdAt?: string;
@@ -56,9 +55,11 @@ export function ChatSession({
   onSignupPrompt,
 }: ChatSessionProps) {
   // Initialize hooks based on mode
+  const demoSlugHook = useDemoChatSlug("", "demo");
+  const realSlugHook = useChatSlug(chatObject?.slug, id);
   const { slug, handleSlugUpdate, generateSlugFromMessage } = demoMode
-    ? useDemoChatSlug("", "demo")
-    : useChatSlug(chatObject?.slug, id);
+    ? demoSlugHook
+    : realSlugHook;
 
   const { uiError, showError } = useChatErrors();
   const { ttsVoice } = useChatTTS(

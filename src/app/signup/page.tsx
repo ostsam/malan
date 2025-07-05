@@ -2,8 +2,9 @@
 
 import { SignUpForm } from "@/components/signup-form";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function SignUpPage() {
+function SignUpPageContent() {
   const searchParams = useSearchParams();
   const fromDemo = searchParams.get("from") === "demo";
 
@@ -16,5 +17,13 @@ export default function SignUpPage() {
         <SignUpForm fromDemo={fromDemo} />
       </div>
     </div>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={null}>
+      <SignUpPageContent />
+    </Suspense>
   );
 }

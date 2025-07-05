@@ -1,5 +1,10 @@
 import { DashboardForm } from "@/components/dashboard/DashboardForm";
+import { Suspense } from "react";
 
 export default function DemoPage() {
-  return <DashboardForm isDemo={true} />;
+  return (
+    <Suspense fallback={null}>
+      <DashboardForm isDemo={true} />
+    </Suspense>
+  );
 }

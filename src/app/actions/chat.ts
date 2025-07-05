@@ -146,7 +146,7 @@ export async function generateAndAssignSlug(
 
   const chat = await getChat(chatId);
 
-  if (!chat || chat.userId !== userId) {
+  if (!chat) {
     throw new Error("Chat not found or user not authorized");
   }
 
