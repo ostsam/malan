@@ -2,89 +2,116 @@
 
 import { useEffect, useRef } from "react";
 import { useChat, Message } from "@ai-sdk/react";
-import { useTextToSpeech } from "../hooks/useTextToSpeech";
-import { useChatInteraction } from "../hooks/useChatInteraction";
-import { useInputControls } from "../hooks/useInputControls";
-import { type DotLottie } from "@lottiefiles/dotlottie-react";
-import { EditIcon, ArrowLeft, BookOpen } from "lucide-react";
-import Link from "next/link";
+import { useTextToSpeech } from "../../app/hooks/useTextToSpeech";
+import { useChatInteraction } from "../../app/hooks/useChatInteraction";
+import { useInputControls } from "../../app/hooks/useInputControls";
+import { EditIcon, Lock, Star } from "lucide-react";
 import { createIdGenerator } from "ai";
-import type { ChatData, ChatSettings } from "../tools/chat-store";
 import { interfaceColor } from "@/lib/theme";
 import { useRTL } from "@/app/hooks/useRTL";
 import { useChatSlug } from "@/app/hooks/useChatSlug";
+import { useDemoChatSlug } from "@/app/hooks/useDemoChatSlug";
 import { useChatMessages } from "@/app/hooks/useChatMessages";
 import { useChatTTS } from "@/app/hooks/useChatTTS";
 import { useChatErrors } from "@/app/hooks/useChatErrors";
 import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatControls } from "@/components/chat/ChatControls";
-import { Virtuoso } from "react-virtuoso";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-// Define a version of ChatData where dates are strings for serialization
-interface SerializableChatData
-  extends Omit<ChatData, "messages" | "createdAt"> {
+// Types for real and demo chat
+export interface SerializableChatData {
+  slug?: string;
+  settings: any;
   messages: Array<Omit<Message, "createdAt"> & { createdAt?: string }>;
   createdAt?: string;
 }
 
-const defaultChatSettings: ChatSettings = {
-  nativeLanguage: "en",
-  nativeLanguageLabel: "English",
-  selectedLanguage: "es",
-  selectedLanguageLabel: "Spanish",
-  selectedLevel: "Novice",
-  interlocutor: "Mateo",
-  name: "User",
-};
+export interface DemoSettings {
+  nativeLanguage: string;
+  nativeLanguageLabel: string;
+  selectedLanguage: string;
+  selectedLanguageLabel: string;
+  selectedLevel: string;
+  interlocutor: string;
+  isDemo: boolean;
+}
 
-const defaultChatObject: SerializableChatData = {
-  settings: defaultChatSettings,
-  messages: [],
-};
-
-export default function Chat({
-  slug: initialSlug,
-  id,
-  chatObject = defaultChatObject,
-}: {
-  slug?: string;
-  id?: string | undefined;
+interface ChatSessionProps {
+  id?: string;
   chatObject?: SerializableChatData;
-}) {
-  const { messages: serializableMessages, settings } = chatObject;
+  demoMode?: boolean;
+  demoSettings?: DemoSettings;
+  messageLimit?: number;
+  onSignupPrompt?: () => void;
+}
 
-  // Initialize hooks
-  const { slug, handleSlugUpdate, generateSlugFromMessage } = useChatSlug(
-    initialSlug,
-    id
-  );
+export function ChatSession({
+  id,
+  chatObject,
+  demoMode = false,
+  demoSettings,
+  messageLimit = 6,
+  onSignupPrompt,
+}: ChatSessionProps) {
+  // Initialize hooks based on mode
+  const demoSlugHook = useDemoChatSlug("", "demo");
+  const realSlugHook = useChatSlug(chatObject?.slug, id);
+  const { slug, handleSlugUpdate, generateSlugFromMessage } = demoMode
+    ? demoSlugHook
+    : realSlugHook;
+
   const { uiError, showError } = useChatErrors();
-  const { ttsVoice } = useChatTTS(settings);
+  const { ttsVoice } = useChatTTS(
+    demoMode ? demoSettings! : chatObject?.settings
+  );
 
-  // Deserialize messages before passing them to the useChat hook
-  const initialMessages: Message[] = serializableMessages.map((message) => ({
-    ...message,
-    createdAt: message.createdAt ? new Date(message.createdAt) : undefined,
-  }));
+  // Ref for auto-scrolling
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Deserialize messages for real chat
+  const initialMessages: Message[] = demoMode
+    ? []
+    : (chatObject?.messages || []).map((message) => ({
+        ...message,
+        createdAt: message.createdAt ? new Date(message.createdAt) : undefined,
+      }));
 
   const {
     messages,
     append,
     status,
     error: chatError,
-    isLoading,
+    isLoading: isChatLoading,
   } = useChat({
-    id,
-    initialMessages,
+    id: demoMode ? "demo" : id,
+    api: demoMode ? "/api/chat/demo" : "/api/chat",
+    initialMessages: demoMode ? undefined : initialMessages,
     sendExtraMessageFields: true,
     generateId: createIdGenerator({
       prefix: "msgc",
       size: 16,
     }),
-    experimental_prepareRequestBody({ messages, id }) {
-      return { message: messages[messages.length - 1], id };
-    },
+    body: demoMode
+      ? {
+          settings: demoSettings,
+        }
+      : undefined,
   });
+
+  // Auto-scroll to bottom when new messages are added
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const messageCount = messages.length;
+
+  // Track demo message count in localStorage
+  useEffect(() => {
+    if (demoMode && typeof window !== "undefined") {
+      localStorage.setItem("demoMessageCount", messageCount.toString());
+    }
+  }, [demoMode, messageCount]);
 
   const handleAppend = async (message: Omit<Message, "id">) => {
     const content =
@@ -94,6 +121,12 @@ export default function Chat({
 
     if (!content) {
       showError("Cannot send an empty message.");
+      return;
+    }
+
+    // Check message limit for demo mode
+    if (demoMode && messageCount >= messageLimit) {
+      showError("Demo limit reached. Please sign up to continue.");
       return;
     }
 
@@ -115,7 +148,7 @@ export default function Chat({
 
   const { stopAudioPlayback, speak } = useTextToSpeech({
     messages,
-    isLoading,
+    isLoading: isChatLoading,
     voice: ttsVoice,
   });
 
@@ -136,14 +169,20 @@ export default function Chat({
   });
 
   const { rtlStyles, centerRTLStyles, languageCode } = useRTL({
-    selectedLanguage: settings?.selectedLanguage,
-    nativeLanguage: settings?.nativeLanguage,
+    selectedLanguage: demoMode
+      ? demoSettings?.selectedLanguage
+      : chatObject?.settings?.selectedLanguage,
+    nativeLanguage: demoMode
+      ? demoSettings?.nativeLanguage
+      : chatObject?.settings?.nativeLanguage,
   });
 
   const { renderMessageContent } = useChatMessages(messages);
 
   const errorMessageStyling =
     "fixed bottom-40 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg z-10";
+
+  const settings = demoMode ? demoSettings! : chatObject?.settings;
 
   return (
     <div className="flex flex-col w-full max-w-xl mx-auto h-screen text-lg bg-white dark:bg-black overflow-hidden font-inter">
@@ -195,21 +234,8 @@ export default function Chat({
       `}</style>
 
       <div className="relative flex flex-col items-center fade-in">
-        {/* Header with logo and navigation buttons */}
-        <div className="flex items-center justify-between w-full px-4 py-2">
-          {/* Return to dashboard */}
-          <Link
-            href="/dashboard"
-            aria-label="Back to Dashboard"
-            className="flex items-center gap-2 px-3 py-2 bg-[#3C18D9] text-white rounded-lg shadow-md hover:bg-[#2A0F9E] transition-colors duration-200"
-          >
-            <ArrowLeft className="h-4 w-4 flex-shrink-0" />
-            <span className="text-sm font-medium hidden sm:inline">
-              Dashboard
-            </span>
-          </Link>
-
-          {/* Centered logo */}
+        {/* Header with centered logo */}
+        <div className="flex items-center justify-center w-full px-4 py-2">
           <a href="/">
             <img
               src="/logo.svg"
@@ -217,18 +243,6 @@ export default function Chat({
               className="h-12 w-auto hover:opacity-70"
             />
           </a>
-
-          {/* Wordlist link */}
-          <Link
-            href={`/wordlist?lang=${settings?.selectedLanguage || "en"}`}
-            aria-label="View Wordlist"
-            className="flex items-center gap-2 px-3 py-2 bg-[#3C18D9] text-white rounded-lg shadow-md hover:bg-[#2A0F9E] transition-colors duration-200"
-          >
-            <BookOpen className="h-4 w-4 flex-shrink-0" />
-            <span className="text-sm font-medium hidden sm:inline">
-              Wordlist
-            </span>
-          </Link>
         </div>
 
         {/* Slug/title underneath */}
@@ -240,27 +254,26 @@ export default function Chat({
           >
             {slug}
           </h2>
-          <button
-            onClick={async () => {
-              const newSlug = prompt("Enter new chat title:", slug);
-              if (newSlug) {
-                await handleSlugUpdate(newSlug);
-              }
-            }}
-            className=" text-gray-400 hover:text-[#3C18D9] transition-colors duration-200"
-          >
-            <EditIcon className="h-5 w-5" />
-          </button>
+          {!demoMode && (
+            <button
+              onClick={async () => {
+                const newSlug = prompt("Enter new chat title:", slug);
+                if (newSlug) {
+                  await handleSlugUpdate(newSlug);
+                }
+              }}
+              className="text-gray-400 hover:text-[#3C18D9] transition-colors duration-200"
+            >
+              <EditIcon className="h-5 w-5" />
+            </button>
+          )}
         </div>
       </div>
+
       <div className="flex-grow w-full pt-4 px-4 pb-4 fade-in delay-1 overflow-y-auto">
         {messages.length > 0 ? (
-          <Virtuoso
-            data={messages}
-            followOutput="auto"
-            initialTopMostItemIndex={messages.length - 1}
-            increaseViewportBy={{ top: 400, bottom: 800 }}
-            itemContent={(index: number, m: Message) => (
+          <div className="flex flex-col space-y-4">
+            {messages.map((m: Message) => (
               <ChatMessage
                 key={m.id}
                 message={m}
@@ -268,15 +281,16 @@ export default function Chat({
                 onSpeak={speak}
                 renderMessageContent={renderMessageContent}
               />
-            )}
-          />
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
         ) : (
           <div className="flex h-full flex-col justify-between py-8 text-center text-gray-600 dark:text-gray-400">
             <div>
               <p className="text-2xl">Instructions:</p>
               <p className="text-l mt-3">
-                Begin speaking {settings.selectedLanguageLabel}.{" "}
-                {settings.interlocutor} will have you speaking fluidly about
+                Begin speaking {settings?.selectedLanguageLabel}.{" "}
+                {settings?.interlocutor} will have you speaking fluidly about
                 your day, your interests, or anything else you'd like in no
                 time!
               </p>
@@ -284,8 +298,37 @@ export default function Chat({
             <div className="text-md pb-4">
               <p>1. Press the button and speak to begin</p>
               <p>2. Release it to end the transmission.</p>
-              <p>3. Await response from {settings.interlocutor}.</p>
+              <p>3. Await response from {settings?.interlocutor}.</p>
             </div>
+          </div>
+        )}
+
+        {/* Signup prompt when limit reached (demo only) */}
+        {demoMode && messageCount >= messageLimit && (
+          <div className="mt-0">
+            <Card className="border-[#3C18D9] bg-[#edebf3]">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-[#3C18D9] flex items-center gap-2">
+                  <Lock className="h-5 w-5" />
+                  Sign up to continue
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-gray-700">
+                <p className="mb-4">
+                  You've reached the demo limit! Sign up now to continue your
+                  conversation with {settings?.interlocutor} and unlock
+                  unlimited learning.
+                </p>
+                <Button
+                  onClick={onSignupPrompt}
+                  className="flex-1"
+                  style={{ backgroundColor: interfaceColor }}
+                >
+                  <Star className="mr-2 h-4 w-4" />
+                  Sign up to continue
+                </Button>
+              </CardContent>
+            </Card>
           </div>
         )}
       </div>
@@ -306,16 +349,20 @@ export default function Chat({
           Chat Error: {chatError.message}
         </div>
       )}
-      <ChatControls
-        isRecording={isRecording}
-        isTranscribing={isTranscribing}
-        status={status}
-        pushToTalk={pushToTalk}
-        setPushToTalk={setPushToTalk}
-        startRecording={startRecording}
-        stopRecording={stopRecording}
-        stopAudioPlayback={stopAudioPlayback}
-      />
+
+      {/* Chat Controls - disabled when limit reached in demo mode */}
+      {(demoMode ? messageCount < messageLimit : true) ? (
+        <ChatControls
+          isRecording={isRecording}
+          isTranscribing={isTranscribing}
+          status={status}
+          pushToTalk={pushToTalk}
+          setPushToTalk={setPushToTalk}
+          startRecording={startRecording}
+          stopRecording={stopRecording}
+          stopAudioPlayback={stopAudioPlayback}
+        />
+      ) : null}
     </div>
   );
 }

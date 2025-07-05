@@ -46,10 +46,31 @@ function VerifyEmailContent() {
         setMessage("Your email has been verified successfully!");
         toast.success("Email verified successfully!");
 
-        // Redirect to dashboard after a short delay
-        setTimeout(() => {
-          router.push("/dashboard");
-        }, 2000);
+        // Check if there's demo session data to recover
+        const demoSessionData = sessionStorage.getItem("demoSessionData");
+
+        if (demoSessionData) {
+          // Clear the demo data from sessionStorage
+          sessionStorage.removeItem("demoSessionData");
+
+          // Store it in localStorage for the authenticated user
+          localStorage.setItem("recoveredDemoSession", demoSessionData);
+
+          setMessage(
+            "Your email has been verified successfully! Your demo conversation is ready."
+          );
+          toast.success("Email verified! Your demo conversation is ready.");
+
+          // Redirect to dashboard after a short delay
+          setTimeout(() => {
+            router.push("/dashboard?recovered=demo");
+          }, 2000);
+        } else {
+          // Redirect to dashboard after a short delay
+          setTimeout(() => {
+            router.push("/dashboard");
+          }, 2000);
+        }
       } catch (error: any) {
         console.error("Email verification error:", error);
         setStatus("error");

@@ -1,34 +1,52 @@
-import { loadChat } from "@/app/tools/chat-store";
-import Chat from "@/app/ui/page";
-import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import { getChat } from "@/app/actions/chat";
+import { ChatSession } from "@/components/chat/ChatSession";
 
-export default async function Page({
-  params: paramsPromise,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const params = await paramsPromise;
-  const { id } = params;
+interface ChatPageProps {
+  params: Promise<{
+    id: string;
+  }>;
+}
 
-  // Prevent requests for source maps or other assets from being treated as chat IDs.
-  if (id.includes(".")) {
-    notFound();
+// Simple loading component
+function ChatLoading() {
+  return (
+    <div className="flex flex-col w-full max-w-xl mx-auto h-screen text-lg bg-white dark:bg-black overflow-hidden font-inter">
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-sky-500 mx-auto"></div>
+          <p className="mt-2 text-slate-600">Loading chat...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+async function ChatPageContent({ params }: ChatPageProps) {
+  const { id } = await params;
+  const chatObject = await getChat(id);
+
+  if (!chatObject) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Chat not found</h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            The chat you're looking for doesn't exist or you don't have access
+            to it.
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  const chatData = await loadChat(id);
+  return <ChatSession id={id} chatObject={chatObject} demoMode={false} />;
+}
 
-  if (!chatData) {
-    notFound();
-  }
-
-  const serializableChatData = {
-    ...chatData,
-    createdAt: chatData.createdAt?.toISOString(),
-    messages: chatData.messages.map((message) => ({
-      ...message,
-      createdAt: message.createdAt?.toISOString(),
-    })),
-  };
-
-  return <Chat id={id} chatObject={serializableChatData} />;
+export default function ChatPage(props: ChatPageProps) {
+  return (
+    <Suspense fallback={<ChatLoading />}>
+      <ChatPageContent {...props} />
+    </Suspense>
+  );
 }

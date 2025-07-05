@@ -13,7 +13,7 @@ export default async function Homepage() {
   }
 
   return (
-    <main className="flex h-dvh flex-col items-center justify-center bg-gray-50 p-4">
+    <main className="flex h-dvh flex-col items-center justify-center p-4">
       <div>
         <img src="/logo.svg" alt="Logo" className="h-50 w-auto" />
       </div>
@@ -24,12 +24,20 @@ export default async function Homepage() {
         <p className="mt-6 text-lg leading-8 text-gray-600">
           Your friendly AI-powered foreign language conversation partner.
         </p>
-        <div className="mt-10 flex items-center justify-center">
+        <div className="mt-4 flex flex-col items-center justify-center gap-1.5">
           <Link
             href="/login"
-            className="rounded-md bg-sky-500 px-4 py-3 text-lg font-semibold text-white shadow-sm hover:bg-sky-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-600"
+            className="rounded-md px-4 py-3 text-lg font-semibold text-white shadow-sm hover:bg-[#120b4a] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3C18D9]"
+            style={{ backgroundColor: "#3C18D9" }}
           >
             Get Started
+          </Link>
+          <Link
+            href="/demo"
+            className="rounded-md bg-white px-4 py-3 text-lg font-semibold shadow-sm ring-1 ring-[#3C18D9] hover:bg-[#edebf3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#3C18D9]"
+            style={{ color: "#3C18D9" }}
+          >
+            Try Malan
           </Link>
         </div>
       </div>
