@@ -5,7 +5,7 @@ import { useChat, Message } from "@ai-sdk/react";
 import { useTextToSpeech } from "../../app/hooks/useTextToSpeech";
 import { useChatInteraction } from "../../app/hooks/useChatInteraction";
 import { useInputControls } from "../../app/hooks/useInputControls";
-import { EditIcon, Lock, Star } from "lucide-react";
+import { EditIcon, Lock, Star, ArrowLeft, BookOpen } from "lucide-react";
 import { createIdGenerator } from "ai";
 import { interfaceColor } from "@/lib/theme";
 import { useRTL } from "@/app/hooks/useRTL";
@@ -18,6 +18,7 @@ import { ChatMessage } from "@/components/chat/ChatMessage";
 import { ChatControls } from "@/components/chat/ChatControls";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 
 // Types for real and demo chat
 export interface SerializableChatData {
@@ -54,6 +55,8 @@ export function ChatSession({
   messageLimit = 6,
   onSignupPrompt,
 }: ChatSessionProps) {
+  const router = useRouter();
+
   // Initialize hooks based on mode
   const demoSlugHook = useDemoChatSlug("", "demo");
   const realSlugHook = useChatSlug(chatObject?.slug, id);
@@ -234,15 +237,34 @@ export function ChatSession({
       `}</style>
 
       <div className="relative flex flex-col items-center fade-in">
-        {/* Header with centered logo */}
-        <div className="flex items-center justify-center w-full px-4 py-2">
-          <a href="/">
+        {/* Header with navigation buttons and centered logo */}
+        <div className="flex items-center justify-between w-full px-4 py-2">
+          {/* Dashboard button - left side */}
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+            title="Go to Dashboard"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+
+          {/* Centered logo */}
+          <a href="/" className="flex items-center justify-center">
             <img
               src="/logo.svg"
               alt="Malan Logo"
               className="h-12 w-auto hover:opacity-70"
             />
           </a>
+
+          {/* Wordlist button - right side */}
+          <button
+            onClick={() => router.push("/wordlist")}
+            className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors duration-200 text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
+            title="Go to Wordlist"
+          >
+            <BookOpen className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Slug/title underneath */}
