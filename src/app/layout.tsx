@@ -19,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
+<<<<<<< Updated upstream
         {/* OPTIMIZATION: Preload critical resources */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -30,6 +31,16 @@ export default function RootLayout({
         {/* OPTIMIZATION: Preload critical images */}
         <link rel="preload" href="/logo.svg" as="image" type="image/svg+xml" />
 
+=======
+        {/* OPTIMIZATION: Preload critical assets for better performance */}
+        <link
+          rel="preload"
+          href="/microphonebutton.json"
+          as="fetch"
+          crossOrigin="anonymous"
+        />
+        <link rel="preload" href="/logo.svg" as="image" type="image/svg+xml" />
+>>>>>>> Stashed changes
         <style>{`
           @keyframes spin-slow { 
             from { transform: rotate(0deg);} 
