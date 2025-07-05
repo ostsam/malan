@@ -51,13 +51,20 @@ async function deleteUser(email: string) {
   try {
     console.log(`🗑️  Deleting user with email: ${email}`);
 
-    const result = await db.delete(user).where(eq(user.email, email));
+    // First check if user exists
+    const existingUser = await db
+      .select()
+      .from(user)
+      .where(eq(user.email, email));
 
-    if (result.rowCount > 0) {
-      console.log("✅ User deleted successfully");
-    } else {
+    if (existingUser.length === 0) {
       console.log("❌ User not found");
+      return;
     }
+
+    // Delete the user
+    await db.delete(user).where(eq(user.email, email));
+    console.log("✅ User deleted successfully");
   } catch (error) {
     console.error("❌ Error deleting user:", error);
   } finally {
