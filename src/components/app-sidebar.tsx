@@ -38,6 +38,7 @@ import { GroupedChatList } from "./grouped-chat-list";
 import { interfaceColor } from "@/lib/theme";
 import { useRTL } from "@/app/hooks/useRTL";
 import { signOut } from "@/lib/auth-client";
+import { useCachedChatHistory } from "@/app/hooks/useCachedChatHistory";
 
 export interface Chat {
   chatId: string;
@@ -49,39 +50,21 @@ export interface Chat {
   isPinned: boolean;
 }
 
-export default function AppSidebar({
-  initialChatHistory,
-}: {
-  initialChatHistory?: Chat[];
-}) {
+export default function AppSidebar() {
   const router = useRouter();
-  const [chatHistory, setChatHistory] = useState<Chat[]>(
-    initialChatHistory ?? []
-  );
-  const [loading, setLoading] = useState(initialChatHistory ? false : true);
+  const {
+    history: chatHistory,
+    loading,
+    refresh,
+    persist,
+  } = useCachedChatHistory();
   const [userProfile, setUserProfile] = useState<any>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(true);
   const { isRTLLanguage } = useRTL({
     selectedLanguage: null,
     nativeLanguage: null,
   });
-
-  const fetchChatHistory = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/history", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setChatHistory(data.sessions || []);
-      } else {
-        setChatHistory([]);
-      }
-    } catch (e) {
-      console.error("Failed to fetch chat history:", e);
-      setChatHistory([]);
-    }
-    setLoading(false);
-  };
 
   const fetchUserProfile = async () => {
     try {
@@ -92,14 +75,14 @@ export default function AppSidebar({
       }
     } catch (e) {
       console.error("Failed to fetch user profile:", e);
+    } finally {
+      setProfileLoading(false);
     }
   };
 
   useEffect(() => {
-    if (initialChatHistory) return; // Skip fetch if data already provided by server
-    fetchChatHistory();
     fetchUserProfile();
-  }, [initialChatHistory]);
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -117,14 +100,14 @@ export default function AppSidebar({
     const updatedChatHistory = chatHistory.map((chat) =>
       chat.chatId === chatId ? { ...chat, isPinned: !chat.isPinned } : chat
     );
-    setChatHistory(updatedChatHistory);
+    persist(updatedChatHistory);
     toast.success(isPinned ? "Chat unpinned!" : "Chat pinned!");
 
     try {
       await togglePinStatus(chatId);
     } catch (error) {
       console.error("Failed to toggle pin status:", error);
-      setChatHistory(originalChatHistory);
+      persist(originalChatHistory);
       toast.error("Failed to update pin status. Please try again.");
     }
   };
@@ -136,14 +119,14 @@ export default function AppSidebar({
       const updatedChatHistory = chatHistory.map((chat) =>
         chat.chatId === chatId ? { ...chat, slug: newSlug } : chat
       );
-      setChatHistory(updatedChatHistory);
+      persist(updatedChatHistory);
       toast.success("Slug updated successfully!");
 
       try {
         await updateChatSlug(chatId, newSlug);
       } catch (error) {
         console.error("Failed to update slug:", error);
-        setChatHistory(originalChatHistory);
+        persist(originalChatHistory);
         toast.error("Failed to update slug. Please try again.");
       }
     }
@@ -155,14 +138,14 @@ export default function AppSidebar({
       const updatedChatHistory = chatHistory.filter(
         (chat) => chat.chatId !== chatId
       );
-      setChatHistory(updatedChatHistory);
+      persist(updatedChatHistory);
       toast.success("Chat deleted successfully!");
 
       try {
         await deleteChat(chatId);
       } catch (error) {
         console.error("Failed to delete chat:", error);
-        setChatHistory(originalChatHistory);
+        persist(originalChatHistory);
         toast.error("Failed to delete chat. Please try again.");
       }
     }
@@ -284,7 +267,11 @@ export default function AppSidebar({
   return (
     <>
       <SidebarTrigger />
-      <Sidebar side="left" collapsible="offcanvas" className="group">
+      <Sidebar
+        side="left"
+        collapsible="offcanvas"
+        className="group animate-in fade-in-0 duration-200"
+      >
         <SidebarContent className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-200/50 dark:border-slate-700/50">
           <SidebarGroup>
             <SidebarGroupContent className="p-1">
@@ -324,79 +311,103 @@ export default function AppSidebar({
         </SidebarContent>
         <SidebarFooter className="border-t-2 border-slate-200/50 dark:border-slate-700/50 bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-xl">
           <div className="p-1.5">
-            {/* User Profile Section - Replaces the old sign out button */}
-            {userProfile && (
-              <div className="flex items-center justify-between w-full">
+            {/* User Profile Section - Maintains original dimensions */}
+            <div className="flex items-center justify-between w-full">
+              {profileLoading ? (
+                // Compact loading skeleton that matches original dimensions
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                  <Avatar className="h-10 w-10">
-                    <AvatarImage
-                      src={userProfile.image}
-                      alt={userProfile.name}
-                    />
-                    <AvatarFallback className="text-xs">
-                      {getInitials(userProfile.name)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
-                      {userProfile.name}
+                  <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="h-3.5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+                    <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-2/3" />
+                  </div>
+                </div>
+              ) : userProfile ? (
+                <>
+                  <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage
+                        src={userProfile.image}
+                        alt={userProfile.name}
+                      />
+                      <AvatarFallback className="text-xs">
+                        {getInitials(userProfile.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                        {userProfile.name}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                        {userProfile.email}
+                      </div>
                     </div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                      {userProfile.email}
+                  </div>
+
+                  {/* Three-dot menu button */}
+                  <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-50 p-1.5"
+                      align="end"
+                      side="top"
+                      sideOffset={8}
+                    >
+                      <div className="flex flex-col gap-1">
+                        <Link
+                          href="/wordlist"
+                          className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          <BookOpen className="h-4 w-4" />
+                          <span>Wordlist</span>
+                        </Link>
+                        <Link
+                          href="/settings"
+                          className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
+                          onClick={() => setMenuOpen(false)}
+                        >
+                          <Settings className="h-4 w-4" />
+                          <span>Settings</span>
+                        </Link>
+                        <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
+                        <button
+                          className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200 w-full text-left"
+                          onClick={() => {
+                            setMenuOpen(false);
+                            handleSignOut();
+                          }}
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Sign out</span>
+                        </button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </>
+              ) : (
+                // Fallback state if profile fails to load
+                <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                  <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                      User Profile
+                    </div>
+                    <div className="text-xs text-slate-400 dark:text-slate-500">
+                      Loading...
                     </div>
                   </div>
                 </div>
-
-                {/* Three-dot menu button */}
-                <Popover open={menuOpen} onOpenChange={setMenuOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-9 w-9 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
-                    >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-50 p-1.5"
-                    align="end"
-                    side="top"
-                    sideOffset={8}
-                  >
-                    <div className="flex flex-col gap-1">
-                      <Link
-                        href="/wordlist"
-                        className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
-                        onClick={() => setMenuOpen(false)}
-                      >
-                        <BookOpen className="h-4 w-4" />
-                        <span>Wordlist</span>
-                      </Link>
-                      <Link
-                        href="/settings"
-                        className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-md transition-colors duration-200"
-                        onClick={() => setMenuOpen(false)}
-                      >
-                        <Settings className="h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-                      <div className="border-t border-slate-200 dark:border-slate-700 my-1" />
-                      <button
-                        className="flex items-center gap-2.5 px-2.5 py-1.5 text-sm text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors duration-200 w-full text-left"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          handleSignOut();
-                        }}
-                      >
-                        <LogOut className="h-4 w-4" />
-                        <span>Sign out</span>
-                      </button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </SidebarFooter>
       </Sidebar>
