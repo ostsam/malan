@@ -122,6 +122,8 @@ export const words = pgTable(
   },
   (t) => ({
     wordLangIdx: { columns: [t.word, t.lang], unique: true },
+    langIdx: index("words_lang_idx").on(t.lang),
+    wordIdx: index("words_word_idx").on(t.word),
   })
 );
 
@@ -144,6 +146,7 @@ export const definitions = pgTable(
   },
   (t) => ({
     wordPosSenseUnique: { columns: [t.wordId, t.pos, t.sense], unique: true },
+    wordIdIdx: index("definitions_word_id_idx").on(t.wordId),
   })
 );
 
@@ -160,6 +163,8 @@ export const translations = pgTable(
   },
   (t) => ({
     pk: primaryKey(t.definitionId, t.targetLang),
+    definitionIdIdx: index("translations_definition_id_idx").on(t.definitionId),
+    targetLangIdx: index("translations_target_lang_idx").on(t.targetLang),
   })
 );
 
@@ -177,6 +182,9 @@ export const wordlist = pgTable(
   },
   (t) => ({
     uniqueUserWord: { columns: [t.userId, t.wordId], unique: true },
+    userIdIdx: index("wordlist_user_id_idx").on(t.userId),
+    wordIdIdx: index("wordlist_word_id_idx").on(t.wordId),
+    createdAtIdx: index("wordlist_created_at_idx").on(t.createdAt),
   })
 );
 
