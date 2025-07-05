@@ -273,7 +273,7 @@ export default function AppSidebar() {
       <Sidebar
         side="left"
         collapsible="offcanvas"
-        className="group animate-in fade-in-0 duration-300"
+        className="group animate-in fade-in-0 duration-150"
       >
         <SidebarContent className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/40 dark:border-slate-700/40 shadow-xl">
           <SidebarGroup>
