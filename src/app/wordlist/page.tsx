@@ -14,20 +14,23 @@ export const dynamic = "force-dynamic";
 
 export default async function WordlistPage({
   params: _paramsPromise,
-  searchParams,
+  searchParams: _searchParamsPromise,
 }: {
   params: Promise<Record<string, string>>;
-  searchParams: { lang?: string };
+  searchParams: Promise<{ lang?: string }>;
 }) {
   // Await params promise to satisfy streaming type requirements (unused)
   await _paramsPromise;
+
+  // Extract `lang` from the (now promise-based) search params
+  const { lang } = await _searchParamsPromise;
 
   const session = await auth.api.getSession({
     headers: await headers(),
   });
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
-  const initialLang = (searchParams.lang || "en").toLowerCase();
+  const initialLang = (lang || "en").toLowerCase();
 
   const items = await db
     .select({
