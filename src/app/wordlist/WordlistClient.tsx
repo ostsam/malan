@@ -141,8 +141,17 @@ export default function WordlistClient({
       )
     : items;
 
+  // Enable page scrolling (override global overflow-hidden)
+  React.useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflowY = "auto";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
   return (
-    <div className="max-w-lg mx-auto p-4 h-[calc(100vh-4rem)] overflow-y-auto">
+    <div className="max-w-lg mx-auto p-4">
       <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
         <BookOpen className="h-6 w-6" style={{ color: interfaceColor }} />
         Wordlist
