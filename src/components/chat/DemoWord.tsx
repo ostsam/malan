@@ -207,7 +207,7 @@ export function DemoWord({
           <button
             aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
             onClick={toggle}
-            className="ml-auto text-white hover:text-gray-200 focus:outline-none"
+            className="ml-auto text-white hover:text-gray-200 focus:outline-none cursor-pointer"
           >
             {saved ? (
               <Star className="h-4 w-4" />

@@ -11,6 +11,7 @@ import {
   index,
   serial,
   primaryKey,
+  date,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import type { Message } from "ai";
@@ -197,6 +198,9 @@ export const userPreferences = pgTable("user_preferences", {
   dailyGoal: integer("daily_goal").default(10), // words per day
   ttsVoice: varchar("tts_voice", { length: 32 }).default("nova"),
   emailNotifications: boolean("email_notifications").default(true),
+  currentStreak: integer("current_streak").default(0), // consecutive days of activity
+  lastActivityDate: date("last_activity_date"), // last day user was active
+  longestStreak: integer("longest_streak").default(0), // best streak achieved
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

@@ -8,6 +8,7 @@ import {
 } from "@/db/schema";
 import { and, eq, sql } from "drizzle-orm";
 import { auth } from "@/app/api/auth/[...all]/auth";
+import { updateUserStreak } from "@/lib/streak-utils";
 
 // Cache successful responses for 5 minutes
 export const revalidate = 300;
@@ -155,6 +156,11 @@ export async function POST(req: NextRequest) {
 
       return { saved };
     });
+
+    // Update streak if word was saved (not removed)
+    if (result.saved) {
+      await updateUserStreak(userId);
+    }
 
     return NextResponse.json(result);
   } catch (error) {
