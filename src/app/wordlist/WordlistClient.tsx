@@ -76,7 +76,7 @@ export default function WordlistClient({
   const [query, setQuery] = useState("");
 
   const { data: itemsData, mutate } = useSWR<{ items: RawItem[] }>(
-    `/api/wordlist?lang=${lang}`,
+    `/api/wordlist?lang=${lang}&nativeLang=${nativeLang}`,
     fetcher,
     {
       fallbackData: { items: initialItems },
@@ -152,7 +152,7 @@ export default function WordlistClient({
 
   return (
     <div className="max-w-lg mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4 flex items-center gap-2">
+      <h1 className="text-2xl font-bold mb-4 flex items-center justify-center gap-2">
         <BookOpen className="h-6 w-6" style={{ color: interfaceColor }} />
         Wordlist
       </h1>
@@ -235,32 +235,8 @@ function WordItem({
   const [useTarget, setUseTarget] = useState(false);
   const [defs, setDefs] = useState(entry.defs);
 
-  const ensureTranslations = useCallback(async () => {
-    if (defs.every((d) => d.translatedSense)) return;
-    try {
-      const url = new URL(`/api/dict`, window.location.origin);
-      url.searchParams.set("lang", lang);
-      url.searchParams.set("word", entry.word);
-      url.searchParams.set("target", nativeLang);
-      const resp = await fetch(url.toString());
-      const data = await resp.json(); // { defs: [...] }
-      if (Array.isArray(data?.defs)) {
-        setDefs((prev) => {
-          const map = new Map(prev.map((d) => [d.pos + d.sense, d]));
-          for (const nd of data.defs) {
-            const key = nd.pos + nd.sense;
-            const existing = map.get(key);
-            if (existing) {
-              existing.translatedSense = nd.sense; // API returns translated text in sense
-            }
-          }
-          return Array.from(map.values());
-        });
-      }
-    } catch (e) {
-      console.error("Failed fetching translations", e);
-    }
-  }, [lang, nativeLang, entry.word, defs]);
+  // No need for ensureTranslations - translations are already fetched from the API
+  const hasTranslations = defs.some((d) => d.translatedSense);
 
   const handleToggle = async () => {
     await toggle();
@@ -318,10 +294,10 @@ function WordItem({
               onClick={(e) => {
                 e.stopPropagation();
               }}
+              className="relative"
             >
               <Switch
-                onChange={async () => {
-                  if (!useTarget) await ensureTranslations();
+                onChange={() => {
                   setUseTarget((v) => !v);
                 }}
                 checked={useTarget}
@@ -332,6 +308,7 @@ function WordItem({
                 height={12}
                 width={24}
                 handleDiameter={10}
+                disabled={!hasTranslations}
               />
             </div>
             <span className="text-[10px] uppercase opacity-70">
