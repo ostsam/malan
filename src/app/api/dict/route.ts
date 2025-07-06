@@ -16,6 +16,13 @@ import { and, eq, sql } from "drizzle-orm";
 // import { fetchMediaWikiDefinition } from "@/server/dictionary/providers/mediawiki"; // Disabled temporarily
 import type { Definition } from "@/server/dictionary/types";
 import { validateDictionaryLookup } from "@/lib/validation-schemas";
+import {
+  extractChineseWords,
+  isChineseText,
+} from "@/lib/chinese-tokenizer-server";
+
+// Force dynamic rendering for this API route
+export const dynamic = "force-dynamic";
 
 // Cache the successful response for one hour at the edge
 export const revalidate = 3600;
@@ -43,7 +50,7 @@ function defsMatchLanguage(defs: Definition[], langCode: string): boolean {
 export async function GET(req: NextRequest) {
   try {
     // Validate query parameters
-    const { searchParams } = new URL(req.url);
+    const searchParams = req.nextUrl.searchParams;
     const queryData = {
       word: searchParams.get("word")?.trim().toLowerCase(),
       lang: searchParams.get("lang")?.toLowerCase() || "en",
@@ -53,6 +60,23 @@ export async function GET(req: NextRequest) {
 
     const validatedData = validateDictionaryLookup(queryData);
     const { word, lang, target, provider } = validatedData;
+
+    // Handle Chinese word segmentation
+    let searchWords = [word];
+    if (lang === "zh" && isChineseText(word)) {
+      try {
+        const segmentedWords = extractChineseWords(word);
+        if (segmentedWords.length > 1) {
+          searchWords = segmentedWords;
+          console.log("[API] Chinese word segmented:", {
+            original: word,
+            segments: segmentedWords,
+          });
+        }
+      } catch (error) {
+        console.error("[API] Error segmenting Chinese word:", error);
+      }
+    }
 
     /* ---------------------------------------------------------------------- */
     /*                        1) Try database first                            */
@@ -65,107 +89,100 @@ export async function GET(req: NextRequest) {
         "lang:",
         lang,
         "target:",
-        target
+        target,
+        "searchWords:",
+        searchWords
       );
 
-      if (target && target !== lang) {
-        // Query with translation join when target language differs
-        console.log(
-          "[DB_RETRIEVE] Querying with translation join for target:",
-          target
-        );
+      // Try each segmented word if we have multiple
+      for (const searchWord of searchWords) {
+        if (target && target !== lang) {
+          // Query with translation join when target language differs
+          console.log(
+            "[DB_RETRIEVE] Querying with translation join for target:",
+            target,
+            "word:",
+            searchWord
+          );
 
-        const rows = await db
-          .select({
-            defId: defsTable.id,
-            pos: defsTable.pos,
-            sense: defsTable.sense,
-            translatedSense: transTable.translatedSense,
-            examples: defsTable.examples,
-          })
-          .from(wordsTable)
-          .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
-          .leftJoin(
-            transTable,
-            and(
-              eq(transTable.definitionId, defsTable.id),
-              eq(transTable.targetLang, target)
+          const rows = await db
+            .select({
+              defId: defsTable.id,
+              pos: defsTable.pos,
+              sense: defsTable.sense,
+              translatedSense: transTable.translatedSense,
+              examples: defsTable.examples,
+            })
+            .from(wordsTable)
+            .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
+            .leftJoin(
+              transTable,
+              and(
+                eq(transTable.definitionId, defsTable.id),
+                eq(transTable.targetLang, target)
+              )
             )
-          )
-          .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
-          .limit(3);
+            .where(
+              and(eq(wordsTable.word, searchWord), eq(wordsTable.lang, lang))
+            )
+            .limit(3);
 
-        console.log(
-          "[DB_RETRIEVE] Raw DB rows:",
-          rows.map((r) => ({
-            defId: r.defId,
-            pos: r.pos,
-            sense: r.sense.substring(0, 50),
-            translatedSense: r.translatedSense?.substring(0, 50) || "NULL",
-            examplesCount: r.examples.length,
-          }))
-        );
+          if (rows.length > 0) {
+            console.log(
+              "[DB_RETRIEVE] Found definitions for segmented word:",
+              searchWord
+            );
 
-        const result = rows.map((r) => ({
-          pos: r.pos,
-          sense: r.sense,
-          translatedSense: r.translatedSense || undefined,
-          examples: r.examples,
-        })) as Definition[];
+            const result = rows.map((r) => ({
+              pos: r.pos,
+              sense: r.sense,
+              translatedSense: r.translatedSense || undefined,
+              examples: r.examples,
+            })) as Definition[];
 
-        console.log(
-          "[DB_RETRIEVE] Processed result:",
-          result.map((r) => ({
-            pos: r.pos,
-            sense: r.sense.substring(0, 50),
-            hasTranslatedSense: !!r.translatedSense,
-            translatedSense: r.translatedSense?.substring(0, 50),
-          }))
-        );
+            return result;
+          }
+        } else {
+          // Query without translation join when no target or target = source
+          console.log(
+            "[DB_RETRIEVE] Querying without translation join for word:",
+            searchWord
+          );
 
-        return result;
-      } else {
-        // Query without translation join when no target or target = source
-        console.log("[DB_RETRIEVE] Querying without translation join");
+          const rows = await db
+            .select({
+              defId: defsTable.id,
+              pos: defsTable.pos,
+              sense: defsTable.sense,
+              examples: defsTable.examples,
+            })
+            .from(wordsTable)
+            .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
+            .where(
+              and(eq(wordsTable.word, searchWord), eq(wordsTable.lang, lang))
+            )
+            .limit(3);
 
-        const rows = await db
-          .select({
-            defId: defsTable.id,
-            pos: defsTable.pos,
-            sense: defsTable.sense,
-            examples: defsTable.examples,
-          })
-          .from(wordsTable)
-          .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
-          .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
-          .limit(3);
+          if (rows.length > 0) {
+            console.log(
+              "[DB_RETRIEVE] Found definitions for segmented word:",
+              searchWord
+            );
 
-        console.log(
-          "[DB_RETRIEVE] Raw DB rows (no translation):",
-          rows.map((r) => ({
-            defId: r.defId,
-            pos: r.pos,
-            sense: r.sense.substring(0, 50),
-            examplesCount: r.examples.length,
-          }))
-        );
+            const result = rows.map((r) => ({
+              pos: r.pos,
+              sense: r.sense,
+              examples: r.examples,
+            })) as Definition[];
 
-        const result = rows.map((r) => ({
-          pos: r.pos,
-          sense: r.sense,
-          examples: r.examples,
-        })) as Definition[];
-
-        console.log(
-          "[DB_RETRIEVE] Processed result (no translation):",
-          result.map((r) => ({
-            pos: r.pos,
-            sense: r.sense.substring(0, 50),
-          }))
-        );
-
-        return result;
+            return result;
+          }
+        }
       }
+
+      // If no definitions found for any segmented word, return empty array
+      console.log("[DB_RETRIEVE] No definitions found for any segmented word");
+      return [];
     }
 
     // Always attempt DB first unless explicitly bypassed

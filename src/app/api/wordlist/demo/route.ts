@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/db";
+import { words as wordsTable } from "@/db/schema";
+import { eq } from "drizzle-orm";
+
+// Force dynamic rendering for this API route
+export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
+  const searchParams = req.nextUrl.searchParams;
   const lang = searchParams.get("lang");
   const word = searchParams.get("word");
   const nativeLang = searchParams.get("nativeLang") || "en";

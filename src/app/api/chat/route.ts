@@ -95,34 +95,34 @@ export async function POST(req: Request) {
       });
     }
 
-    const { settings, messages } = await loadChat(chatId);
+  const { settings, messages } = await loadChat(chatId);
 
-    const systemPrompt = formatSystemPrompt(settings);
+  const systemPrompt = formatSystemPrompt(settings);
 
-    // Message history
+  // Message history
     const userMessageObj = {
       id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       role: "user" as const,
       content: userMessage,
     };
-    const historyWithUserMsg = appendClientMessage({
-      messages,
+  const historyWithUserMsg = appendClientMessage({
+    messages,
       message: userMessageObj, // now a Message object
-    });
+  });
 
-    const result = streamText({
-      model: openai("gpt-4.1-nano"),
-      messages: historyWithUserMsg,
-      system: systemPrompt,
-      temperature: 0.4,
-      experimental_generateMessageId: createIdGenerator({
-        prefix: "msgs",
-        size: 16,
-      }),
-      async onFinish({ response }) {
+  const result = streamText({
+    model: openai("gpt-4.1-nano"),
+    messages: historyWithUserMsg,
+    system: systemPrompt,
+    temperature: 0.4,
+    experimental_generateMessageId: createIdGenerator({
+      prefix: "msgs",
+      size: 16,
+    }),
+    async onFinish({ response }) {
         const newAssistantMessages = response.messages
           .filter((msg) =>
-            historyWithUserMsg.every((hMsg) => hMsg.id !== msg.id)
+        historyWithUserMsg.every((hMsg) => hMsg.id !== msg.id)
           )
           .map((msg) => {
             // If content is not a string, try to join text parts
@@ -146,9 +146,9 @@ export async function POST(req: Request) {
             }
           });
 
-        const messagesToSaveThisTurn = [
+      const messagesToSaveThisTurn = [
           ...(userMessage ? [userMessageObj] : []),
-          ...newAssistantMessages,
+        ...newAssistantMessages,
         ]
           .filter(
             (msg) =>
@@ -162,21 +162,21 @@ export async function POST(req: Request) {
             content: msg.content as string,
           })) as Message[];
 
-        if (messagesToSaveThisTurn.length > 0) {
-          await appendNewMessages({
-            id: chatId,
-            newMessages: messagesToSaveThisTurn,
-          });
-        }
+      if (messagesToSaveThisTurn.length > 0) {
+        await appendNewMessages({
+          id: chatId,
+          newMessages: messagesToSaveThisTurn,
+        });
+      }
 
         // Update streak when user sends a message
         if (userId && userMessage) {
           await updateUserStreak(userId);
         }
-      },
-    });
+    },
+  });
 
-    return result.toDataStreamResponse();
+  return result.toDataStreamResponse();
   } catch (error) {
     console.error("Chat API error:", error);
     return new Response(JSON.stringify({ error: "Invalid request data" }), {

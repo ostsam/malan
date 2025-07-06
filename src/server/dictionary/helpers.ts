@@ -8,13 +8,6 @@ import { openai } from "@ai-sdk/openai";
 const geminiModelId =
   process.env.GEMINI_MODEL_ID || "gemini-2.5-flash-lite-preview-06-17";
 
-// Log Gemini configuration for debugging
-console.log("[GEMINI_CONFIG]", {
-  modelId: geminiModelId,
-  hasApiKey: !!process.env.GOOGLE_API_KEY,
-  apiKeyLength: process.env.GOOGLE_API_KEY?.length || 0,
-});
-
 function getGeminiModel() {
   return google(geminiModelId);
 }
@@ -32,7 +25,7 @@ async function runGeminiPrompt(prompt: string, temperature: number = 0.2) {
 //                      OpenAI (GPT) model helpers
 // ---------------------------------------------------------------------------
 
-const openaiModelId = process.env.OPENAI_MODEL_ID || "gpt-3.5-turbo";
+const openaiModelId = process.env.OPENAI_MODEL_ID || "gpt-4.1-nano";
 
 function getOpenAiModel() {
   return openai(openaiModelId);
@@ -246,9 +239,9 @@ export async function translateDefinitions(
         } catch (err) {
           console.error("[LLM_TRANSLATE] Gemini failed:", err);
           console.error("[LLM_TRANSLATE] Gemini error details:", {
-            message: err.message,
-            code: err.code,
-            status: err.status,
+            message: err instanceof Error ? err.message : String(err),
+            code: (err as any)?.code,
+            status: (err as any)?.status,
           });
         }
         // Fallback to OpenAI if Gemini fails

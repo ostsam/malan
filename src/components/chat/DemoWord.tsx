@@ -12,6 +12,13 @@ import { interfaceColor } from "@/lib/theme";
 import Switch from "react-switch";
 import { Star, StarOff, Volume2 } from "lucide-react";
 import { useDemoWordSaved } from "@/hooks/useDemoWordlist";
+import { useChinesePinyin } from "@/hooks/useChineseTokenizedText";
+import { isChineseText } from "@/lib/chinese-tokenizer-server";
+import {
+  convertChineseText,
+  getUserChineseScriptPreference,
+} from "@/lib/chinese-converter";
+import { useJieba } from "@/hooks/useJieba";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -52,8 +59,58 @@ export function DemoWord({
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const [wordStack, setWordStack] = useState<string[]>([]);
   const [currentWord, setCurrentWord] = useState<string>(initialWord);
+  const [chineseScript, setChineseScript] = useState<
+    "traditional" | "simplified"
+  >("simplified");
+  const [convertedWord, setConvertedWord] = useState<string>(initialWord);
 
   const { saved, toggle } = useDemoWordSaved(currentWord, lang);
+
+  // Chinese-specific features
+  const isChinese = lang === "zh" || isChineseText(currentWord);
+  const { pinyin, loading: pinyinLoading } = useChinesePinyin(
+    currentWord,
+    isChinese
+  );
+
+  // Jieba tokenization for Chinese text
+  const { cut: jiebaCut, isReady: jiebaReady } = useJieba();
+
+  // State for async tokenization
+  const [tokenizedTexts, setTokenizedTexts] = useState<
+    Map<string, React.ReactNode[]>
+  >(new Map());
+  const [tokenizationLoading, setTokenizationLoading] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Load Chinese script preference
+  useEffect(() => {
+    const userPreference = getUserChineseScriptPreference();
+    setChineseScript(userPreference);
+  }, []);
+
+  // Convert word when Chinese script changes
+  useEffect(() => {
+    const convertWord = async () => {
+      if (isChinese && currentWord) {
+        try {
+          const converted = await convertChineseText(
+            currentWord,
+            chineseScript
+          );
+          setConvertedWord(converted);
+        } catch (error) {
+          console.error("Error converting word:", error);
+          setConvertedWord(currentWord);
+        }
+      } else {
+        setConvertedWord(currentWord);
+      }
+    };
+
+    convertWord();
+  }, [currentWord, chineseScript, isChinese]);
 
   const computeKey = () =>
     `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`;
@@ -171,7 +228,13 @@ export function DemoWord({
 
           {/* Center word with pronunciation button */}
           <div className="absolute inset-0 flex items-center justify-center gap-1 text-med font-bold truncate">
-            <span>{currentWord}</span>
+            <div className="flex flex-col items-center">
+              <span>{convertedWord}</span>
+              {/* Pinyin display for Chinese words */}
+              {isChinese && pinyin && (
+                <span className="text-xs opacity-80 font-normal">{pinyin}</span>
+              )}
+            </div>
             <button
               aria-label="Play pronunciation"
               onClick={async () => {
@@ -179,7 +242,10 @@ export function DemoWord({
                   const res = await fetch("/api/chat/tts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text: currentWord, voice: "nova" }),
+                    body: JSON.stringify({
+                      text: convertedWord,
+                      voice: "nova",
+                    }),
                   });
                   if (!res.ok) return;
                   const blob = await res.blob();
@@ -195,109 +261,388 @@ export function DemoWord({
               }}
               className="text-white hover:text-gray-200 focus:outline-none"
             >
-              <Volume2 className="h-3 w-3" />
+              <Volume2 size={14} />
             </button>
           </div>
 
-          {/* Save button */}
-          <div className="flex items-center gap-2 ml-auto">
+          {/* Right actions */}
+          <div className="flex items-center gap-2 ml-auto z-10">
             {source && providerPill}
             <button
               aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
               onClick={toggle}
-              className="text-white hover:text-gray-200 focus:outline-none cursor-pointer"
+              className="text-yellow-300 cursor-pointer"
             >
               {saved ? (
-                <Star className="h-4 w-4" />
+                <Star fill="currentColor" size={16} />
               ) : (
-                <StarOff className="h-4 w-4" />
+                <StarOff size={16} />
               )}
             </button>
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-3">
-          <div className="space-y-3">
-            {data.defs.map((def, i) => (
-              <div key={i} className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-gray-500 uppercase">
-                    {def.pos}
-                  </span>
-                  {providerPill}
-                </div>
-                <p className="text-sm">
-                  {useTarget && def.translatedSense
-                    ? def.translatedSense
-                    : def.sense}
-                </p>
-                {!useTarget && def.translatedSense && (
-                  <p className="text-sm text-gray-600 italic">
-                    {def.translatedSense}
-                  </p>
-                )}
-                {useTarget && def.sense !== def.translatedSense && (
-                  <p className="text-sm text-gray-600 italic">{def.sense}</p>
-                )}
-                {def.examples && def.examples.length > 0 && (
-                  <div className="mt-2 space-y-1">
-                    {def.examples.map((example, j) => (
-                      <p key={j} className="text-xs text-gray-500 italic">
-                        "{example}"
-                      </p>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
+        {/* Language toggle (Switch) */}
+        {targetLang && targetLang !== lang && (
+          <div className="flex items-center justify-center gap-1 py-2 mt-1 text-xs font-bold select-none">
+            <span style={{ opacity: !useTarget ? 1 : 0.5 }}>
+              {lang.toUpperCase()}
+            </span>
+            <Switch
+              onChange={() => setUseTarget((v) => !v)}
+              checked={useTarget}
+              uncheckedIcon={false}
+              checkedIcon={false}
+              onColor={interfaceColor}
+              offColor={interfaceColor}
+              height={14}
+              width={28}
+              handleDiameter={12}
+            />
+            <span style={{ opacity: useTarget ? 1 : 0.5 }}>
+              {targetLang.toUpperCase()}
+            </span>
           </div>
-        </div>
+        )}
 
-        {/* Footer controls */}
-        <div className="border-t border-gray-200 p-3 space-y-2">
-          {/* Target language toggle */}
-          {targetLang && targetLang !== lang && (
-            <div className="flex items-center justify-between text-xs">
-              <span>Show translations in {targetLang}</span>
-              <Switch
-                checked={useTarget}
-                onChange={setUseTarget}
-                onColor={interfaceColor}
-                height={16}
-                width={28}
-              />
+        {/* Chinese Script Toggle */}
+        {isChinese && (
+          <div className="flex items-center justify-center py-2 border-t border-slate-200 dark:border-slate-700">
+            {/* ChineseScriptToggle
+              className="text-xs"
+              onScriptChange={(script) => {
+                setChineseScript(script);
+                // The page refresh in the toggle component will handle the conversion
+              }}
+            /> */}
+          </div>
+        )}
+
+        {/* Definitions list */}
+        <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 text-left text-med">
+          {data.defs.map((d, i) => (
+            <div key={i} className="">
+              <p className="font-semibold mb-1">
+                {d.pos}:{" "}
+                {getTokenizedText(
+                  useTarget && d.translatedSense ? d.translatedSense : d.sense
+                )}
+              </p>
+              {!useTarget && d.translatedSense && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
+                  {d.translatedSense}
+                </p>
+              )}
+              {useTarget && d.sense !== d.translatedSense && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
+                  {d.sense}
+                </p>
+              )}
+              {d.examples.length > 0 && (
+                <ul className="list-disc list-inside space-y-0.5">
+                  {d.examples.map((ex, j) => (
+                    <li key={j} className="italic opacity-80">
+                      {getTokenizedText(ex)}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
-          )}
+          ))}
         </div>
       </div>
     );
+  };
+
+  // Helper function to detect if text contains Chinese/Japanese characters
+  const isCJKText = (text: string): boolean => {
+    return /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(text);
+  };
+
+  // tokenize definition/ex sentences to clickable words
+  const tokenizeDef = (text: string) => {
+    // Simplified regex that better handles word boundaries
+    // Matches: word characters (including apostrophes), whitespace, or punctuation
+    const parts = text.match(
+      /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+)/gu
+    ) || [text];
+
+    const isCJK = isCJKText(text);
+    const result: React.ReactNode[] = [];
+
+    parts.forEach((tok, idx) => {
+      // Check if it's a word (letters, Chinese characters, or Japanese characters)
+      const isWord =
+        /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
+          tok
+        );
+
+      if (isWord && tok.length > 0) {
+        // Add space before word if it's not CJK and not the first word
+        if (!isCJK && idx > 0) {
+          result.push(<span key={`space-${idx}`}> </span>);
+        }
+
+        result.push(
+          <span
+            key={idx}
+            style={{ textDecoration: "none" }}
+            className={cn(
+              "cursor-pointer",
+              isUser
+                ? "hover:decoration-white hover:underline hover:decoration-2"
+                : "hover:decoration-[#170664] hover:underline hover:decoration-2",
+              "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+            )}
+            onClick={() => {
+              setWordStack((s) => [...s, currentWord]);
+              setCurrentWord(tok.toLowerCase());
+              setData(null);
+            }}
+          >
+            {tok}
+          </span>
+        );
+      } else {
+        result.push(<React.Fragment key={idx}>{tok}</React.Fragment>);
+      }
+    });
+
+    return result;
+  };
+
+  // Async tokenization function that uses jieba for Chinese text
+  const tokenizeDefAsync = useCallback(
+    async (text: string): Promise<React.ReactNode[]> => {
+      if (!text || typeof text !== "string") {
+        return [];
+      }
+
+      // Check if we already have this text tokenized
+      if (tokenizedTexts.has(text)) {
+        return tokenizedTexts.get(text)!;
+      }
+
+      // Check if we're already tokenizing this text
+      if (tokenizationLoading.has(text)) {
+        return [<span key="loading">Loading...</span>];
+      }
+
+      // Mark as loading
+      setTokenizationLoading((prev) => new Set(prev).add(text));
+
+      try {
+        let tokens: string[];
+        const isCJK = isCJKText(text);
+
+        // Use jieba for Chinese text if ready
+        if (isChineseText(text) && jiebaReady) {
+          console.log("[DemoWord] Using jieba for Chinese text:", text);
+          tokens = await jiebaCut(text);
+        } else {
+          // Fallback to regex for non-Chinese or when jieba not ready
+          console.log("[DemoWord] Using regex fallback for text:", text);
+          const parts = text.match(
+            /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+)/gu
+          ) || [text];
+          tokens = parts.filter(
+            (part) =>
+              /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
+                part
+              ) && part.length > 0
+          );
+        }
+
+        // Convert tokens to React elements with proper spacing
+        const tokenElements: React.ReactNode[] = [];
+        tokens.forEach((token, idx) => {
+          // Add space before token if it's not CJK and not the first token
+          if (!isCJK && idx > 0) {
+            tokenElements.push(<span key={`space-${idx}`}> </span>);
+          }
+
+          tokenElements.push(
+            <span
+              key={idx}
+              style={{ textDecoration: "none" }}
+              className={cn(
+                "cursor-pointer",
+                isUser
+                  ? "hover:decoration-white hover:underline hover:decoration-2"
+                  : "hover:decoration-[#170664] hover:underline hover:decoration-2",
+                "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+              )}
+              onClick={() => {
+                setWordStack((s) => [...s, currentWord]);
+                setCurrentWord(token.toLowerCase());
+                setData(null);
+              }}
+            >
+              {token}
+            </span>
+          );
+        });
+
+        // Cache the result
+        setTokenizedTexts((prev) => new Map(prev).set(text, tokenElements));
+        return tokenElements;
+      } catch (error) {
+        console.error("[DemoWord] Error tokenizing text:", error);
+        // Fallback to original text
+        return [<span key="fallback">{text}</span>];
+      } finally {
+        // Remove from loading set
+        setTokenizationLoading((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(text);
+          return newSet;
+        });
+      }
+    },
+    [
+      jiebaCut,
+      jiebaReady,
+      tokenizedTexts,
+      tokenizationLoading,
+      isUser,
+      currentWord,
+    ]
+  );
+
+  // Effect to tokenize text when data changes
+  useEffect(() => {
+    if (!data || !open) return;
+
+    const tokenizeAllTexts = async () => {
+      const textsToTokenize: string[] = [];
+
+      // Collect all texts that need tokenization
+      data.defs.forEach((def) => {
+        const senseText =
+          useTarget && def.translatedSense ? def.translatedSense : def.sense;
+        if (senseText && !tokenizedTexts.has(senseText)) {
+          textsToTokenize.push(senseText);
+        }
+
+        def.examples.forEach((example) => {
+          if (example && !tokenizedTexts.has(example)) {
+            textsToTokenize.push(example);
+          }
+        });
+      });
+
+      // Tokenize all texts
+      for (const text of textsToTokenize) {
+        await tokenizeDefAsync(text);
+      }
+    };
+
+    tokenizeAllTexts();
+  }, [data, open, useTarget, tokenizedTexts, tokenizeDefAsync]);
+
+  // Helper function to get tokenized text from cache or fallback
+  const getTokenizedText = (text: string): React.ReactNode[] => {
+    if (tokenizedTexts.has(text)) {
+      return tokenizedTexts.get(text)!;
+    }
+
+    if (tokenizationLoading.has(text)) {
+      return [
+        <span key="loading" className="text-gray-400">
+          Loading...
+        </span>,
+      ];
+    }
+
+    // Fallback to original tokenizeDef for immediate display
+    // This will trigger async tokenization and show loading state
+    tokenizeDefAsync(text).catch(console.error);
+    return [<span key="fallback">{text}</span>];
+  };
+
+  const underlineColor = isUser ? "#FFFFFF" : "#3C18D9";
+
+  const interactiveClasses = cn(
+    "relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring",
+    highlight && "decoration-dotted underline",
+    isUser
+      ? "hover:decoration-white hover:underline hover:decoration-2"
+      : "hover:decoration-[#3C18D9] hover:underline hover:decoration-2",
+    // animated underline bar thicker; trigger on hover AND active (touch)
+    "after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+  );
+
+  const animatedStyle = {
+    "--uline": underlineColor,
+    textDecoration: "none", // Ensure no default underline
+  } as React.CSSProperties;
+
+  /* ------------------------- Draggable popover ------------------------ */
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const onMouseDownDrag = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragStart.current = { x: e.clientX - drag.x, y: e.clientY - drag.y };
+    setIsDragging(true);
+    window.addEventListener("mousemove", onMouseMoveDrag);
+    window.addEventListener("mouseup", onMouseUpDrag);
+  };
+
+  const onMouseMoveDrag = (e: MouseEvent) => {
+    if (!dragStart.current) return;
+    setDrag({
+      x: e.clientX - dragStart.current.x,
+      y: e.clientY - dragStart.current.y,
+    });
+  };
+
+  const onMouseUpDrag = () => {
+    dragStart.current = null;
+    window.removeEventListener("mousemove", onMouseMoveDrag);
+    window.removeEventListener("mouseup", onMouseUpDrag);
+    setIsDragging(false);
   };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <span
-          className={cn(
-            "cursor-pointer hover:bg-yellow-200 dark:hover:bg-yellow-800 rounded px-0.5",
-            highlight && "bg-yellow-200 dark:bg-yellow-800",
-            className
-          )}
-          onMouseDown={openPopover}
+          role="button"
+          tabIndex={0}
+          onClick={openPopover}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              openPopover();
+            }
+          }}
+          onMouseEnter={() => {
+            /* Disabled eager prefetch to cut down network calls */
+          }}
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
+          className={cn(interactiveClasses, className)}
+          style={animatedStyle}
           {...props}
         >
-          {initialWord}
+          {convertedWord}
         </span>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-80 h-96 p-0"
-        align="start"
-        side="top"
-        sideOffset={5}
-      >
-        {renderContent()}
+      <PopoverContent asChild sideOffset={4}>
+        <div
+          onMouseDown={onMouseDownDrag}
+          style={{
+            width: 320,
+            height: 260,
+            transform: `translate(${drag.x}px, ${drag.y}px)`,
+            cursor: isDragging ? "grabbing" : "grab",
+          }}
+          className="bg-white dark:bg-slate-800 overflow-y-auto rounded-md shadow-lg"
+        >
+          {renderContent()}
+        </div>
       </PopoverContent>
     </Popover>
   );

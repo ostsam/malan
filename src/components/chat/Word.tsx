@@ -12,6 +12,14 @@ import { interfaceColor } from "@/lib/theme";
 import Switch from "react-switch";
 import { Star, StarOff, Volume2 } from "lucide-react";
 import { useWordSaved } from "@/hooks/useWordlist";
+import { useChinesePinyin } from "@/hooks/useChineseTokenizedText";
+import { isChineseText } from "@/lib/chinese-tokenizer-server";
+import { useJieba } from "@/hooks/useJieba";
+import { ChineseScriptToggle } from "@/components/chinese-script-toggle";
+import {
+  convertChineseText,
+  getUserChineseScriptPreference,
+} from "@/lib/chinese-converter";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -52,8 +60,58 @@ export function Word({
   const longPressTimer = useRef<NodeJS.Timeout | null>(null);
   const [wordStack, setWordStack] = useState<string[]>([]);
   const [currentWord, setCurrentWord] = useState<string>(initialWord);
+  const [chineseScript, setChineseScript] = useState<
+    "traditional" | "simplified"
+  >("simplified");
+  const [convertedWord, setConvertedWord] = useState<string>(initialWord);
 
   const { saved, toggle } = useWordSaved(currentWord, lang);
+
+  // Chinese-specific features
+  const isChinese = lang === "zh" || isChineseText(currentWord);
+  const { pinyin, loading: pinyinLoading } = useChinesePinyin(
+    currentWord,
+    isChinese
+  );
+
+  // Jieba tokenization for Chinese text
+  const { cut: jiebaCut, isReady: jiebaReady } = useJieba();
+
+  // State for async tokenization
+  const [tokenizedTexts, setTokenizedTexts] = useState<
+    Map<string, React.ReactNode[]>
+  >(new Map());
+  const [tokenizationLoading, setTokenizationLoading] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Load Chinese script preference
+  useEffect(() => {
+    const userPreference = getUserChineseScriptPreference();
+    setChineseScript(userPreference);
+  }, []);
+
+  // Convert word when Chinese script changes
+  useEffect(() => {
+    const convertWord = async () => {
+      if (isChinese && currentWord) {
+        try {
+          const converted = await convertChineseText(
+            currentWord,
+            chineseScript
+          );
+          setConvertedWord(converted);
+        } catch (error) {
+          console.error("Error converting word:", error);
+          setConvertedWord(currentWord);
+        }
+      } else {
+        setConvertedWord(currentWord);
+      }
+    };
+
+    convertWord();
+  }, [currentWord, chineseScript, isChinese]);
 
   const computeKey = () =>
     `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`;
@@ -171,7 +229,9 @@ export function Word({
 
           {/* Center word with pronunciation button */}
           <div className="absolute inset-0 flex items-center justify-center gap-1 text-med font-bold truncate">
-            <span>{currentWord}</span>
+            <div className="flex flex-col items-center">
+              <span>{convertedWord}</span>
+            </div>
             <button
               aria-label="Play pronunciation"
               onClick={async () => {
@@ -179,7 +239,10 @@ export function Word({
                   const res = await fetch("/api/chat/tts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text: currentWord, voice: "nova" }),
+                    body: JSON.stringify({
+                      text: convertedWord,
+                      voice: "nova",
+                    }),
                   });
                   if (!res.ok) return;
                   const blob = await res.blob();
@@ -245,7 +308,7 @@ export function Word({
             <div key={i} className="">
               <p className="font-semibold mb-1">
                 {d.pos}:{" "}
-                {tokenizeDef(
+                {getTokenizedText(
                   useTarget && d.translatedSense ? d.translatedSense : d.sense
                 )}
               </p>
@@ -263,7 +326,7 @@ export function Word({
                 <ul className="list-disc list-inside space-y-0.5">
                   {d.examples.map((ex, j) => (
                     <li key={j} className="italic opacity-80">
-                      {tokenizeDef(ex)}
+                      {getTokenizedText(ex)}
                     </li>
                   ))}
                 </ul>
@@ -277,15 +340,29 @@ export function Word({
 
   // tokenize definition/ex sentences to clickable words
   const tokenizeDef = (text: string) => {
-    // Updated regex to include Unicode categories for combining marks (Mn), spacing marks (Mc), and enclosing marks (Me)
+    // Simplified regex that better handles word boundaries
+    // Matches: word characters (including apostrophes), whitespace, or punctuation
     const parts = text.match(
-      /([\p{L}\p{Mn}\p{Mc}\p{Me}'']+|\s+|[^\p{L}\p{Mn}\p{Mc}\p{Me}\s]+)/gu
+      /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+)/gu
     ) || [text];
-    return parts.map((tok, idx) => {
-      // Updated word test to include diacritical marks
-      const isWord = /^[\p{L}\p{Mn}\p{Mc}\p{Me}'']+$/u.test(tok);
-      if (isWord) {
-        return (
+
+    const isCJK = isCJKText(text);
+    const result: React.ReactNode[] = [];
+
+    parts.forEach((tok, idx) => {
+      // Check if it's a word (letters, Chinese characters, or Japanese characters)
+      const isWord =
+        /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
+          tok
+        );
+
+      if (isWord && tok.length > 0) {
+        // Add space before word if it's not CJK and not the first word
+        if (!isCJK && idx > 0) {
+          result.push(<span key={`space-${idx}`}> </span>);
+        }
+
+        result.push(
           <span
             key={idx}
             style={{ textDecoration: "none" }}
@@ -305,9 +382,194 @@ export function Word({
             {tok}
           </span>
         );
+      } else {
+        result.push(<React.Fragment key={idx}>{tok}</React.Fragment>);
       }
-      return <React.Fragment key={idx}>{tok}</React.Fragment>;
     });
+
+    return result;
+  };
+
+  // Helper function to detect if text contains Chinese/Japanese characters
+  const isCJKText = (text: string): boolean => {
+    return /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(text);
+  };
+
+  // Async tokenization function that uses jieba for Chinese text
+  const tokenizeDefAsync = useCallback(
+    async (text: string): Promise<React.ReactNode[]> => {
+      if (!text || typeof text !== "string") {
+        return [];
+      }
+
+      // Check if we already have this text tokenized
+      if (tokenizedTexts.has(text)) {
+        return tokenizedTexts.get(text)!;
+      }
+
+      // Check if we're already tokenizing this text
+      if (tokenizationLoading.has(text)) {
+        return [<span key="loading">Loading...</span>];
+      }
+
+      // Mark as loading
+      setTokenizationLoading((prev) => new Set(prev).add(text));
+
+      try {
+        let tokens: string[];
+        const isCJK = isCJKText(text);
+
+        // Use jieba for Chinese text if ready
+        if (isChineseText(text) && jiebaReady) {
+          console.log("[Word] Using jieba for Chinese text:", text);
+          tokens = await jiebaCut(text);
+        } else {
+          // Fallback to regex for non-Chinese or when jieba not ready
+          console.log("[Word] Using regex fallback for text:", text);
+          const parts = text.match(
+            /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+)/gu
+          ) || [text];
+          tokens = parts.filter(
+            (part) =>
+              /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
+                part
+              ) && part.length > 0
+          );
+        }
+
+        // Convert tokens to React elements with proper spacing
+        const tokenElements: React.ReactNode[] = [];
+        tokens.forEach((token, idx) => {
+          // Add space before token if it's not CJK and not the first token
+          if (!isCJK && idx > 0) {
+            tokenElements.push(<span key={`space-${idx}`}> </span>);
+          }
+
+          tokenElements.push(
+            <span
+              key={idx}
+              style={{ textDecoration: "none" }}
+              className={cn(
+                "cursor-pointer",
+                isUser
+                  ? "hover:decoration-white hover:underline hover:decoration-2"
+                  : "hover:decoration-[#170664] hover:underline hover:decoration-2",
+                "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+              )}
+              onClick={() => {
+                setWordStack((s) => [...s, currentWord]);
+                setCurrentWord(token.toLowerCase());
+                setData(null);
+              }}
+            >
+              {token}
+            </span>
+          );
+        });
+
+        // Cache the result
+        setTokenizedTexts((prev) => new Map(prev).set(text, tokenElements));
+        return tokenElements;
+      } catch (error) {
+        console.error("[Word] Error tokenizing text:", error);
+        // Fallback to original text
+        return [<span key="fallback">{text}</span>];
+      } finally {
+        // Remove from loading set
+        setTokenizationLoading((prev) => {
+          const newSet = new Set(prev);
+          newSet.delete(text);
+          return newSet;
+        });
+      }
+    },
+    [
+      jiebaCut,
+      jiebaReady,
+      tokenizedTexts,
+      tokenizationLoading,
+      isUser,
+      currentWord,
+    ]
+  );
+
+  // Effect to tokenize text when data changes
+  useEffect(() => {
+    if (!data || !open) return;
+
+    const tokenizeAllTexts = async () => {
+      const textsToTokenize: string[] = [];
+
+      // Collect all texts that need tokenization
+      data.defs.forEach((def, defIndex) => {
+        const senseText =
+          useTarget && def.translatedSense ? def.translatedSense : def.sense;
+        if (senseText && !tokenizedTexts.has(senseText)) {
+          textsToTokenize.push(senseText);
+        }
+
+        def.examples.forEach((example, exIndex) => {
+          if (example && !tokenizedTexts.has(example)) {
+            textsToTokenize.push(example);
+          }
+        });
+      });
+
+      if (textsToTokenize.length === 0) return;
+
+      // Mark texts as loading
+      textsToTokenize.forEach((text) => {
+        tokenizationLoading.add(text);
+      });
+
+      try {
+        // Tokenize all texts in parallel
+        const tokenizationPromises = textsToTokenize.map(async (text) => {
+          const result = await tokenizeDefAsync(text);
+          return { text, result };
+        });
+
+        const results = await Promise.all(tokenizationPromises);
+
+        // Update state with results
+        setTokenizedTexts((prev) => {
+          const newMap = new Map(prev);
+          results.forEach(({ text, result }) => {
+            newMap.set(text, result);
+          });
+          return newMap;
+        });
+      } catch (error) {
+        console.error("Error tokenizing texts:", error);
+      } finally {
+        // Clear loading state
+        textsToTokenize.forEach((text) => {
+          tokenizationLoading.delete(text);
+        });
+      }
+    };
+
+    tokenizeAllTexts();
+  }, [data, open, useTarget, tokenizedTexts]);
+
+  // Helper function to get tokenized text from cache or fallback
+  const getTokenizedText = (text: string): React.ReactNode[] => {
+    if (tokenizedTexts.has(text)) {
+      return tokenizedTexts.get(text)!;
+    }
+
+    if (tokenizationLoading.has(text)) {
+      return [
+        <span key="loading" className="text-gray-400">
+          Loading...
+        </span>,
+      ];
+    }
+
+    // Fallback to original tokenizeDef for immediate display
+    // This will trigger async tokenization and show loading state
+    tokenizeDefAsync(text).catch(console.error);
+    return [<span key="fallback">{text}</span>];
   };
 
   const underlineColor = isUser ? "#FFFFFF" : "#3C18D9";
@@ -377,7 +639,7 @@ export function Word({
           style={animatedStyle}
           {...props}
         >
-          {initialWord}
+          {convertedWord}
         </span>
       </PopoverTrigger>
       <PopoverContent asChild sideOffset={4}>
