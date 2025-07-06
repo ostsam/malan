@@ -201,7 +201,7 @@ export function Word({
 
           {/* Right actions */}
           <div className="flex items-center gap-2 ml-auto z-10">
-            {providerPill}
+            {source && providerPill}
             <button
               aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
               onClick={toggle}

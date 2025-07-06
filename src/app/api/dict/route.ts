@@ -57,8 +57,22 @@ export async function GET(req: NextRequest) {
     /* ---------------------------------------------------------------------- */
 
     async function getDefsFromDB(): Promise<Definition[]> {
+      console.log(
+        "[DB_RETRIEVE] Retrieving from DB for word:",
+        word,
+        "lang:",
+        lang,
+        "target:",
+        target
+      );
+
       if (target && target !== lang) {
         // Query with translation join when target language differs
+        console.log(
+          "[DB_RETRIEVE] Querying with translation join for target:",
+          target
+        );
+
         const rows = await db
           .select({
             defId: defsTable.id,
@@ -79,14 +93,39 @@ export async function GET(req: NextRequest) {
           .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
           .limit(3);
 
-        return rows.map((r) => ({
+        console.log(
+          "[DB_RETRIEVE] Raw DB rows:",
+          rows.map((r) => ({
+            defId: r.defId,
+            pos: r.pos,
+            sense: r.sense.substring(0, 50),
+            translatedSense: r.translatedSense?.substring(0, 50) || "NULL",
+            examplesCount: r.examples.length,
+          }))
+        );
+
+        const result = rows.map((r) => ({
           pos: r.pos,
           sense: r.sense,
           translatedSense: r.translatedSense || undefined,
           examples: r.examples,
         })) as Definition[];
+
+        console.log(
+          "[DB_RETRIEVE] Processed result:",
+          result.map((r) => ({
+            pos: r.pos,
+            sense: r.sense.substring(0, 50),
+            hasTranslatedSense: !!r.translatedSense,
+            translatedSense: r.translatedSense?.substring(0, 50),
+          }))
+        );
+
+        return result;
       } else {
         // Query without translation join when no target or target = source
+        console.log("[DB_RETRIEVE] Querying without translation join");
+
         const rows = await db
           .select({
             defId: defsTable.id,
@@ -99,18 +138,119 @@ export async function GET(req: NextRequest) {
           .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
           .limit(3);
 
-        return rows.map((r) => ({
+        console.log(
+          "[DB_RETRIEVE] Raw DB rows (no translation):",
+          rows.map((r) => ({
+            defId: r.defId,
+            pos: r.pos,
+            sense: r.sense.substring(0, 50),
+            examplesCount: r.examples.length,
+          }))
+        );
+
+        const result = rows.map((r) => ({
           pos: r.pos,
           sense: r.sense,
           examples: r.examples,
         })) as Definition[];
+
+        console.log(
+          "[DB_RETRIEVE] Processed result (no translation):",
+          result.map((r) => ({
+            pos: r.pos,
+            sense: r.sense.substring(0, 50),
+          }))
+        );
+
+        return result;
       }
     }
 
     // Always attempt DB first unless explicitly bypassed
     const dbDefs = await getDefsFromDB();
-    if (dbDefs.length > 0 && dbDefs.every((d) => d.sense)) {
+    console.log("[API] DB lookup result:", {
+      found: dbDefs.length > 0,
+      hasAllSenses: dbDefs.every((d) => d.sense),
+      hasTarget: !!target,
+      hasAllTranslations: target
+        ? dbDefs.every((d) => d.translatedSense)
+        : true,
+    });
+
+    // Only return early if we have complete data (including translations when requested)
+    if (
+      dbDefs.length > 0 &&
+      dbDefs.every((d) => d.sense) &&
+      (!target || dbDefs.every((d) => d.translatedSense))
+    ) {
+      console.log("[API] Returning complete data from DB");
       return NextResponse.json({ word, defs: dbDefs, source: "db" });
+    }
+
+    // If we have definitions but missing translations, we need to generate them
+    if (
+      dbDefs.length > 0 &&
+      dbDefs.every((d) => d.sense) &&
+      target &&
+      !dbDefs.every((d) => d.translatedSense)
+    ) {
+      console.log(
+        "[API] Found definitions but missing translations, will generate them"
+      );
+
+      try {
+        console.log(
+          "[API] Original definitions from DB:",
+          dbDefs.map((d) => ({ pos: d.pos, sense: d.sense.substring(0, 50) }))
+        );
+
+        // Generate translations for existing definitions
+        const translatedDefs = await llmTranslateDefs(dbDefs, target, lang);
+
+        console.log(
+          "[API] Translation results:",
+          translatedDefs.map((d) => ({
+            pos: d.pos,
+            sense: d.sense.substring(0, 50),
+            translatedSense: d.translatedSense?.substring(0, 50),
+          }))
+        );
+
+        // Save translations directly to existing definitions
+        await saveTranslationsToExistingDefinitions(
+          dbDefs,
+          translatedDefs,
+          target
+        );
+
+        // Combine original definitions with translations
+        const combinedDefs = dbDefs.map((originalDef, index) => ({
+          ...originalDef,
+          translatedSense:
+            translatedDefs[index]?.translatedSense ||
+            originalDef.translatedSense,
+        }));
+
+        console.log(
+          "[API] Combined definitions:",
+          combinedDefs.map((d) => ({
+            pos: d.pos,
+            sense: d.sense.substring(0, 50),
+            translatedSense: d.translatedSense?.substring(0, 50),
+          }))
+        );
+
+        console.log(
+          "[API] Generated and saved translations, returning combined data"
+        );
+        return NextResponse.json({ word, defs: combinedDefs, source: "db+ai" });
+      } catch (translationError) {
+        console.error(
+          "[API] Failed to generate translations for existing definitions:",
+          translationError
+        );
+        // Continue with original definitions only
+      }
     }
 
     // TEMPORARY: Disable wiki lookups until language detection improved
@@ -123,8 +263,121 @@ export async function GET(req: NextRequest) {
     const shouldTryGoogle = provider === "google" || !provider; // default to true if no provider specified
     const shouldTryGPT = provider === "gpt" || (!provider && !shouldTryGoogle); // fallback or explicit
 
+    // Helper: save translations to existing definitions
+    async function saveTranslationsToExistingDefinitions(
+      originalDefs: Definition[],
+      translatedDefs: Definition[],
+      targetLang: string
+    ) {
+      console.log(
+        "[SAVE_TRANSLATIONS] Starting translation save for target:",
+        targetLang
+      );
+
+      // Get the word ID
+      const existingWord = await db
+        .select({ id: wordsTable.id })
+        .from(wordsTable)
+        .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
+        .limit(1);
+
+      if (!existingWord.length) {
+        console.error("[SAVE_TRANSLATIONS] Word not found in database");
+        return;
+      }
+
+      const wordId = existingWord[0].id;
+
+      // For each original definition, find its ID and save the translation
+      for (let i = 0; i < originalDefs.length; i++) {
+        const originalDef = originalDefs[i];
+        const translatedDef = translatedDefs[i];
+
+        if (!translatedDef?.translatedSense) {
+          console.log(
+            "[SAVE_TRANSLATIONS] Skipping definition with no translation"
+          );
+          continue;
+        }
+
+        // Find the existing definition ID
+        const existingDef = await db
+          .select({ id: defsTable.id })
+          .from(defsTable)
+          .where(
+            and(
+              eq(defsTable.wordId, wordId),
+              eq(defsTable.pos, originalDef.pos),
+              eq(defsTable.sense, originalDef.sense)
+            )
+          )
+          .limit(1);
+
+        if (!existingDef.length) {
+          console.error("[SAVE_TRANSLATIONS] Definition not found in database");
+          continue;
+        }
+
+        const defId = existingDef[0].id;
+
+        console.log(
+          "[SAVE_TRANSLATIONS] Saving translation for definition ID:",
+          defId
+        );
+
+        try {
+          const transInsertRes = await db
+            .insert(transTable)
+            .values({
+              definitionId: defId,
+              targetLang: targetLang,
+              translatedSense: translatedDef.translatedSense,
+              source: "ai",
+            })
+            .onConflictDoNothing()
+            .returning({
+              definitionId: transTable.definitionId,
+              targetLang: transTable.targetLang,
+            });
+
+          if (transInsertRes.length > 0) {
+            console.log(
+              "[SAVE_TRANSLATIONS] ✅ Translation saved successfully:",
+              transInsertRes[0]
+            );
+          } else {
+            console.log("[SAVE_TRANSLATIONS] ⚠️ Translation already exists");
+          }
+        } catch (error) {
+          console.error(
+            "[SAVE_TRANSLATIONS] ❌ Error saving translation:",
+            error
+          );
+        }
+      }
+
+      console.log("[SAVE_TRANSLATIONS] Translation save complete");
+    }
+
     // Helper: persist new defs into DB
     async function persistDefinitions(defs: Definition[]) {
+      console.log(
+        "[DB_PERSIST] Starting persistence for word:",
+        word,
+        "lang:",
+        lang,
+        "target:",
+        target
+      );
+      console.log(
+        "[DB_PERSIST] Definitions to save:",
+        defs.map((d) => ({
+          pos: d.pos,
+          sense: d.sense.substring(0, 50),
+          translatedSense: d.translatedSense?.substring(0, 50),
+        }))
+      );
+
       // Upsert word
       const existingWord = await db
         .select({ id: wordsTable.id })
@@ -134,16 +387,23 @@ export async function GET(req: NextRequest) {
       let wordId: number;
       if (existingWord.length) {
         wordId = existingWord[0].id;
+        console.log("[DB_PERSIST] Using existing word ID:", wordId);
       } else {
         const inserted = await db
           .insert(wordsTable)
           .values({ word, lang })
           .returning();
         wordId = inserted[0].id;
+        console.log("[DB_PERSIST] Created new word ID:", wordId);
       }
 
       // Insert each definition if not exists
       for (const d of defs) {
+        console.log("[DB_PERSIST] Processing definition:", {
+          pos: d.pos,
+          sense: d.sense.substring(0, 50),
+        });
+
         const insertRes = await db
           .insert(defsTable)
           .values({
@@ -159,6 +419,7 @@ export async function GET(req: NextRequest) {
         let defId: number;
         if (insertRes.length) {
           defId = insertRes[0].id;
+          console.log("[DB_PERSIST] Created new definition ID:", defId);
         } else {
           const existing = await db
             .select({ id: defsTable.id })
@@ -172,21 +433,81 @@ export async function GET(req: NextRequest) {
             )
             .limit(1);
           defId = existing[0].id;
+          console.log("[DB_PERSIST] Using existing definition ID:", defId);
         }
 
         // Handle translation if available and target differs
         if (target && target !== lang && d.translatedSense) {
-          await db
-            .insert(transTable)
-            .values({
-              definitionId: defId,
-              targetLang: target,
-              translatedSense: d.translatedSense,
-              source: "ai",
-            })
-            .onConflictDoNothing();
+          console.log("[DB_PERSIST] Attempting to save translation:", {
+            definitionId: defId,
+            targetLang: target,
+            translatedSense: d.translatedSense.substring(0, 50),
+          });
+
+          try {
+            const transInsertRes = await db
+              .insert(transTable)
+              .values({
+                definitionId: defId,
+                targetLang: target,
+                translatedSense: d.translatedSense,
+                source: "ai",
+              })
+              .onConflictDoNothing()
+              .returning({
+                definitionId: transTable.definitionId,
+                targetLang: transTable.targetLang,
+              });
+
+            if (transInsertRes.length > 0) {
+              console.log(
+                "[DB_PERSIST] ✅ Translation saved successfully:",
+                transInsertRes[0]
+              );
+            } else {
+              console.log(
+                "[DB_PERSIST] ⚠️ Translation already exists or conflict occurred"
+              );
+
+              // Check if translation actually exists
+              const existingTrans = await db
+                .select({ translatedSense: transTable.translatedSense })
+                .from(transTable)
+                .where(
+                  and(
+                    eq(transTable.definitionId, defId),
+                    eq(transTable.targetLang, target)
+                  )
+                )
+                .limit(1);
+
+              if (existingTrans.length > 0) {
+                console.log(
+                  "[DB_PERSIST] ✅ Translation exists in DB:",
+                  existingTrans[0].translatedSense.substring(0, 50)
+                );
+              } else {
+                console.log(
+                  "[DB_PERSIST] ❌ Translation not found in DB - this indicates a problem!"
+                );
+              }
+            }
+          } catch (error) {
+            console.error("[DB_PERSIST] ❌ Error saving translation:", error);
+          }
+        } else {
+          console.log(
+            "[DB_PERSIST] Skipping translation - conditions not met:",
+            {
+              hasTarget: !!target,
+              targetDiffers: target !== lang,
+              hasTranslatedSense: !!d.translatedSense,
+            }
+          );
         }
       }
+
+      console.log("[DB_PERSIST] Persistence complete for word:", word);
     }
 
     // 2) Try Gemini (Google) first if no provider specified or explicitly requested

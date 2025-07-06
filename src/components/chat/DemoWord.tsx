@@ -200,17 +200,20 @@ export function DemoWord({
           </div>
 
           {/* Save button */}
-          <button
-            aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
-            onClick={toggle}
-            className="ml-auto text-white hover:text-gray-200 focus:outline-none cursor-pointer"
-          >
-            {saved ? (
-              <Star className="h-4 w-4" />
-            ) : (
-              <StarOff className="h-4 w-4" />
-            )}
-          </button>
+          <div className="flex items-center gap-2 ml-auto">
+            {source && providerPill}
+            <button
+              aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
+              onClick={toggle}
+              className="text-white hover:text-gray-200 focus:outline-none cursor-pointer"
+            >
+              {saved ? (
+                <Star className="h-4 w-4" />
+              ) : (
+                <StarOff className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Content */}
