@@ -1,7 +1,13 @@
 "use client";
 
 import { useUserStats } from "@/app/hooks/useUserStats";
-import { BookOpen, MessageCircle, Flame, Target } from "lucide-react";
+import {
+  BookOpen,
+  MessageCircle,
+  Flame,
+  Target,
+  TrendingUp,
+} from "lucide-react";
 import { interfaceColor } from "@/lib/theme";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -111,9 +117,24 @@ export function QuickStats() {
           Best streak: {stats.longestStreak} days
         </div>
       )}
-
+      {/* Analytics Button */}
+      <div className="pb-0">
+        <Link href="/analytics" className="block">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-xs bg-[rgba(23,6,100,0.06)] dark:bg-[rgba(23,6,100,0.12)] hover:bg-[rgba(23,6,100,0.1)] dark:hover:bg-[rgba(23,6,100,0.18)] border-slate-200/60 dark:border-slate-600/60 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-300"
+          >
+            <TrendingUp
+              className="h-3 w-3 mr-1"
+              style={{ color: interfaceColor }}
+            />
+            Analytics
+          </Button>
+        </Link>
+      </div>
       {/* Wordlist Button */}
-      <div className="pt-1">
+      <div className="pt-0 -mt-1">
         <Link href="/wordlist" className="block">
           <Button
             variant="outline"
