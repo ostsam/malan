@@ -20,9 +20,24 @@ export function useDemoWordSaved(word: string, lang: string | undefined) {
 
   async function toggle() {
     if (!lang) return;
-    // For demo, just show a message that they need to sign up
-    alert("Sign up to save words to your wordlist!");
-    mutate({ saved: false }, { revalidate: false });
+
+    // Optimistic update - immediately change the UI
+    const currentSaved = data?.saved ?? false;
+    const optimisticData = { saved: !currentSaved };
+
+    // Update the cache optimistically
+    mutate(optimisticData, { revalidate: false });
+
+    try {
+      // For demo, just show a message that they need to sign up
+      alert("Sign up to save words to your wordlist!");
+      // Keep the optimistic state for demo purposes
+      mutate(optimisticData, { revalidate: false });
+    } catch (error) {
+      console.error("Demo toggle error:", error);
+      // Revert the optimistic update on error
+      mutate({ saved: currentSaved }, { revalidate: false });
+    }
   }
 
   return { saved: data?.saved ?? false, toggle, mutate };
