@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...all]/auth";
+import { validateProfileUpdate } from "@/lib/validation-schemas";
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,13 +79,10 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ User authenticated:", session.user.id);
 
-    const { name } = await request.json();
-    if (!name || typeof name !== "string" || name.length < 2) {
-      return NextResponse.json(
-        { success: false, message: "Invalid name" },
-        { status: 400 }
-      );
-    }
+    // Validate request data
+    const rawData = await request.json();
+    const validatedData = validateProfileUpdate(rawData);
+    const { name } = validatedData;
 
     console.log("📝 Updating name to:", name);
 
@@ -111,4 +109,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
- 

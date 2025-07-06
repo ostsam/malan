@@ -6,6 +6,11 @@ import { userPreferences } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
+import {
+  validateProfileUpdate,
+  validatePreferences,
+  validatePasswordChange,
+} from "@/lib/validation-schemas";
 
 export interface ProfileData {
   name: string;
@@ -102,6 +107,9 @@ export async function updateProfile(data: ProfileData) {
   try {
     console.log("🔍 Server action: updateProfile called");
 
+    // Validate input data
+    const validatedData = validateProfileUpdate(data);
+
     const session = await getSessionWithCookies();
     if (!session?.user?.id) {
       return { success: false, message: "Not authenticated" };
@@ -151,7 +159,7 @@ export async function updateProfile(data: ProfileData) {
     // Update user profile via Better Auth with session headers
     await auth.api.updateUser({
       body: {
-        name: data.name,
+        name: validatedData.name,
       },
       headers: headers,
     });
@@ -170,6 +178,9 @@ export async function updateProfile(data: ProfileData) {
 
 export async function updatePreferences(data: PreferencesData) {
   try {
+    // Validate input data
+    const validatedData = validatePreferences(data);
+
     const session = await getSessionWithCookies();
     if (!session?.user?.id) {
       return { success: false, message: "Not authenticated" };
@@ -180,21 +191,21 @@ export async function updatePreferences(data: PreferencesData) {
       .insert(userPreferences)
       .values({
         userId: session.user.id,
-        nativeLanguage: data.nativeLanguage,
-        targetLanguage: data.targetLanguage,
-        dailyGoal: data.dailyGoal,
-        ttsVoice: data.ttsVoice,
-        emailNotifications: data.emailNotifications,
+        nativeLanguage: validatedData.nativeLanguage,
+        targetLanguage: validatedData.targetLanguage,
+        dailyGoal: validatedData.dailyGoal,
+        ttsVoice: validatedData.ttsVoice,
+        emailNotifications: validatedData.emailNotifications,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
         target: userPreferences.userId,
         set: {
-          nativeLanguage: data.nativeLanguage,
-          targetLanguage: data.targetLanguage,
-          dailyGoal: data.dailyGoal,
-          ttsVoice: data.ttsVoice,
-          emailNotifications: data.emailNotifications,
+          nativeLanguage: validatedData.nativeLanguage,
+          targetLanguage: validatedData.targetLanguage,
+          dailyGoal: validatedData.dailyGoal,
+          ttsVoice: validatedData.ttsVoice,
+          emailNotifications: validatedData.emailNotifications,
           updatedAt: new Date(),
         },
       });
@@ -215,6 +226,13 @@ export async function changePassword(
   newPassword: string
 ) {
   try {
+    // Validate password data
+    const validatedData = validatePasswordChange({
+      currentPassword,
+      newPassword,
+      confirmPassword: newPassword, // For validation purposes
+    });
+
     const session = await getSessionWithCookies();
     if (!session?.user?.id) {
       return { success: false, message: "Not authenticated" };
@@ -223,8 +241,8 @@ export async function changePassword(
     // Change password via Better Auth
     await auth.api.changePassword({
       body: {
-        currentPassword,
-        newPassword,
+        currentPassword: validatedData.currentPassword,
+        newPassword: validatedData.newPassword,
       },
     });
 
