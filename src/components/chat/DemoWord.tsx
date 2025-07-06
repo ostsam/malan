@@ -230,11 +230,11 @@ export function DemoWord({
           <div className="absolute inset-0 flex items-center justify-center gap-1 text-med font-bold truncate">
             <div className="flex flex-col items-center">
               <span>{convertedWord}</span>
-              {/* Pinyin display for Chinese words */}
-              {isChinese && pinyin && (
-                <span className="text-xs opacity-80 font-normal">{pinyin}</span>
-              )}
             </div>
+            {/* Display pinyin for Chinese words */}
+            {isChinese && pinyin && !pinyinLoading && (
+              <span className="text-sm opacity-80 font-normal">({pinyin})</span>
+            )}
             <button
               aria-label="Play pronunciation"
               onClick={async () => {
