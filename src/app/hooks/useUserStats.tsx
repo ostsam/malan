@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
-import { useSession } from "@/lib/auth-client";
+import { useCachedUserStats } from "./useCachedUserStats";
 
-interface UserStats {
+// Re-export the interface for backward compatibility
+export interface UserStats {
   wordCount: number;
   chatCount: number;
   streak: number;
@@ -11,52 +11,14 @@ interface UserStats {
   dailyProgress: number;
 }
 
+// Delegate to the cached version while maintaining the same API
 export function useUserStats() {
-  const { data: session } = useSession();
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchStats = async () => {
-    if (!session?.user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch("/api/stats", {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch stats");
-      }
-
-      const data = await response.json();
-      setStats(data);
-    } catch (err) {
-      console.error("Error fetching user stats:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch stats");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStats();
-  }, [session?.user?.id]);
-
-  const refreshStats = () => {
-    fetchStats();
-  };
+  const cached = useCachedUserStats();
 
   return {
-    stats,
-    loading,
-    error,
-    refreshStats,
+    stats: cached.stats,
+    loading: cached.loading,
+    error: cached.error,
+    refreshStats: cached.refresh,
   };
 }

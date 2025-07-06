@@ -7,6 +7,7 @@ import { useWordSaved } from "@/hooks/useWordlist";
 import { interfaceColor } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import Switch from "react-switch";
+import { useCachedUserStats } from "@/app/hooks/useCachedUserStats";
 
 interface RawItem {
   createdAt: string;
@@ -265,7 +266,16 @@ function WordItem({
   onToggle: () => void;
   nativeLang: string;
 }) {
-  const { saved, toggle } = useWordSaved(entry.word, lang);
+  // Get cached stats for optimistic updates
+  const { decrementWordCount } = useCachedUserStats();
+
+  const { saved, toggle } = useWordSaved(entry.word, lang, (saved) => {
+    // Optimistically update stats when word is removed (in wordlist, words are already saved)
+    if (!saved) {
+      decrementWordCount();
+    }
+  });
+
   const [open, setOpen] = useState(false);
   const [useTarget, setUseTarget] = useState(false);
   const [defs] = useState(entry.defs); // OPTIMIZATION: Don't recreate defs on every render
