@@ -8,6 +8,13 @@ import { openai } from "@ai-sdk/openai";
 const geminiModelId =
   process.env.GEMINI_MODEL_ID || "gemini-2.5-flash-lite-preview-06-17";
 
+// Log Gemini configuration for debugging
+console.log("[GEMINI_CONFIG]", {
+  modelId: geminiModelId,
+  hasApiKey: !!process.env.GOOGLE_API_KEY,
+  apiKeyLength: process.env.GOOGLE_API_KEY?.length || 0,
+});
+
 function getGeminiModel() {
   return google(geminiModelId);
 }
@@ -209,7 +216,15 @@ export async function translateDefinitions(
         let openaiResult: string | undefined = undefined;
         let used: "gemini" | "openai" | "none" = "none";
         try {
+          console.log("[LLM_TRANSLATE] Attempting Gemini translation...");
           geminiResult = await runGeminiPrompt(prompt, 0.2);
+          console.log(
+            "[LLM_TRANSLATE] Gemini response:",
+            geminiResult
+              ? `"${geminiResult.substring(0, 100)}..."`
+              : "null/empty"
+          );
+
           if (geminiResult && geminiResult.trim()) {
             used = "gemini";
             logTranslation({
@@ -223,9 +238,18 @@ export async function translateDefinitions(
               ...def,
               translatedSense: geminiResult.trim(),
             };
+          } else {
+            console.log(
+              "[LLM_TRANSLATE] Gemini returned empty/invalid response, falling back to OpenAI"
+            );
           }
         } catch (err) {
           console.error("[LLM_TRANSLATE] Gemini failed:", err);
+          console.error("[LLM_TRANSLATE] Gemini error details:", {
+            message: err.message,
+            code: err.code,
+            status: err.status,
+          });
         }
         // Fallback to OpenAI if Gemini fails
         try {
