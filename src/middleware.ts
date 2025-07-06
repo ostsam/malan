@@ -1,8 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionCookie } from "better-auth/cookies";
+import { getRateLimiterForPath } from "@/lib/rate-limiter";
 
 export async function middleware(request: NextRequest) {
   console.log(`Middleware triggered for path: ${request.nextUrl.pathname}`);
+
+  // Apply rate limiting for API endpoints
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    const rateLimiter = getRateLimiterForPath(request.nextUrl.pathname);
+    const rateLimitResult = await rateLimiter.middleware()(request);
+
+    if (rateLimitResult) {
+      console.log(`Rate limit exceeded for ${request.nextUrl.pathname}`);
+      return rateLimitResult;
+    }
+  }
 
   // This part will run if pathname is /dashboard (due to matcher)
   if (request.nextUrl.pathname.startsWith("/dashboard")) {
@@ -26,5 +38,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/dashboard/:path*"], // Updated matcher to include sub-paths of dashboard
+  matcher: [
+    "/",
+    "/dashboard/:path*",
+    "/api/:path*", // Add API routes to middleware
+  ],
 };
