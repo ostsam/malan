@@ -18,7 +18,6 @@ import { auth } from "@/app/api/auth/[...all]/auth";
 import { formatSystemPrompt } from "@/app/lib/prompt-templates";
 import { NextRequest } from "next/server";
 import { updateUserStreak } from "@/lib/streak-utils";
-import { validateChatMessage } from "@/lib/validation-schemas";
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;
@@ -48,10 +47,42 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: Request) {
   try {
-    // Validate and parse request data
+    // Parse request data - AI SDK sends messages in a different format
     const rawData = await req.json();
-    const validatedData = validateChatMessage(rawData);
-    const { message: userMessage, id: chatId, voice } = validatedData;
+
+    // Extract the message content from the AI SDK format
+    let userMessage: string;
+    let chatId: string | undefined;
+
+    if (
+      rawData.messages &&
+      Array.isArray(rawData.messages) &&
+      rawData.messages.length > 0
+    ) {
+      // AI SDK format: { messages: [{ role: "user", content: "..." }] }
+      const lastMessage = rawData.messages[rawData.messages.length - 1];
+      userMessage = lastMessage.content;
+      chatId = rawData.id;
+    } else if (rawData.message) {
+      // Direct message format: { message: "...", id: "..." }
+      userMessage = rawData.message;
+      chatId = rawData.id;
+    } else {
+      throw new Error("Invalid message format");
+    }
+
+    // Validate the extracted message
+    if (
+      !userMessage ||
+      typeof userMessage !== "string" ||
+      userMessage.trim().length === 0
+    ) {
+      throw new Error("Message cannot be empty");
+    }
+
+    if (userMessage.length > 2000) {
+      throw new Error("Message too long");
+    }
 
     // Get user session for streak updates
     const session = await auth.api.getSession({ headers: req.headers });
