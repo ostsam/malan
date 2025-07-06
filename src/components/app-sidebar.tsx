@@ -38,8 +38,8 @@ import { GroupedChatList } from "./grouped-chat-list";
 import { interfaceColor } from "@/lib/theme";
 import { useRTL } from "@/app/hooks/useRTL";
 import { signOut } from "@/lib/auth-client";
-import { useCachedChatHistory } from "@/app/hooks/useCachedChatHistory";
-import { QuickStats } from "@/components/QuickStats";
+import { QuickStats, UserStats } from "@/components/QuickStats";
+import { AppSidebarSkeleton } from "@/components/app-sidebar-skeleton";
 
 export interface Chat {
   chatId: string;
@@ -53,36 +53,47 @@ export interface Chat {
 
 export default function AppSidebar() {
   const router = useRouter();
-  const {
-    history: chatHistory,
-    loading,
-    refresh,
-    persist,
-  } = useCachedChatHistory();
+  const [chatHistory, setChatHistory] = useState<Chat[]>([]);
   const [userProfile, setUserProfile] = useState<any>(null);
+  const [stats, setStats] = useState<UserStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [profileLoading, setProfileLoading] = useState(true);
   const { isRTLLanguage } = useRTL({
     selectedLanguage: null,
     nativeLanguage: null,
   });
 
-  const fetchUserProfile = async () => {
-    try {
-      const res = await fetch("/api/profile", { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setUserProfile(data.profile);
-      }
-    } catch (e) {
-      console.error("Failed to fetch user profile:", e);
-    } finally {
-      setProfileLoading(false);
-    }
-  };
-
   useEffect(() => {
-    fetchUserProfile();
+    let isMounted = true;
+    setLoading(true);
+    setError(null);
+    Promise.all([
+      fetch("/api/history", { credentials: "include" }).then((res) =>
+        res.ok ? res.json() : Promise.reject("Failed to load chat history")
+      ),
+      fetch("/api/profile", { credentials: "include" }).then((res) =>
+        res.ok ? res.json() : Promise.reject("Failed to load profile")
+      ),
+      fetch("/api/stats", { credentials: "include" }).then((res) =>
+        res.ok ? res.json() : Promise.reject("Failed to load stats")
+      ),
+    ])
+      .then(([historyData, profileData, statsData]) => {
+        if (!isMounted) return;
+        setChatHistory(historyData.sessions || []);
+        setUserProfile(profileData.profile || null);
+        setStats(statsData || null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setError(typeof err === "string" ? err : "Failed to load sidebar data");
+        setLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const handleSignOut = async () => {
@@ -101,14 +112,13 @@ export default function AppSidebar() {
     const updatedChatHistory = chatHistory.map((chat) =>
       chat.chatId === chatId ? { ...chat, isPinned: !chat.isPinned } : chat
     );
-    persist(updatedChatHistory);
+    setChatHistory(updatedChatHistory);
     toast.success(isPinned ? "Chat unpinned!" : "Chat pinned!");
-
     try {
       await togglePinStatus(chatId);
     } catch (error) {
       console.error("Failed to toggle pin status:", error);
-      persist(originalChatHistory);
+      setChatHistory(originalChatHistory);
       toast.error("Failed to update pin status. Please try again.");
     }
   };
@@ -120,14 +130,13 @@ export default function AppSidebar() {
       const updatedChatHistory = chatHistory.map((chat) =>
         chat.chatId === chatId ? { ...chat, slug: newSlug } : chat
       );
-      persist(updatedChatHistory);
+      setChatHistory(updatedChatHistory);
       toast.success("Slug updated successfully!");
-
       try {
         await updateChatSlug(chatId, newSlug);
       } catch (error) {
         console.error("Failed to update slug:", error);
-        persist(originalChatHistory);
+        setChatHistory(originalChatHistory);
         toast.error("Failed to update slug. Please try again.");
       }
     }
@@ -139,14 +148,13 @@ export default function AppSidebar() {
       const updatedChatHistory = chatHistory.filter(
         (chat) => chat.chatId !== chatId
       );
-      persist(updatedChatHistory);
+      setChatHistory(updatedChatHistory);
       toast.success("Chat deleted successfully!");
-
       try {
         await deleteChat(chatId);
       } catch (error) {
         console.error("Failed to delete chat:", error);
-        persist(originalChatHistory);
+        setChatHistory(originalChatHistory);
         toast.error("Failed to delete chat. Please try again.");
       }
     }
@@ -171,15 +179,12 @@ export default function AppSidebar() {
         const isRTL =
           isRTLLanguage(chat.selectedLanguage) ||
           isRTLLanguage(chat.nativeLanguage);
-
         const rtlStyles: React.CSSProperties = {
           direction: isRTL ? "rtl" : "ltr",
           textAlign: isRTL ? "right" : "left",
         };
-
         const languageCode =
           chat.selectedLanguage || chat.nativeLanguage || undefined;
-
         return (
           <li
             key={chat.chatId}
@@ -268,6 +273,20 @@ export default function AppSidebar() {
     </ul>
   );
 
+  if (loading) {
+    return <AppSidebarSkeleton />;
+  }
+  if (error) {
+    return (
+      <div className="p-4 text-center text-red-500 bg-red-50 dark:bg-red-900/20 rounded-xl">
+        {error}
+      </div>
+    );
+  }
+  if (!stats) {
+    return <AppSidebarSkeleton />;
+  }
+
   return (
     <>
       <SidebarTrigger />
@@ -278,15 +297,11 @@ export default function AppSidebar() {
       >
         <SidebarContent className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/40 dark:border-slate-700/40 shadow-xl">
           {/* Quick Stats Header */}
-          <QuickStats />
+          <QuickStats stats={stats} />
 
           <SidebarGroup>
             <SidebarGroupContent className="p-0.5">
-              {loading ? (
-                <div className="p-3 text-sm text-center text-slate-500 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl">
-                  Loading history...
-                </div>
-              ) : chatHistory.length > 0 ? (
+              {chatHistory.length > 0 ? (
                 <>
                   {pinnedChats.length > 0 && (
                     <div className="mb-4">
@@ -320,7 +335,7 @@ export default function AppSidebar() {
           <div className="p-0.5">
             {/* User Profile Section - Maintains original dimensions */}
             <div className="flex items-center justify-between w-full">
-              {profileLoading ? (
+              {!userProfile ? (
                 // Compact loading skeleton that matches original dimensions
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 animate-pulse" />
@@ -329,7 +344,7 @@ export default function AppSidebar() {
                     <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded animate-pulse w-2/3" />
                   </div>
                 </div>
-              ) : userProfile ? (
+              ) : (
                 <>
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Avatar className="h-10 w-10 ring-2 ring-slate-200/50 dark:ring-slate-700/50">
@@ -392,19 +407,6 @@ export default function AppSidebar() {
                     </PopoverContent>
                   </Popover>
                 </>
-              ) : (
-                // Fallback state if profile fails to load
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 ring-2 ring-slate-200/50 dark:ring-slate-700/50" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                      User Profile
-                    </div>
-                    <div className="text-xs text-slate-400 dark:text-slate-500">
-                      Loading...
-                    </div>
-                  </div>
-                </div>
               )}
             </div>
           </div>

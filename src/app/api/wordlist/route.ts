@@ -9,6 +9,7 @@ import {
 import { and, eq, sql } from "drizzle-orm";
 import { auth } from "@/app/api/auth/[...all]/auth";
 import { updateUserStreak } from "@/lib/streak-utils";
+import { validateWordlistOperation } from "@/lib/validation-schemas";
 
 // Cache successful responses for 5 minutes
 export const revalidate = 300;
@@ -112,14 +113,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "unauth" }, { status: 401 });
     const userId = session.user.id;
 
-    let { word, lang } = await req.json();
-    if (typeof word === "string") word = word.toLowerCase();
-    if (typeof lang === "string") lang = lang.toLowerCase();
-    if (!word || !lang)
-      return NextResponse.json(
-        { error: "word+lang required" },
-        { status: 400 }
-      );
+    // Validate request data
+    const rawData = await req.json();
+    const validatedData = validateWordlistOperation(rawData);
+    const { word, lang } = validatedData;
 
     // OPTIMIZATION: Use transaction for better performance
     const result = await db.transaction(async (tx) => {

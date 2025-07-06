@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionCookie } from "better-auth/cookies";
 import { getRateLimiterForPath } from "@/lib/rate-limiter";
 
 export async function middleware(request: NextRequest) {
@@ -7,31 +6,43 @@ export async function middleware(request: NextRequest) {
 
   // Apply rate limiting for API endpoints
   if (request.nextUrl.pathname.startsWith("/api/")) {
-    const rateLimiter = getRateLimiterForPath(request.nextUrl.pathname);
-    const rateLimitResult = await rateLimiter.middleware()(request);
+    try {
+      const rateLimiter = getRateLimiterForPath(request.nextUrl.pathname);
+      const rateLimitResult = await rateLimiter.middleware()(request);
 
-    if (rateLimitResult) {
-      console.log(`Rate limit exceeded for ${request.nextUrl.pathname}`);
-      return rateLimitResult;
+      if (rateLimitResult) {
+        console.log(`Rate limit exceeded for ${request.nextUrl.pathname}`);
+        return rateLimitResult;
+      }
+    } catch (error) {
+      console.error("Rate limiting error:", error);
+      // Continue without rate limiting if there's an error
     }
   }
 
-  // This part will run if pathname is /dashboard (due to matcher)
+  // Dashboard protection - check for session cookies
   if (request.nextUrl.pathname.startsWith("/dashboard")) {
     console.log("Checking session for /dashboard");
-    const sessionCookie = getSessionCookie(request);
+
+    // Check for Better Auth session cookies
+    const sessionDataCookie =
+      request.cookies.get("__Secure-better-auth.session_data") ||
+      request.cookies.get("better-auth.session_data");
+    const sessionTokenCookie =
+      request.cookies.get("__Secure-better-auth.session_token") ||
+      request.cookies.get("better-auth.session_token");
+
     console.log(
-      "Session cookie found:",
-      sessionCookie
-        ? JSON.stringify(sessionCookie).substring(0, 100) + "..."
-        : "No session cookie"
+      "Session cookies found:",
+      sessionDataCookie ? "Data cookie present" : "No data cookie",
+      sessionTokenCookie ? "Token cookie present" : "No token cookie"
     );
 
-    if (!sessionCookie) {
-      console.log("No session cookie, redirecting to /login");
+    if (!sessionDataCookie && !sessionTokenCookie) {
+      console.log("No session cookies, redirecting to /login");
       return NextResponse.redirect(new URL("/login", request.url));
     }
-    console.log("Session cookie exists, allowing access to /dashboard");
+    console.log("Session cookies exist, allowing access to /dashboard");
   }
 
   return NextResponse.next();

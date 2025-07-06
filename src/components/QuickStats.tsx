@@ -1,41 +1,27 @@
 "use client";
 
-import { useUserStats } from "@/app/hooks/useUserStats";
-import { BookOpen, MessageCircle, Flame, Target } from "lucide-react";
+import {
+  BookOpen,
+  MessageCircle,
+  Flame,
+  Target,
+  BarChart3,
+} from "lucide-react";
 import { interfaceColor } from "@/lib/theme";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
-export function QuickStats() {
-  const { stats, loading, error } = useUserStats();
+export interface UserStats {
+  wordCount: number;
+  chatCount: number;
+  streak: number;
+  longestStreak: number;
+  dailyGoal: number;
+  todayWords: number;
+  dailyProgress: number;
+}
 
-  if (loading) {
-    return (
-      <div className="p-2 space-y-2">
-        <div className="flex items-center justify-between">
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-12 animate-pulse" />
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-6 animate-pulse" />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-14 animate-pulse" />
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-6 animate-pulse" />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-10 animate-pulse" />
-          <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-6 animate-pulse" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !stats) {
-    return (
-      <div className="p-2 text-center text-xs text-slate-500 dark:text-slate-400">
-        Unable to load stats
-      </div>
-    );
-  }
-
+export function QuickStats({ stats }: { stats: UserStats }) {
   return (
     <div className="p-2 space-y-2 border-b border-slate-200/60 dark:border-slate-700/60">
       {/* Daily Progress */}
@@ -112,8 +98,25 @@ export function QuickStats() {
         </div>
       )}
 
-      {/* Wordlist Button */}
+      {/* Analytics Button */}
       <div className="pt-1">
+        <Link href="/analytics" className="block">
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full h-8 text-xs bg-[rgba(23,6,100,0.06)] dark:bg-[rgba(23,6,100,0.12)] hover:bg-[rgba(23,6,100,0.1)] dark:hover:bg-[rgba(23,6,100,0.18)] border-slate-200/60 dark:border-slate-600/60 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-300"
+          >
+            <BarChart3
+              className="h-3 w-3 mr-1"
+              style={{ color: interfaceColor }}
+            />
+            Analytics
+          </Button>
+        </Link>
+      </div>
+
+      {/* Wordlist Button */}
+      <div className="pt-0.5">
         <Link href="/wordlist" className="block">
           <Button
             variant="outline"

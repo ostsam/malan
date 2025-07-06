@@ -32,10 +32,8 @@ export class RateLimiter {
       const result = this.config.keyGenerator(req);
       return typeof result === "string" ? result : await result;
     }
-
-    // Default key generation using enhanced utilities
-    const userId = req.headers.get("x-user-id") || "anonymous";
-    return generateRateLimitKey(req, userId);
+    // Default key generation using session token and IP
+    return generateRateLimitKey(req);
   }
 
   private isRateLimited(key: string): boolean {
@@ -138,9 +136,7 @@ export const rateLimiters = {
     maxRequests: 10, // 10 requests per minute
     message: "Too many chat requests. Please slow down.",
     keyGenerator: (req) => {
-      const ip = extractIP(req);
-      const userId = req.headers.get("x-user-id") || "anonymous";
-      return `chat:${ip}:${userId}`;
+      return generateRateLimitKey(req);
     },
   }),
 
@@ -150,9 +146,7 @@ export const rateLimiters = {
     maxRequests: 30, // 30 requests per minute
     message: "Too many dictionary requests. Please slow down.",
     keyGenerator: (req) => {
-      const ip = extractIP(req);
-      const userId = req.headers.get("x-user-id") || "anonymous";
-      return `dict:${ip}:${userId}`;
+      return generateRateLimitKey(req);
     },
   }),
 
@@ -162,9 +156,7 @@ export const rateLimiters = {
     maxRequests: 60, // 60 requests per minute
     message: "Too many stats requests. Please slow down.",
     keyGenerator: (req) => {
-      const ip = extractIP(req);
-      const userId = req.headers.get("x-user-id") || "anonymous";
-      return `stats:${ip}:${userId}`;
+      return generateRateLimitKey(req);
     },
   }),
 
@@ -174,9 +166,7 @@ export const rateLimiters = {
     maxRequests: 20, // 20 requests per minute
     message: "Too many wordlist operations. Please slow down.",
     keyGenerator: (req) => {
-      const ip = extractIP(req);
-      const userId = req.headers.get("x-user-id") || "anonymous";
-      return `wordlist:${ip}:${userId}`;
+      return generateRateLimitKey(req);
     },
   }),
 
@@ -186,9 +176,7 @@ export const rateLimiters = {
     maxRequests: 100, // 100 requests per minute
     message: "Too many API requests. Please slow down.",
     keyGenerator: (req) => {
-      const ip = extractIP(req);
-      const userId = req.headers.get("x-user-id") || "anonymous";
-      return `api:${ip}:${userId}`;
+      return generateRateLimitKey(req);
     },
   }),
 };
