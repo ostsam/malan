@@ -41,6 +41,7 @@ import { useRTL } from "@/app/hooks/useRTL";
 import { signOut } from "@/lib/auth-client";
 import { useCachedChatHistory } from "@/app/hooks/useCachedChatHistory";
 import { QuickStats } from "@/components/QuickStats";
+import { AppSidebarSkeleton } from "./app-sidebar-skeleton";
 
 export interface Chat {
   chatId: string;
@@ -269,6 +270,11 @@ export default function AppSidebar() {
     </ul>
   );
 
+  // Show skeleton while loading
+  if (loading) {
+    return <AppSidebarSkeleton />;
+  }
+
   return (
     <>
       <SidebarTrigger />
@@ -282,11 +288,7 @@ export default function AppSidebar() {
           <QuickStats />
           <SidebarGroup>
             <SidebarGroupContent className="p-0.5">
-              {loading ? (
-                <div className="p-3 text-sm text-center text-slate-500 bg-slate-50/50 dark:bg-slate-800/50 rounded-xl">
-                  Loading history...
-                </div>
-              ) : chatHistory.length > 0 ? (
+              {chatHistory.length > 0 ? (
                 <>
                   {pinnedChats.length > 0 && (
                     <div className="mb-4">

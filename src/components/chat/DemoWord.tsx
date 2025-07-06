@@ -12,6 +12,7 @@ import { interfaceColor } from "@/lib/theme";
 import Switch from "react-switch";
 import { Star, StarOff, Volume2 } from "lucide-react";
 import { useDemoWordSaved } from "@/hooks/useDemoWordlist";
+import { useCachedUserStats } from "@/app/hooks/useCachedUserStats";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -54,7 +55,17 @@ export function DemoWord({
   const [wordStack, setWordStack] = useState<string[]>([]);
   const [currentWord, setCurrentWord] = useState<string>(initialWord);
 
-  const { saved, toggle } = useDemoWordSaved(currentWord, lang);
+  // Get cached stats for optimistic updates
+  const { incrementWordCount, decrementWordCount } = useCachedUserStats();
+
+  const { saved, toggle } = useDemoWordSaved(currentWord, lang, (saved) => {
+    // Optimistically update stats when word is saved/unsaved
+    if (saved) {
+      incrementWordCount();
+    } else {
+      decrementWordCount();
+    }
+  });
 
   const computeKey = () =>
     `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}:$${useGPT ? "gpt" : "wiki"}`;

@@ -9,7 +9,11 @@ export function useWordlistSummary() {
   return { summary: data?.summary ?? [], mutate, isLoading };
 }
 
-export function useWordSaved(word: string, lang: string | undefined) {
+export function useWordSaved(
+  word: string,
+  lang: string | undefined,
+  onStatsUpdate?: (saved: boolean) => void
+) {
   const key =
     word && lang
       ? `/api/wordlist?word=${encodeURIComponent(word)}&lang=${lang}`
@@ -17,7 +21,7 @@ export function useWordSaved(word: string, lang: string | undefined) {
   const { data, mutate } = useSWR<{ saved: boolean }>(key, fetcher, {
     revalidateOnFocus: false,
   });
-  ///
+
   async function toggle() {
     if (!lang) return;
     const res = await fetch("/api/wordlist", {
@@ -27,6 +31,11 @@ export function useWordSaved(word: string, lang: string | undefined) {
     });
     const json = await res.json();
     mutate(json, { revalidate: false });
+
+    // Trigger stats update if callback provided
+    if (onStatsUpdate) {
+      onStatsUpdate(json.saved);
+    }
   }
 
   return { saved: data?.saved ?? false, toggle, mutate };

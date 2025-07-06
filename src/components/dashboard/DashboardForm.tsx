@@ -179,7 +179,7 @@ export function DashboardForm({ isDemo = false }: DashboardFormProps) {
     : handleStartLearning;
 
   return (
-    <div className="text-slate-800 min-h-screen flex flex-col items-center justify-center p-4">
+    <div className="text-slate-800 min-h-screen flex flex-col items-center justify-center p-2">
       {/* ------------- global CSS, lives ONLY in this component ------------- */}
       <style jsx global>{`
         @keyframes fadeIn {

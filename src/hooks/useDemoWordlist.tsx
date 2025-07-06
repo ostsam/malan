@@ -9,7 +9,11 @@ export function useDemoWordlistSummary() {
   return { summary: data?.summary ?? [], mutate, isLoading };
 }
 
-export function useDemoWordSaved(word: string, lang: string | undefined) {
+export function useDemoWordSaved(
+  word: string,
+  lang: string | undefined,
+  onStatsUpdate?: (saved: boolean) => void
+) {
   const key =
     word && lang
       ? `/api/wordlist/demo?word=${encodeURIComponent(word)}&lang=${lang}`
@@ -20,9 +24,18 @@ export function useDemoWordSaved(word: string, lang: string | undefined) {
 
   async function toggle() {
     if (!lang) return;
-    // For demo, just show a message that they need to sign up
-    alert("Sign up to save words to your wordlist!");
-    mutate({ saved: false }, { revalidate: false });
+    const res = await fetch("/api/wordlist/demo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word, lang }),
+    });
+    const json = await res.json();
+    mutate(json, { revalidate: false });
+
+    // Trigger stats update if callback provided
+    if (onStatsUpdate) {
+      onStatsUpdate(json.saved);
+    }
   }
 
   return { saved: data?.saved ?? false, toggle, mutate };
