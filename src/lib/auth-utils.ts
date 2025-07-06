@@ -1,19 +1,21 @@
 import { NextRequest } from "next/server";
-import { auth } from "@/app/api/auth/[...all]/auth";
 
 /**
- * Extract user ID from request for rate limiting and security purposes
+ * Extract session token from cookies for rate limiting and security purposes
  * @param req - NextRequest object
- * @returns Promise<string | null> - User ID or null if not authenticated
+ * @returns string | null - Session token or null if not present
  */
-export async function extractUserId(req: NextRequest): Promise<string | null> {
-  try {
-    const session = await auth.api.getSession({ headers: req.headers });
-    return session?.user?.id || null;
-  } catch (error) {
-    console.error("Error extracting user ID:", error);
-    return null;
-  }
+export function extractSessionToken(req: NextRequest): string | null {
+  // Try Better Auth secure and non-secure session cookies
+  const sessionToken =
+    req.cookies.get("__Secure-better-auth.session_token")?.value ||
+    req.cookies.get("better-auth.session_token")?.value ||
+    req.cookies.get("better-auth.session-token")?.value ||
+    req.cookies.get("session-token")?.value ||
+    req.cookies.get("auth-session")?.value ||
+    req.cookies.get("session")?.value ||
+    null;
+  return sessionToken;
 }
 
 /**
@@ -46,28 +48,11 @@ export function extractIP(req: NextRequest): string {
 /**
  * Generate a unique identifier for rate limiting based on request
  * @param req - NextRequest object
- * @param userId - Optional user ID
  * @returns string - Unique identifier
  */
-export function generateRateLimitKey(
-  req: NextRequest,
-  userId?: string | null
-): string {
+export function generateRateLimitKey(req: NextRequest): string {
   const ip = extractIP(req);
-  const user = userId || "anonymous";
+  const sessionToken = extractSessionToken(req) || "anonymous";
   const path = req.nextUrl.pathname;
-
-  return `${ip}:${user}:${path}`;
-}
-
-/**
- * Enhanced rate limiting key generator that includes user ID
- * @param req - NextRequest object
- * @returns Promise<string> - Rate limiting key
- */
-export async function generateEnhancedRateLimitKey(
-  req: NextRequest
-): Promise<string> {
-  const userId = await extractUserId(req);
-  return generateRateLimitKey(req, userId);
+  return `${ip}:${sessionToken}:${path}`;
 }
