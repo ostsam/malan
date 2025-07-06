@@ -42,7 +42,6 @@ export function DemoWord({
   ...props
 }: WordProps) {
   const [useTarget, setUseTarget] = useState(false);
-  const [useGPT, setUseGPT] = useState(false);
   const [hasWiki, setHasWiki] = useState<boolean>(false);
   const [source, setSource] = useState<string | null>(null);
 
@@ -57,7 +56,7 @@ export function DemoWord({
   const { saved, toggle } = useDemoWordSaved(currentWord, lang);
 
   const computeKey = () =>
-    `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}:$${useGPT ? "gpt" : "wiki"}`;
+    `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`;
 
   /* ----------------------------- Fetching ----------------------------- */
   const fetchDefinition = useCallback(async () => {
@@ -66,9 +65,6 @@ export function DemoWord({
       const url = new URL(`/api/dict`, window.location.origin);
       url.searchParams.set("lang", lang);
       url.searchParams.set("word", currentWord);
-      if (useGPT) {
-        url.searchParams.set("provider", "gpt");
-      }
       if (useTarget && targetLang && targetLang !== lang) {
         url.searchParams.set("target", targetLang);
       }
@@ -88,7 +84,7 @@ export function DemoWord({
     } finally {
       setLoading(false);
     }
-  }, [lang, useTarget, targetLang, useGPT, currentWord]);
+  }, [lang, useTarget, targetLang, currentWord]);
 
   useEffect(() => {
     if (!open) return;
@@ -204,17 +200,20 @@ export function DemoWord({
           </div>
 
           {/* Save button */}
-          <button
-            aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
-            onClick={toggle}
-            className="ml-auto text-white hover:text-gray-200 focus:outline-none cursor-pointer"
-          >
-            {saved ? (
-              <Star className="h-4 w-4" />
-            ) : (
-              <StarOff className="h-4 w-4" />
-            )}
-          </button>
+          <div className="flex items-center gap-2 ml-auto">
+            {source && providerPill}
+            <button
+              aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
+              onClick={toggle}
+              className="text-white hover:text-gray-200 focus:outline-none cursor-pointer"
+            >
+              {saved ? (
+                <Star className="h-4 w-4" />
+              ) : (
+                <StarOff className="h-4 w-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -228,9 +227,18 @@ export function DemoWord({
                   </span>
                   {providerPill}
                 </div>
-                <p className="text-sm">{def.sense}</p>
-                {def.translatedSense && (
-                  <p className="text-sm text-gray-600">{def.translatedSense}</p>
+                <p className="text-sm">
+                  {useTarget && def.translatedSense
+                    ? def.translatedSense
+                    : def.sense}
+                </p>
+                {!useTarget && def.translatedSense && (
+                  <p className="text-sm text-gray-600 italic">
+                    {def.translatedSense}
+                  </p>
+                )}
+                {useTarget && def.sense !== def.translatedSense && (
+                  <p className="text-sm text-gray-600 italic">{def.sense}</p>
                 )}
                 {def.examples && def.examples.length > 0 && (
                   <div className="mt-2 space-y-1">
@@ -248,18 +256,6 @@ export function DemoWord({
 
         {/* Footer controls */}
         <div className="border-t border-gray-200 p-3 space-y-2">
-          {/* Provider toggle */}
-          <div className="flex items-center justify-between text-xs">
-            <span>Use GPT for definitions</span>
-            <Switch
-              checked={useGPT}
-              onChange={setUseGPT}
-              onColor={interfaceColor}
-              height={16}
-              width={28}
-            />
-          </div>
-
           {/* Target language toggle */}
           {targetLang && targetLang !== lang && (
             <div className="flex items-center justify-between text-xs">

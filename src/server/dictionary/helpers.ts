@@ -165,34 +165,100 @@ export function stripHtml(raw: string): string {
 /*                 Helper to translate "sense" field into target               */
 /* -------------------------------------------------------------------------- */
 
-/** Translate ONLY the "sense" fields of existing Definition objects into targetLang via OpenAI.
+/** Translate ONLY the "sense" fields of existing Definition objects into targetLang via LLMs.
  *  Keeps part-of-speech and examples intact. If translation fails, returns input.
+ *  Logs all translation attempts and falls back to OpenAI if Gemini fails.
  */
 export async function translateDefinitions(
   defs: Definition[],
-  targetLang: string
+  targetLang: string,
+  sourceLang?: string
 ): Promise<Definition[]> {
   if (!targetLang || defs.length === 0) return defs;
+
+  // Helper to log translation attempts
+  function logTranslation({
+    original,
+    prompt,
+    geminiResult,
+    openaiResult,
+    used,
+  }: {
+    original: string;
+    prompt: string;
+    geminiResult?: string;
+    openaiResult?: string;
+    used: "gemini" | "openai" | "none";
+  }) {
+    console.log("[LLM_TRANSLATE]", {
+      original,
+      prompt,
+      geminiResult,
+      openaiResult,
+      used,
+    });
+  }
+
   try {
-    const prompt = `Translate ONLY the \"sense\" values of each item in the following JSON array into ${targetLang}. Keep the \"pos\" and \"examples\" fields unchanged. Return ONLY the translated JSON array.`;
-
-    const content = await runGeminiPrompt(
-      `${prompt}\n${JSON.stringify(defs)}`,
-      0.2
+    // Translate each definition individually for better reliability
+    const translatedDefs = await Promise.all(
+      defs.map(async (def) => {
+        const srcLang = sourceLang || "the original language";
+        const prompt = `Translate the following dictionary definition from ${srcLang} to ${targetLang} for a language learner. Return ONLY the translation, nothing else:\n\nDefinition: "${def.sense}"\n\nTranslation:`;
+        let geminiResult: string | undefined = undefined;
+        let openaiResult: string | undefined = undefined;
+        let used: "gemini" | "openai" | "none" = "none";
+        try {
+          geminiResult = await runGeminiPrompt(prompt, 0.2);
+          if (geminiResult && geminiResult.trim()) {
+            used = "gemini";
+            logTranslation({
+              original: def.sense,
+              prompt,
+              geminiResult,
+              openaiResult: undefined,
+              used,
+            });
+            return {
+              ...def,
+              translatedSense: geminiResult.trim(),
+            };
+          }
+        } catch (err) {
+          console.error("[LLM_TRANSLATE] Gemini failed:", err);
+        }
+        // Fallback to OpenAI if Gemini fails
+        try {
+          openaiResult = await runOpenAiPrompt(prompt, 0.2);
+          if (openaiResult && openaiResult.trim()) {
+            used = "openai";
+            logTranslation({
+              original: def.sense,
+              prompt,
+              geminiResult,
+              openaiResult,
+              used,
+            });
+            return {
+              ...def,
+              translatedSense: openaiResult.trim(),
+            };
+          }
+        } catch (err) {
+          console.error("[LLM_TRANSLATE] OpenAI failed:", err);
+        }
+        // Log failure
+        logTranslation({
+          original: def.sense,
+          prompt,
+          geminiResult,
+          openaiResult,
+          used,
+        });
+        return def; // Return original if translation fails
+      })
     );
-    if (!content) return defs;
-
-    const fenceClean = content.replace(/```[a-z]*[\s\n]*([\s\S]*?)```/i, "$1");
-    let data: any;
-    try {
-      data = JSON.parse(fenceClean);
-    } catch {
-      return defs;
-    }
-
-    if (Array.isArray(data)) {
-      return data as Definition[];
-    }
+    return translatedDefs;
   } catch (err) {
     console.error("Definition translation failed", err);
   }

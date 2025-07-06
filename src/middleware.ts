@@ -2,17 +2,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { getRateLimiterForPath } from "@/lib/rate-limiter";
 
 export async function middleware(request: NextRequest) {
-  console.log(`Middleware triggered for path: ${request.nextUrl.pathname}`);
+  const pathname = request.nextUrl.pathname;
 
-  // Apply rate limiting for API endpoints
-  if (request.nextUrl.pathname.startsWith("/api/")) {
+  // Apply rate limiting for API endpoints (unless disabled in development)
+  if (
+    pathname.startsWith("/api/") &&
+    process.env.DISABLE_RATE_LIMITING !== "true"
+  ) {
     try {
-      const rateLimiter = getRateLimiterForPath(request.nextUrl.pathname);
+      const rateLimiter = getRateLimiterForPath(pathname);
       const rateLimitResult = await rateLimiter.middleware()(request);
 
       if (rateLimitResult) {
-        console.log(`Rate limit exceeded for ${request.nextUrl.pathname}`);
+        console.log(`🚫 Rate limit exceeded for ${pathname}`);
         return rateLimitResult;
+      }
+
+      // Log API requests for debugging (but not too frequently)
+      if (Math.random() < 0.1) {
+        // Only log 10% of requests to avoid spam
+        console.log(`✅ API request: ${pathname}`);
       }
     } catch (error) {
       console.error("Rate limiting error:", error);
@@ -21,7 +30,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Dashboard protection - check for session cookies
-  if (request.nextUrl.pathname.startsWith("/dashboard")) {
+  if (pathname.startsWith("/dashboard")) {
     console.log("Checking session for /dashboard");
 
     // Check for Better Auth session cookies

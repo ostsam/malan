@@ -122,7 +122,7 @@ export const rateLimiters = {
   // Strict limits for authentication endpoints
   auth: new RateLimiter({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    maxRequests: 5, // 5 attempts per 15 minutes
+    maxRequests: 100, // 100 attempts per 15 minutes (increased by 10x)
     message: "Too many authentication attempts. Please try again later.",
     keyGenerator: (req) => {
       const ip = extractIP(req);
@@ -130,20 +130,20 @@ export const rateLimiters = {
     },
   }),
 
-  // Moderate limits for chat endpoints
+  // Much higher limits for chat endpoints (normal usage)
   chat: new RateLimiter({
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: 10, // 10 requests per minute
+    maxRequests: 600, // 600 requests per minute (increased by 10x)
     message: "Too many chat requests. Please slow down.",
     keyGenerator: (req) => {
       return generateRateLimitKey(req);
     },
   }),
 
-  // Higher limits for dictionary lookups
+  // Higher limits for dictionary lookups (word clicks)
   dictionary: new RateLimiter({
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: 30, // 30 requests per minute
+    maxRequests: 1000, // 1000 requests per minute (increased by 10x)
     message: "Too many dictionary requests. Please slow down.",
     keyGenerator: (req) => {
       return generateRateLimitKey(req);
@@ -153,27 +153,27 @@ export const rateLimiters = {
   // High limits for stats (frequently accessed)
   stats: new RateLimiter({
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: 60, // 60 requests per minute
+    maxRequests: 1200, // 1200 requests per minute (increased by 10x)
     message: "Too many stats requests. Please slow down.",
     keyGenerator: (req) => {
       return generateRateLimitKey(req);
     },
   }),
 
-  // Moderate limits for wordlist operations
+  // Higher limits for wordlist operations
   wordlist: new RateLimiter({
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: 20, // 20 requests per minute
+    maxRequests: 500, // 500 requests per minute (increased by 10x)
     message: "Too many wordlist operations. Please slow down.",
     keyGenerator: (req) => {
       return generateRateLimitKey(req);
     },
   }),
 
-  // General API protection
+  // General API protection (higher limits)
   api: new RateLimiter({
     windowMs: 60 * 1000, // 1 minute
-    maxRequests: 100, // 100 requests per minute
+    maxRequests: 2000, // 2000 requests per minute (increased by 10x)
     message: "Too many API requests. Please slow down.",
     keyGenerator: (req) => {
       return generateRateLimitKey(req);
