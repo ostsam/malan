@@ -3,6 +3,8 @@ import {
   fetchGeminiDefinition,
   fetchOpenAiDefinition,
   translateDefinitions as llmTranslateDefs,
+  validateDefinitionLanguage,
+  correctDefinitionLanguage,
 } from "@/server/dictionary/helpers";
 import { db } from "@/db";
 import {
@@ -177,6 +179,72 @@ export async function GET(req: NextRequest) {
         : true,
     });
 
+    // Validate language of definitions from DB
+    if (dbDefs.length > 0) {
+      const validation = validateDefinitionLanguage(dbDefs, lang);
+      console.log("[API] Language validation:", {
+        isValid: validation.isValid,
+        detectedLanguages: validation.detectedLanguages,
+        invalidCount: validation.invalidDefinitions.length,
+      });
+
+      // If definitions are in wrong language, correct them
+      if (!validation.isValid) {
+        console.log(
+          "[API] 🚨 Definitions in wrong language detected, correcting..."
+        );
+
+        try {
+          const correctionResult = await correctDefinitionLanguage(
+            dbDefs,
+            lang,
+            word,
+            target
+          );
+
+          if (correctionResult.corrections.length > 0) {
+            console.log("[API] ✅ Language corrections applied:", {
+              correctionsCount: correctionResult.corrections.length,
+              corrections: correctionResult.corrections.map((c) => ({
+                reason: c.reason,
+                originalPreview: c.original.substring(0, 50),
+                correctedPreview: c.corrected.substring(0, 50),
+              })),
+            });
+
+            // Update the database with corrected definitions
+            await updateDefinitionsInDatabase(
+              dbDefs,
+              correctionResult.corrected,
+              word,
+              lang
+            );
+
+            // Use corrected definitions
+            const correctedDefs = correctionResult.corrected;
+
+            // Check if we have complete data after correction
+            if (
+              correctedDefs.length > 0 &&
+              correctedDefs.every((d) => d.sense) &&
+              (!target || correctedDefs.every((d) => d.translatedSense))
+            ) {
+              console.log("[API] Returning corrected data from DB");
+              return NextResponse.json({
+                word,
+                defs: correctedDefs,
+                source: "db+correction",
+                corrections: correctionResult.corrections.length,
+              });
+            }
+          }
+        } catch (error) {
+          console.error("[API] ❌ Error during language correction:", error);
+          // Continue with original definitions if correction fails
+        }
+      }
+    }
+
     // Only return early if we have complete data (including translations when requested)
     if (
       dbDefs.length > 0 &&
@@ -262,6 +330,114 @@ export async function GET(req: NextRequest) {
     // If no provider specified, try both AI providers in sequence
     const shouldTryGoogle = provider === "google" || !provider; // default to true if no provider specified
     const shouldTryGPT = provider === "gpt" || (!provider && !shouldTryGoogle); // fallback or explicit
+
+    // Helper: update definitions in database with corrected versions
+    async function updateDefinitionsInDatabase(
+      originalDefs: Definition[],
+      correctedDefs: Definition[],
+      word: string,
+      lang: string
+    ) {
+      console.log(
+        "[UPDATE_DEFINITIONS] Starting definition updates for word:",
+        word
+      );
+
+      // Get the word ID
+      const existingWord = await db
+        .select({ id: wordsTable.id })
+        .from(wordsTable)
+        .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
+        .limit(1);
+
+      if (!existingWord.length) {
+        console.error("[UPDATE_DEFINITIONS] Word not found in database");
+        return;
+      }
+
+      const wordId = existingWord[0].id;
+
+      // Update each definition
+      for (
+        let i = 0;
+        i < originalDefs.length && i < correctedDefs.length;
+        i++
+      ) {
+        const originalDef = originalDefs[i];
+        const correctedDef = correctedDefs[i];
+
+        // Find the existing definition ID
+        const existingDef = await db
+          .select({ id: defsTable.id })
+          .from(defsTable)
+          .where(
+            and(
+              eq(defsTable.wordId, wordId),
+              eq(defsTable.pos, originalDef.pos),
+              eq(defsTable.sense, originalDef.sense)
+            )
+          )
+          .limit(1);
+
+        if (!existingDef.length) {
+          console.error(
+            "[UPDATE_DEFINITIONS] Definition not found in database"
+          );
+          continue;
+        }
+
+        const defId = existingDef[0].id;
+
+        try {
+          // Update the definition
+          await db
+            .update(defsTable)
+            .set({
+              sense: correctedDef.sense,
+              updatedAt: new Date(),
+            })
+            .where(eq(defsTable.id, defId));
+
+          console.log(
+            `[UPDATE_DEFINITIONS] ✅ Updated definition ID ${defId}:`,
+            {
+              original: originalDef.sense.substring(0, 50),
+              corrected: correctedDef.sense.substring(0, 50),
+            }
+          );
+
+          // If corrected definition has translation, update it too
+          if (correctedDef.translatedSense) {
+            await db
+              .insert(transTable)
+              .values({
+                definitionId: defId,
+                targetLang: target || lang,
+                translatedSense: correctedDef.translatedSense,
+                source: "ai",
+              })
+              .onConflictDoUpdate({
+                target: [transTable.definitionId, transTable.targetLang],
+                set: {
+                  translatedSense: correctedDef.translatedSense,
+                  source: "ai",
+                },
+              });
+
+            console.log(
+              `[UPDATE_DEFINITIONS] ✅ Updated translation for definition ID ${defId}`
+            );
+          }
+        } catch (error) {
+          console.error(
+            `[UPDATE_DEFINITIONS] ❌ Error updating definition ID ${defId}:`,
+            error
+          );
+        }
+      }
+
+      console.log("[UPDATE_DEFINITIONS] Definition updates complete");
+    }
 
     // Helper: save translations to existing definitions
     async function saveTranslationsToExistingDefinitions(
