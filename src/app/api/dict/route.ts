@@ -3,6 +3,8 @@ import {
   fetchGeminiDefinition,
   fetchOpenAiDefinition,
   translateDefinitions as llmTranslateDefs,
+  validateDefinitionLanguage,
+  correctDefinitionLanguage,
 } from "@/server/dictionary/helpers";
 import { db } from "@/db";
 import {
@@ -14,6 +16,13 @@ import { and, eq, sql } from "drizzle-orm";
 // import { fetchMediaWikiDefinition } from "@/server/dictionary/providers/mediawiki"; // Disabled temporarily
 import type { Definition } from "@/server/dictionary/types";
 import { validateDictionaryLookup } from "@/lib/validation-schemas";
+import {
+  extractChineseWords,
+  isChineseText,
+} from "@/lib/chinese-tokenizer-server";
+
+// Force dynamic rendering for this API route
+export const dynamic = "force-dynamic";
 
 // Cache the successful response for one hour at the edge
 export const revalidate = 3600;
@@ -41,7 +50,7 @@ function defsMatchLanguage(defs: Definition[], langCode: string): boolean {
 export async function GET(req: NextRequest) {
   try {
     // Validate query parameters
-    const { searchParams } = new URL(req.url);
+    const searchParams = req.nextUrl.searchParams;
     const queryData = {
       word: searchParams.get("word")?.trim().toLowerCase(),
       lang: searchParams.get("lang")?.toLowerCase() || "en",
@@ -51,6 +60,23 @@ export async function GET(req: NextRequest) {
 
     const validatedData = validateDictionaryLookup(queryData);
     const { word, lang, target, provider } = validatedData;
+
+    // Handle Chinese word segmentation
+    let searchWords = [word];
+    if (lang === "zh" && isChineseText(word)) {
+      try {
+        const segmentedWords = extractChineseWords(word);
+        if (segmentedWords.length > 1) {
+          searchWords = segmentedWords;
+          console.log("[API] Chinese word segmented:", {
+            original: word,
+            segments: segmentedWords,
+          });
+        }
+      } catch (error) {
+        console.error("[API] Error segmenting Chinese word:", error);
+      }
+    }
 
     /* ---------------------------------------------------------------------- */
     /*                        1) Try database first                            */
@@ -63,107 +89,100 @@ export async function GET(req: NextRequest) {
         "lang:",
         lang,
         "target:",
-        target
+        target,
+        "searchWords:",
+        searchWords
       );
 
-      if (target && target !== lang) {
-        // Query with translation join when target language differs
-        console.log(
-          "[DB_RETRIEVE] Querying with translation join for target:",
-          target
-        );
+      // Try each segmented word if we have multiple
+      for (const searchWord of searchWords) {
+        if (target && target !== lang) {
+          // Query with translation join when target language differs
+          console.log(
+            "[DB_RETRIEVE] Querying with translation join for target:",
+            target,
+            "word:",
+            searchWord
+          );
 
-        const rows = await db
-          .select({
-            defId: defsTable.id,
-            pos: defsTable.pos,
-            sense: defsTable.sense,
-            translatedSense: transTable.translatedSense,
-            examples: defsTable.examples,
-          })
-          .from(wordsTable)
-          .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
-          .leftJoin(
-            transTable,
-            and(
-              eq(transTable.definitionId, defsTable.id),
-              eq(transTable.targetLang, target)
+          const rows = await db
+            .select({
+              defId: defsTable.id,
+              pos: defsTable.pos,
+              sense: defsTable.sense,
+              translatedSense: transTable.translatedSense,
+              examples: defsTable.examples,
+            })
+            .from(wordsTable)
+            .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
+            .leftJoin(
+              transTable,
+              and(
+                eq(transTable.definitionId, defsTable.id),
+                eq(transTable.targetLang, target)
+              )
             )
-          )
-          .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
-          .limit(3);
+            .where(
+              and(eq(wordsTable.word, searchWord), eq(wordsTable.lang, lang))
+            )
+            .limit(3);
 
-        console.log(
-          "[DB_RETRIEVE] Raw DB rows:",
-          rows.map((r) => ({
-            defId: r.defId,
-            pos: r.pos,
-            sense: r.sense.substring(0, 50),
-            translatedSense: r.translatedSense?.substring(0, 50) || "NULL",
-            examplesCount: r.examples.length,
-          }))
-        );
+          if (rows.length > 0) {
+            console.log(
+              "[DB_RETRIEVE] Found definitions for segmented word:",
+              searchWord
+            );
 
-        const result = rows.map((r) => ({
-          pos: r.pos,
-          sense: r.sense,
-          translatedSense: r.translatedSense || undefined,
-          examples: r.examples,
-        })) as Definition[];
+            const result = rows.map((r) => ({
+              pos: r.pos,
+              sense: r.sense,
+              translatedSense: r.translatedSense || undefined,
+              examples: r.examples,
+            })) as Definition[];
 
-        console.log(
-          "[DB_RETRIEVE] Processed result:",
-          result.map((r) => ({
-            pos: r.pos,
-            sense: r.sense.substring(0, 50),
-            hasTranslatedSense: !!r.translatedSense,
-            translatedSense: r.translatedSense?.substring(0, 50),
-          }))
-        );
+            return result;
+          }
+        } else {
+          // Query without translation join when no target or target = source
+          console.log(
+            "[DB_RETRIEVE] Querying without translation join for word:",
+            searchWord
+          );
 
-        return result;
-      } else {
-        // Query without translation join when no target or target = source
-        console.log("[DB_RETRIEVE] Querying without translation join");
+          const rows = await db
+            .select({
+              defId: defsTable.id,
+              pos: defsTable.pos,
+              sense: defsTable.sense,
+              examples: defsTable.examples,
+            })
+            .from(wordsTable)
+            .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
+            .where(
+              and(eq(wordsTable.word, searchWord), eq(wordsTable.lang, lang))
+            )
+            .limit(3);
 
-        const rows = await db
-          .select({
-            defId: defsTable.id,
-            pos: defsTable.pos,
-            sense: defsTable.sense,
-            examples: defsTable.examples,
-          })
-          .from(wordsTable)
-          .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
-          .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
-          .limit(3);
+          if (rows.length > 0) {
+            console.log(
+              "[DB_RETRIEVE] Found definitions for segmented word:",
+              searchWord
+            );
 
-        console.log(
-          "[DB_RETRIEVE] Raw DB rows (no translation):",
-          rows.map((r) => ({
-            defId: r.defId,
-            pos: r.pos,
-            sense: r.sense.substring(0, 50),
-            examplesCount: r.examples.length,
-          }))
-        );
+            const result = rows.map((r) => ({
+              pos: r.pos,
+              sense: r.sense,
+              examples: r.examples,
+            })) as Definition[];
 
-        const result = rows.map((r) => ({
-          pos: r.pos,
-          sense: r.sense,
-          examples: r.examples,
-        })) as Definition[];
-
-        console.log(
-          "[DB_RETRIEVE] Processed result (no translation):",
-          result.map((r) => ({
-            pos: r.pos,
-            sense: r.sense.substring(0, 50),
-          }))
-        );
-
-        return result;
+            return result;
+          }
+        }
       }
+
+      // If no definitions found for any segmented word, return empty array
+      console.log("[DB_RETRIEVE] No definitions found for any segmented word");
+      return [];
     }
 
     // Always attempt DB first unless explicitly bypassed
@@ -176,6 +195,72 @@ export async function GET(req: NextRequest) {
         ? dbDefs.every((d) => d.translatedSense)
         : true,
     });
+
+    // Validate language of definitions from DB
+    if (dbDefs.length > 0) {
+      const validation = validateDefinitionLanguage(dbDefs, lang);
+      console.log("[API] Language validation:", {
+        isValid: validation.isValid,
+        detectedLanguages: validation.detectedLanguages,
+        invalidCount: validation.invalidDefinitions.length,
+      });
+
+      // If definitions are in wrong language, correct them
+      if (!validation.isValid) {
+        console.log(
+          "[API] 🚨 Definitions in wrong language detected, correcting..."
+        );
+
+        try {
+          const correctionResult = await correctDefinitionLanguage(
+            dbDefs,
+            lang,
+            word,
+            target
+          );
+
+          if (correctionResult.corrections.length > 0) {
+            console.log("[API] ✅ Language corrections applied:", {
+              correctionsCount: correctionResult.corrections.length,
+              corrections: correctionResult.corrections.map((c) => ({
+                reason: c.reason,
+                originalPreview: c.original.substring(0, 50),
+                correctedPreview: c.corrected.substring(0, 50),
+              })),
+            });
+
+            // Update the database with corrected definitions
+            await updateDefinitionsInDatabase(
+              dbDefs,
+              correctionResult.corrected,
+              word,
+              lang
+            );
+
+            // Use corrected definitions
+            const correctedDefs = correctionResult.corrected;
+
+            // Check if we have complete data after correction
+            if (
+              correctedDefs.length > 0 &&
+              correctedDefs.every((d) => d.sense) &&
+              (!target || correctedDefs.every((d) => d.translatedSense))
+            ) {
+              console.log("[API] Returning corrected data from DB");
+              return NextResponse.json({
+                word,
+                defs: correctedDefs,
+                source: "db+correction",
+                corrections: correctionResult.corrections.length,
+              });
+            }
+          }
+        } catch (error) {
+          console.error("[API] ❌ Error during language correction:", error);
+          // Continue with original definitions if correction fails
+        }
+      }
+    }
 
     // Only return early if we have complete data (including translations when requested)
     if (
@@ -262,6 +347,114 @@ export async function GET(req: NextRequest) {
     // If no provider specified, try both AI providers in sequence
     const shouldTryGoogle = provider === "google" || !provider; // default to true if no provider specified
     const shouldTryGPT = provider === "gpt" || (!provider && !shouldTryGoogle); // fallback or explicit
+
+    // Helper: update definitions in database with corrected versions
+    async function updateDefinitionsInDatabase(
+      originalDefs: Definition[],
+      correctedDefs: Definition[],
+      word: string,
+      lang: string
+    ) {
+      console.log(
+        "[UPDATE_DEFINITIONS] Starting definition updates for word:",
+        word
+      );
+
+      // Get the word ID
+      const existingWord = await db
+        .select({ id: wordsTable.id })
+        .from(wordsTable)
+        .where(and(eq(wordsTable.word, word), eq(wordsTable.lang, lang)))
+        .limit(1);
+
+      if (!existingWord.length) {
+        console.error("[UPDATE_DEFINITIONS] Word not found in database");
+        return;
+      }
+
+      const wordId = existingWord[0].id;
+
+      // Update each definition
+      for (
+        let i = 0;
+        i < originalDefs.length && i < correctedDefs.length;
+        i++
+      ) {
+        const originalDef = originalDefs[i];
+        const correctedDef = correctedDefs[i];
+
+        // Find the existing definition ID
+        const existingDef = await db
+          .select({ id: defsTable.id })
+          .from(defsTable)
+          .where(
+            and(
+              eq(defsTable.wordId, wordId),
+              eq(defsTable.pos, originalDef.pos),
+              eq(defsTable.sense, originalDef.sense)
+            )
+          )
+          .limit(1);
+
+        if (!existingDef.length) {
+          console.error(
+            "[UPDATE_DEFINITIONS] Definition not found in database"
+          );
+          continue;
+        }
+
+        const defId = existingDef[0].id;
+
+        try {
+          // Update the definition
+          await db
+            .update(defsTable)
+            .set({
+              sense: correctedDef.sense,
+              updatedAt: new Date(),
+            })
+            .where(eq(defsTable.id, defId));
+
+          console.log(
+            `[UPDATE_DEFINITIONS] ✅ Updated definition ID ${defId}:`,
+            {
+              original: originalDef.sense.substring(0, 50),
+              corrected: correctedDef.sense.substring(0, 50),
+            }
+          );
+
+          // If corrected definition has translation, update it too
+          if (correctedDef.translatedSense) {
+            await db
+              .insert(transTable)
+              .values({
+                definitionId: defId,
+                targetLang: target || lang,
+                translatedSense: correctedDef.translatedSense,
+                source: "ai",
+              })
+              .onConflictDoUpdate({
+                target: [transTable.definitionId, transTable.targetLang],
+                set: {
+                  translatedSense: correctedDef.translatedSense,
+                  source: "ai",
+                },
+              });
+
+            console.log(
+              `[UPDATE_DEFINITIONS] ✅ Updated translation for definition ID ${defId}`
+            );
+          }
+        } catch (error) {
+          console.error(
+            `[UPDATE_DEFINITIONS] ❌ Error updating definition ID ${defId}:`,
+            error
+          );
+        }
+      }
+
+      console.log("[UPDATE_DEFINITIONS] Definition updates complete");
+    }
 
     // Helper: save translations to existing definitions
     async function saveTranslationsToExistingDefinitions(

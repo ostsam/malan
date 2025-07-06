@@ -56,3 +56,4 @@ export function generateRateLimitKey(req: NextRequest): string {
   const path = req.nextUrl.pathname;
   return `${ip}:${sessionToken}:${path}`;
 }
+ 

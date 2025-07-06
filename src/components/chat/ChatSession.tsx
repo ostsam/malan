@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useChat, Message } from "@ai-sdk/react";
 import { useTextToSpeech } from "../../app/hooks/useTextToSpeech";
 import { useChatInteraction } from "../../app/hooks/useChatInteraction";
@@ -20,6 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSession } from "@/lib/auth-client";
 import Link from "next/link";
+import { ChineseScriptToggle } from "@/components/chinese-script-toggle";
+import {
+  convertChineseText,
+  getUserChineseScriptPreference,
+} from "@/lib/chinese-converter";
 
 // Types for real and demo chat
 export interface SerializableChatData {
@@ -72,6 +77,12 @@ export function ChatSession({
   const { data: session } = useSession();
   const isAuthenticated = !!session?.user?.id;
 
+  // Chinese script state
+  const [chineseScript, setChineseScript] = useState<
+    "traditional" | "simplified"
+  >("simplified");
+  const [convertedMessages, setConvertedMessages] = useState<Message[]>([]);
+
   // Ref for auto-scrolling
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -105,10 +116,62 @@ export function ChatSession({
       : undefined,
   });
 
+  // Define settings before using it in useEffect
+  const settings = demoMode ? demoSettings! : chatObject?.settings;
+
+  // Load initial Chinese script preference
+  useEffect(() => {
+    const userPreference = getUserChineseScriptPreference();
+    setChineseScript(userPreference);
+  }, []);
+
+  // Convert messages when Chinese script changes
+  useEffect(() => {
+    const convertMessages = async () => {
+      if (messages.length === 0) {
+        setConvertedMessages([]);
+        return;
+      }
+
+      const converted = await Promise.all(
+        messages.map(async (message) => {
+          const content =
+            typeof message.content === "string" ? message.content : "";
+
+          // Only convert if it's Chinese text
+          if (
+            content &&
+            (settings?.selectedLanguage === "zh" ||
+              /[\u4e00-\u9fff]/.test(content))
+          ) {
+            try {
+              const convertedContent = await convertChineseText(
+                content,
+                chineseScript
+              );
+              return {
+                ...message,
+                content: convertedContent,
+              };
+            } catch (error) {
+              console.error("Error converting message:", error);
+              return message;
+            }
+          }
+          return message;
+        })
+      );
+
+      setConvertedMessages(converted);
+    };
+
+    convertMessages();
+  }, [messages, chineseScript, settings?.selectedLanguage]);
+
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [convertedMessages]);
 
   const messageCount = messages.length;
 
@@ -153,7 +216,7 @@ export function ChatSession({
   } = useChatInteraction({ append: handleAppend });
 
   const { stopAudioPlayback, speak } = useTextToSpeech({
-    messages,
+    messages: convertedMessages,
     isLoading: isChatLoading,
     voice: ttsVoice,
   });
@@ -183,12 +246,15 @@ export function ChatSession({
       : chatObject?.settings?.nativeLanguage,
   });
 
-  const { renderMessageContent } = useChatMessages(messages);
+  const { renderMessageContent } = useChatMessages(convertedMessages);
 
   const errorMessageStyling =
     "fixed bottom-40 left-1/2 transform -translate-x-1/2 p-2 bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 rounded-lg shadow-lg z-10";
 
-  const settings = demoMode ? demoSettings! : chatObject?.settings;
+  const handleScriptChange = async (script: "traditional" | "simplified") => {
+    setChineseScript(script);
+    // The page refresh in the toggle component will handle the conversion
+  };
 
   return (
     <div className="flex flex-col w-full max-w-xl mx-auto h-screen text-lg bg-white dark:bg-black overflow-hidden font-inter">
@@ -311,9 +377,9 @@ export function ChatSession({
       </div>
 
       <div className="flex-grow w-full pt-4 px-4 pb-4 fade-in delay-1 overflow-y-auto">
-        {messages.length > 0 ? (
+        {convertedMessages.length > 0 ? (
           <div className="flex flex-col space-y-4">
-            {messages.map((m: Message) => (
+            {convertedMessages.map((m: Message) => (
               <ChatMessage
                 key={m.id}
                 message={m}
@@ -401,6 +467,8 @@ export function ChatSession({
           startRecording={startRecording}
           stopRecording={stopRecording}
           stopAudioPlayback={stopAudioPlayback}
+          selectedLanguage={settings?.selectedLanguage}
+          onScriptChange={handleScriptChange}
         />
       ) : null}
     </div>

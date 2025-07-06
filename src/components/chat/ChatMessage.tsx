@@ -4,6 +4,7 @@ import { useRTL } from "@/app/hooks/useRTL";
 import React from "react";
 import { interfaceColor } from "@/lib/theme";
 import { Word } from "./Word";
+import { useCJKTokenizedText } from "@/hooks/useChineseTokenizedText";
 
 interface ChatMessageProps {
   message: Message;
@@ -28,26 +29,80 @@ function ChatMessageBase({
 
   const langCode = settings?.selectedLanguage || "en";
 
+  // Use CJK tokenization for Chinese text
+  const { tokens: chineseTokens, loading: chineseLoading } =
+    useCJKTokenizedText(
+      typeof rawContent === "string" ? rawContent : "",
+      langCode
+    );
+
   const tokenize = (text: string) => {
-    // Updated regex to include Unicode categories for combining marks (Mn), spacing marks (Mc), and enclosing marks (Me)
+    console.log("[ChatMessage] Tokenizing text:", text, "langCode:", langCode);
+
+    // For Chinese text, use the CJK tokenizer with robust fallback
+    if (langCode === "zh") {
+      console.log(
+        "[ChatMessage] Chinese language detected, chineseLoading:",
+        chineseLoading,
+        "chineseTokens:",
+        chineseTokens
+      );
+
+      if (chineseLoading) {
+        // Show raw text while loading
+        console.log("[ChatMessage] Still loading, showing raw text");
+        return <span>{text}</span>;
+      }
+      if (chineseTokens && chineseTokens.length > 0) {
+        console.log("[ChatMessage] Using Chinese tokens:", chineseTokens);
+        return chineseTokens.map((token, idx) => {
+          if (token.isChinese) {
+            return (
+              <Word
+                key={idx}
+                initialWord={token.word}
+                lang={settings?.selectedLanguage || "en"}
+                targetLang={settings?.nativeLanguage}
+                isUser={message.role === "user"}
+              >
+                {token.word}
+              </Word>
+            );
+          }
+          return <React.Fragment key={idx}>{token.word}</React.Fragment>;
+        });
+      }
+      console.log(
+        "[ChatMessage] No Chinese tokens available, falling back to regex"
+      );
+      // Fallback: use regex-based tokenization if no tokens
+    }
+
+    // Regex-based tokenization for all other cases
+    console.log("[ChatMessage] Using regex-based tokenization");
     const parts = text.match(
-      /([\p{L}\p{Mn}\p{Mc}\p{Me}'']+|\s+|[^\p{L}\p{Mn}\p{Mc}\p{Me}\s]+)/gu
+      /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+)/gu
     ) || [text];
-    return parts.map((token, idx) => {
-      // Updated word test to include diacritical marks
-      const isWord = /^[\p{L}\p{Mn}\p{Mc}\p{Me}'']+$/u.test(token);
-      if (isWord) {
+
+    return parts.map((tok, idx) => {
+      const isWord =
+        /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
+          tok
+        );
+      if (isWord && tok.length > 0) {
         return (
           <Word
             key={idx}
-            initialWord={token}
-            lang={langCode}
-            targetLang={settings?.nativeLanguage || null}
-            isUser={isUser}
-          />
+            initialWord={tok}
+            lang={settings?.selectedLanguage || "en"}
+            targetLang={settings?.nativeLanguage}
+            isUser={message.role === "user"}
+          >
+            {tok}
+          </Word>
         );
       }
-      return <React.Fragment key={idx}>{token}</React.Fragment>;
+      return <React.Fragment key={idx}>{tok}</React.Fragment>;
     });
   };
 

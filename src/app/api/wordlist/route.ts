@@ -14,6 +14,9 @@ import { validateWordlistOperation } from "@/lib/validation-schemas";
 // Cache successful responses for 5 minutes
 export const revalidate = 300;
 
+// Force dynamic rendering for this API route
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: req.headers });
@@ -21,8 +24,8 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "unauth" }, { status: 401 });
     const userId = session.user.id;
 
-    const { searchParams } = new URL(req.url);
-    const lang = searchParams.get("lang");
+    const searchParams = req.nextUrl.searchParams;
+    const lang = searchParams.get("lang") || "en";
     const word = searchParams.get("word");
     const nativeLang = searchParams.get("nativeLang") || "en";
 

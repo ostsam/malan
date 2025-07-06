@@ -50,9 +50,8 @@ export function extractFormData(req: NextRequest) {
 }
 
 export function extractQueryParams(req: NextRequest) {
-  const url = new URL(req.url);
   const params: Record<string, string> = {};
-  url.searchParams.forEach((value, key) => {
+  req.nextUrl.searchParams.forEach((value, key) => {
     params[key] = value;
   });
   return params;

@@ -25,7 +25,7 @@ async function runGeminiPrompt(prompt: string, temperature: number = 0.2) {
 //                      OpenAI (GPT) model helpers
 // ---------------------------------------------------------------------------
 
-const openaiModelId = process.env.OPENAI_MODEL_ID || "gpt-3.5-turbo";
+const openaiModelId = process.env.OPENAI_MODEL_ID || "gpt-4.1-nano";
 
 function getOpenAiModel() {
   return openai(openaiModelId);
@@ -209,7 +209,15 @@ export async function translateDefinitions(
         let openaiResult: string | undefined = undefined;
         let used: "gemini" | "openai" | "none" = "none";
         try {
+          console.log("[LLM_TRANSLATE] Attempting Gemini translation...");
           geminiResult = await runGeminiPrompt(prompt, 0.2);
+          console.log(
+            "[LLM_TRANSLATE] Gemini response:",
+            geminiResult
+              ? `"${geminiResult.substring(0, 100)}..."`
+              : "null/empty"
+          );
+
           if (geminiResult && geminiResult.trim()) {
             used = "gemini";
             logTranslation({
@@ -223,9 +231,18 @@ export async function translateDefinitions(
               ...def,
               translatedSense: geminiResult.trim(),
             };
+          } else {
+            console.log(
+              "[LLM_TRANSLATE] Gemini returned empty/invalid response, falling back to OpenAI"
+            );
           }
         } catch (err) {
           console.error("[LLM_TRANSLATE] Gemini failed:", err);
+          console.error("[LLM_TRANSLATE] Gemini error details:", {
+            message: err instanceof Error ? err.message : String(err),
+            code: (err as any)?.code,
+            status: (err as any)?.status,
+          });
         }
         // Fallback to OpenAI if Gemini fails
         try {
@@ -398,4 +415,317 @@ function postProcessDefinitions(
   out = collapseIfSame(out);
   out = cleanExamples(out, word);
   return out;
+}
+
+/* -------------------------------------------------------------------------- */
+/*                 Enhanced Language Detection & Correction                   */
+/* -------------------------------------------------------------------------- */
+
+// Comprehensive language script detection patterns
+const LANGUAGE_SCRIPTS: Record<string, RegExp> = {
+  // Latin-based languages
+  en: /[a-zA-Z]/,
+  es: /[a-zA-ZáéíóúñüÁÉÍÓÚÑÜ]/,
+  fr: /[a-zA-ZàâäéèêëïîôöùûüÿçÀÂÄÉÈÊËÏÎÔÖÙÛÜŸÇ]/,
+  de: /[a-zA-ZäöüßÄÖÜ]/,
+  it: /[a-zA-ZàèéìíîòóùÀÈÉÌÍÎÒÓÙ]/,
+  pt: /[a-zA-ZáâãàçéêíóôõúÁÂÃÀÇÉÊÍÓÔÕÚ]/,
+  nl: /[a-zA-ZàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞŸ]/,
+
+  // Cyrillic languages
+  ru: /[а-яА-ЯёЁ]/,
+  uk: /[а-яА-ЯіїєґІЇЄҐ]/,
+  bg: /[а-яА-Я]/,
+
+  // Asian languages
+  ja: /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/, // Hiragana, Katakana, Kanji
+  zh: /[\u4E00-\u9FFF]/, // Chinese Han characters
+  ko: /[\uAC00-\uD7AF\u1100-\u11FF\u3130-\u318F]/, // Hangul, Jamo
+  th: /[\u0E00-\u0E7F]/, // Thai
+
+  // Middle Eastern languages
+  ar: /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/, // Arabic
+  fa: /[\u0600-\u06FF\uFB50-\uFDFF\uFE70-\uFEFF]/, // Persian/Farsi
+  he: /[\u0590-\u05FF\uFB1D-\uFB4F]/, // Hebrew
+
+  // Other scripts
+  hi: /[\u0900-\u097F]/, // Devanagari (Hindi)
+  bn: /[\u0980-\u09FF]/, // Bengali
+  ta: /[\u0B80-\u0BFF]/, // Tamil
+  te: /[\u0C00-\u0C7F]/, // Telugu
+  kn: /[\u0C80-\u0CFF]/, // Kannada
+  ml: /[\u0D00-\u0D7F]/, // Malayalam
+  gu: /[\u0A80-\u0AFF]/, // Gujarati
+  pa: /[\u0A00-\u0A7F]/, // Gurmukhi (Punjabi)
+  ur: /[\u0600-\u06FF\u0750-\u077F]/, // Urdu (Arabic script)
+  tr: /[a-zA-ZçğıöşüÇĞIİÖŞÜ]/, // Turkish
+  sv: /[a-zA-ZåäöÅÄÖ]/, // Swedish
+  da: /[a-zA-ZæøåÆØÅ]/, // Danish
+  no: /[a-zA-ZæøåÆØÅ]/, // Norwegian
+  fi: /[a-zA-ZäöåÄÖÅ]/, // Finnish
+  pl: /[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/, // Polish
+  cs: /[a-zA-ZáčďéěíňóřšťúůýžÁČĎÉĚÍŇÓŘŠŤÚŮÝŽ]/, // Czech
+  sk: /[a-zA-ZáäčďéíľĺňóôŕšťúýžÁÄČĎÉÍĽĹŇÓÔŔŠŤÚÝŽ]/, // Slovak
+  hu: /[a-zA-ZáéíóöőúüűÁÉÍÓÖŐÚÜŰ]/, // Hungarian
+  ro: /[a-zA-ZăâîșțĂÂÎȘȚ]/, // Romanian
+  hr: /[a-zA-ZčćđšžČĆĐŠŽ]/, // Croatian
+  sr: /[а-яА-ЯčćđšžČĆĐŠŽ]/, // Serbian (both Cyrillic and Latin)
+  sl: /[a-zA-ZčšžČŠŽ]/, // Slovenian
+  et: /[a-zA-ZäöõüšžÄÖÕÜŠŽ]/, // Estonian
+  lv: /[a-zA-ZāčēģīķļņšūžĀČĒĢĪĶĻŅŠŪŽ]/, // Latvian
+  lt: /[a-zA-ZąčęėįšųūžĄČĘĖĮŠŲŪŽ]/, // Lithuanian
+  el: /[\u0370-\u03FF\u1F00-\u1FFF]/, // Greek
+};
+
+// Common English words that might appear in definitions
+const COMMON_ENGLISH_WORDS = new Set([
+  "the",
+  "a",
+  "an",
+  "and",
+  "or",
+  "but",
+  "in",
+  "on",
+  "at",
+  "to",
+  "for",
+  "of",
+  "with",
+  "by",
+  "is",
+  "are",
+  "was",
+  "were",
+  "be",
+  "been",
+  "being",
+  "have",
+  "has",
+  "had",
+  "do",
+  "does",
+  "did",
+  "will",
+  "would",
+  "could",
+  "should",
+  "may",
+  "might",
+  "can",
+  "must",
+  "shall",
+  "this",
+  "that",
+  "these",
+  "those",
+  "it",
+  "its",
+  "they",
+  "them",
+  "their",
+  "we",
+  "us",
+  "our",
+  "you",
+  "your",
+  "he",
+  "him",
+  "his",
+  "she",
+  "her",
+  "hers",
+  "i",
+  "me",
+  "my",
+  "mine",
+  "noun",
+  "verb",
+  "adjective",
+  "adverb",
+  "pronoun",
+  "preposition",
+  "conjunction",
+  "interjection",
+  "person",
+  "place",
+  "thing",
+  "action",
+  "quality",
+  "state",
+  "condition",
+  "process",
+  "result",
+]);
+
+/**
+ * Detect the language of a text using script patterns and word analysis
+ */
+export function detectLanguage(text: string): string[] {
+  if (!text || text.trim().length === 0) return [];
+
+  const normalizedText = text.toLowerCase().trim();
+  const detectedLanguages: string[] = [];
+
+  // Check each language script
+  for (const [langCode, regex] of Object.entries(LANGUAGE_SCRIPTS)) {
+    if (regex.test(text)) {
+      detectedLanguages.push(langCode);
+    }
+  }
+
+  // Special case: if no script detected but contains common English words, likely English
+  if (detectedLanguages.length === 0) {
+    const words = normalizedText.split(/\s+/);
+    const englishWordCount = words.filter((word) =>
+      COMMON_ENGLISH_WORDS.has(word)
+    ).length;
+    if (englishWordCount > 0 && englishWordCount / words.length > 0.3) {
+      detectedLanguages.push("en");
+    }
+  }
+
+  return detectedLanguages;
+}
+
+/**
+ * Check if definitions are in the expected language
+ */
+export function validateDefinitionLanguage(
+  defs: Definition[],
+  expectedLang: string
+): {
+  isValid: boolean;
+  detectedLanguages: string[];
+  invalidDefinitions: Definition[];
+} {
+  const invalidDefinitions: Definition[] = [];
+  const allDetectedLanguages: string[] = [];
+
+  for (const def of defs) {
+    const detectedLanguages = detectLanguage(def.sense);
+    allDetectedLanguages.push(...detectedLanguages);
+
+    // Check if the detected language matches expected language
+    if (
+      detectedLanguages.length === 0 ||
+      !detectedLanguages.includes(expectedLang)
+    ) {
+      invalidDefinitions.push(def);
+    }
+  }
+
+  const isValid = invalidDefinitions.length === 0;
+
+  return {
+    isValid,
+    detectedLanguages: [...new Set(allDetectedLanguages)],
+    invalidDefinitions,
+  };
+}
+
+/**
+ * Automatically correct definitions that are in the wrong language
+ */
+export async function correctDefinitionLanguage(
+  defs: Definition[],
+  expectedLang: string,
+  word: string,
+  targetLang?: string
+): Promise<{
+  corrected: Definition[];
+  corrections: Array<{ original: string; corrected: string; reason: string }>;
+}> {
+  const corrections: Array<{
+    original: string;
+    corrected: string;
+    reason: string;
+  }> = [];
+  const correctedDefs: Definition[] = [];
+
+  for (const def of defs) {
+    const detectedLanguages = detectLanguage(def.sense);
+
+    // If definition is in wrong language, regenerate it
+    if (
+      detectedLanguages.length === 0 ||
+      !detectedLanguages.includes(expectedLang)
+    ) {
+      console.log(`[LANG_CORRECTION] Definition in wrong language detected:`, {
+        word,
+        expectedLang,
+        detectedLanguages,
+        originalSense: def.sense.substring(0, 100),
+      });
+
+      try {
+        // Generate new definition in correct language
+        const newDefs = await fetchGeminiDefinition({
+          word,
+          lang: expectedLang,
+          targetLang: undefined, // Get definition in the expected language
+        });
+
+        if (newDefs.length > 0) {
+          // Find matching definition by part of speech
+          const matchingDef =
+            newDefs.find((d) => d.pos === def.pos) || newDefs[0];
+
+          corrections.push({
+            original: def.sense,
+            corrected: matchingDef.sense,
+            reason: `Language mismatch: detected ${detectedLanguages.join(", ")} but expected ${expectedLang}`,
+          });
+
+          // If we need translation, generate it
+          if (targetLang && targetLang !== expectedLang) {
+            const translatedDefs = await translateDefinitions(
+              [matchingDef],
+              targetLang,
+              expectedLang
+            );
+            if (translatedDefs[0]?.translatedSense) {
+              correctedDefs.push({
+                ...matchingDef,
+                translatedSense: translatedDefs[0].translatedSense,
+              });
+            } else {
+              correctedDefs.push(matchingDef);
+            }
+          } else {
+            correctedDefs.push(matchingDef);
+          }
+
+          console.log(`[LANG_CORRECTION] ✅ Corrected definition:`, {
+            original: def.sense.substring(0, 50),
+            corrected: matchingDef.sense.substring(0, 50),
+          });
+        } else {
+          // If regeneration failed, keep original but log
+          console.log(
+            `[LANG_CORRECTION] ⚠️ Failed to regenerate definition, keeping original`
+          );
+          correctedDefs.push(def);
+        }
+      } catch (error) {
+        console.error(
+          `[LANG_CORRECTION] ❌ Error correcting definition:`,
+          error
+        );
+        // Keep original definition if correction fails
+        correctedDefs.push(def);
+      }
+    } else {
+      // Definition is in correct language, keep as is
+      correctedDefs.push(def);
+    }
+  }
+
+  if (corrections.length > 0) {
+    console.log(
+      `[LANG_CORRECTION] Summary: corrected ${corrections.length} definitions for word "${word}"`
+    );
+  }
+
+  return { corrected: correctedDefs, corrections };
 }
