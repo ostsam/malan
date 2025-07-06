@@ -63,10 +63,8 @@ export async function GET(req: NextRequest) {
           .select({
             defId: defsTable.id,
             pos: defsTable.pos,
-            sense:
-              sql`COALESCE(${transTable.translatedSense}, ${defsTable.sense})`.as(
-                "sense"
-              ),
+            sense: defsTable.sense,
+            translatedSense: transTable.translatedSense,
             examples: defsTable.examples,
           })
           .from(wordsTable)
@@ -84,6 +82,7 @@ export async function GET(req: NextRequest) {
         return rows.map((r) => ({
           pos: r.pos,
           sense: r.sense,
+          translatedSense: r.translatedSense || undefined,
           examples: r.examples,
         })) as Definition[];
       } else {
@@ -110,7 +109,7 @@ export async function GET(req: NextRequest) {
 
     // Always attempt DB first unless explicitly bypassed
     const dbDefs = await getDefsFromDB();
-    if (dbDefs.length === 3 && dbDefs.every((d) => d.sense)) {
+    if (dbDefs.length > 0 && dbDefs.every((d) => d.sense)) {
       return NextResponse.json({ word, defs: dbDefs, source: "db" });
     }
 
@@ -119,8 +118,10 @@ export async function GET(req: NextRequest) {
   const shouldTryWiki =
     !provider || provider === "wiki" || provider === "wiktionary";
   */
-    const shouldTryGoogle = provider === "google" || !provider; // default
-    const shouldTryGPT = provider === "gpt" || !provider; // fallback or explicit
+
+    // If no provider specified, try both AI providers in sequence
+    const shouldTryGoogle = provider === "google" || !provider; // default to true if no provider specified
+    const shouldTryGPT = provider === "gpt" || (!provider && !shouldTryGoogle); // fallback or explicit
 
     // Helper: persist new defs into DB
     async function persistDefinitions(defs: Definition[]) {
@@ -173,14 +174,14 @@ export async function GET(req: NextRequest) {
           defId = existing[0].id;
         }
 
-        // handle translation if needed and target differs
-        if (target && target !== lang) {
+        // Handle translation if available and target differs
+        if (target && target !== lang && d.translatedSense) {
           await db
             .insert(transTable)
             .values({
               definitionId: defId,
               targetLang: target,
-              translatedSense: d.sense,
+              translatedSense: d.translatedSense,
               source: "ai",
             })
             .onConflictDoNothing();
@@ -188,33 +189,128 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // 2) Try Gemini (Google) first
+    // 2) Try Gemini (Google) first if no provider specified or explicitly requested
     if (shouldTryGoogle) {
-      const defs = await fetchGeminiDefinition({
-        word,
-        lang,
-        targetLang: target,
-      });
-      if (defs.length) {
-        await persistDefinitions(defs);
-        return NextResponse.json({ word, defs, source: "google" });
+      try {
+        // First, get definitions in the original language (the language being learned)
+        const originalDefs = await fetchGeminiDefinition({
+          word,
+          lang,
+          targetLang: undefined, // Get original language definitions
+        });
+
+        if (originalDefs.length > 0) {
+          let finalDefs = originalDefs;
+
+          // If we have a target language (native language), translate the definitions
+          if (target && target !== lang) {
+            try {
+              // Translate the original definitions to the native language
+              const translatedDefs = await llmTranslateDefs(
+                originalDefs,
+                target,
+                lang
+              );
+
+              // Combine original and translated definitions
+              finalDefs = originalDefs.map((originalDef, index) => ({
+                ...originalDef,
+                translatedSense: translatedDefs[index]?.sense || undefined,
+              }));
+            } catch (translationError) {
+              console.error("Translation fetch failed:", translationError);
+              // Continue with original definitions only
+            }
+          }
+
+          await persistDefinitions(finalDefs);
+          return NextResponse.json({ word, defs: finalDefs, source: "google" });
+        }
+      } catch (error) {
+        console.error("Gemini definition fetch failed:", error);
+        // Continue to GPT fallback
       }
     }
 
-    // 3) GPT fallback (returns definitions in targetLang if provided)
+    // 3) GPT fallback
     if (shouldTryGPT) {
-      const defs = await fetchOpenAiDefinition({
-        word,
-        lang,
-        targetLang: target,
-      });
-      if (defs.length) {
-        await persistDefinitions(defs);
-        return NextResponse.json({ word, defs, source: "openai" });
+      try {
+        // First, get definitions in the original language (the language being learned)
+        const originalDefs = await fetchOpenAiDefinition({
+          word,
+          lang,
+          targetLang: undefined, // Get original language definitions
+        });
+
+        if (originalDefs.length > 0) {
+          let finalDefs = originalDefs;
+
+          // If we have a target language (native language), translate the definitions
+          if (target && target !== lang) {
+            try {
+              // Translate the original definitions to the native language
+              const translatedDefs = await llmTranslateDefs(
+                originalDefs,
+                target,
+                lang
+              );
+
+              // Combine original and translated definitions
+              finalDefs = originalDefs.map((originalDef, index) => ({
+                ...originalDef,
+                translatedSense: translatedDefs[index]?.sense || undefined,
+              }));
+            } catch (translationError) {
+              console.error("Translation fetch failed:", translationError);
+              // Continue with original definitions only
+            }
+          }
+
+          await persistDefinitions(finalDefs);
+          return NextResponse.json({ word, defs: finalDefs, source: "openai" });
+        }
+      } catch (error) {
+        console.error("OpenAI definition fetch failed:", error);
       }
     }
 
-    // 4) Nothing found
+    // 4) Final fallback: try to get original definitions and translate them
+    if (target && target !== lang) {
+      try {
+        // Try to get original definitions without target language
+        const originalDefs = await fetchGeminiDefinition({
+          word,
+          lang,
+          targetLang: undefined, // Get original language definitions
+        });
+
+        if (originalDefs.length > 0) {
+          // Now translate them to target language
+          const translatedDefs = await llmTranslateDefs(
+            originalDefs,
+            target,
+            lang
+          );
+
+          // Combine original and translated definitions
+          const combinedDefs = originalDefs.map((originalDef, index) => ({
+            ...originalDef,
+            translatedSense: translatedDefs[index]?.sense || undefined,
+          }));
+
+          await persistDefinitions(combinedDefs);
+          return NextResponse.json({
+            word,
+            defs: combinedDefs,
+            source: "google",
+          });
+        }
+      } catch (error) {
+        console.error("Translation fallback failed:", error);
+      }
+    }
+
+    // 5) Nothing found
     return NextResponse.json(
       { word, defs: [], source: "none" },
       { status: 404 }

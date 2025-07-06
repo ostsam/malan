@@ -42,7 +42,6 @@ export function Word({
   ...props
 }: WordProps) {
   const [useTarget, setUseTarget] = useState(false);
-  const [useGPT, setUseGPT] = useState(false);
   const [hasWiki, setHasWiki] = useState<boolean>(false);
   const [source, setSource] = useState<string | null>(null);
 
@@ -57,7 +56,7 @@ export function Word({
   const { saved, toggle } = useWordSaved(currentWord, lang);
 
   const computeKey = () =>
-    `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}:$${useGPT ? "gpt" : "wiki"}`;
+    `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`;
 
   /* ----------------------------- Fetching ----------------------------- */
   const fetchDefinition = useCallback(async () => {
@@ -66,9 +65,6 @@ export function Word({
       const url = new URL(`/api/dict`, window.location.origin);
       url.searchParams.set("lang", lang);
       url.searchParams.set("word", currentWord);
-      if (useGPT) {
-        url.searchParams.set("provider", "gpt");
-      }
       if (useTarget && targetLang && targetLang !== lang) {
         url.searchParams.set("target", targetLang);
       }
@@ -88,7 +84,7 @@ export function Word({
     } finally {
       setLoading(false);
     }
-  }, [lang, useTarget, targetLang, useGPT, currentWord]);
+  }, [lang, useTarget, targetLang, currentWord]);
 
   useEffect(() => {
     if (!open) return;
@@ -248,8 +244,21 @@ export function Word({
           {data.defs.map((d, i) => (
             <div key={i} className="">
               <p className="font-semibold mb-1">
-                {d.pos}: {tokenizeDef(d.sense)}
+                {d.pos}:{" "}
+                {tokenizeDef(
+                  useTarget && d.translatedSense ? d.translatedSense : d.sense
+                )}
               </p>
+              {!useTarget && d.translatedSense && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
+                  {d.translatedSense}
+                </p>
+              )}
+              {useTarget && d.sense !== d.translatedSense && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
+                  {d.sense}
+                </p>
+              )}
               {d.examples.length > 0 && (
                 <ul className="list-disc list-inside space-y-0.5">
                   {d.examples.map((ex, j) => (
@@ -291,7 +300,6 @@ export function Word({
               setWordStack((s) => [...s, currentWord]);
               setCurrentWord(tok.toLowerCase());
               setData(null);
-              setUseGPT(false);
             }}
           >
             {tok}
