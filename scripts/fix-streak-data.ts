@@ -145,7 +145,7 @@ class StreakDataFixer {
         console.log(
           `⚠️  Found ${invalidUsers.length} users with invalid streak data:`
         );
-        invalidUsers.forEach((user) => {
+        invalidUsers.forEach((user: any) => {
           console.log(
             `  ${user.userId}: current=${user.currentStreak}, longest=${user.longestStreak}`
           );
@@ -171,7 +171,7 @@ class StreakDataFixer {
         console.log(
           `⚠️  Found ${usersWithNoActivity.length} users with streaks but no activity date:`
         );
-        usersWithNoActivity.forEach((user) => {
+        usersWithNoActivity.forEach((user: any) => {
           console.log(
             `  ${user.userId}: current=${user.currentStreak}, longest=${user.longestStreak}`
           );

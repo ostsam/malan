@@ -52,7 +52,7 @@ async function debugChartData() {
       .limit(10);
 
     console.log(`\n📝 Sample wordlist entries with words:`);
-    wordlistWithWords.forEach((entry, i) => {
+    wordlistWithWords.forEach((entry: any, i: number) => {
       console.log(
         `  ${i + 1}. ID: ${entry.wordlistId}, Word: "${entry.word}" (${entry.lang}), Created: ${entry.createdAt}`
       );
@@ -79,7 +79,7 @@ async function debugChartData() {
     if (dailyWords.length === 0) {
       console.log("  No word activity in the last 7 days");
     } else {
-      dailyWords.forEach(({ date, count }) => {
+      dailyWords.forEach(({ date, count }: { date: string; count: number }) => {
         console.log(`  ${date}: ${count} words`);
       });
     }
@@ -100,9 +100,11 @@ async function debugChartData() {
     if (languageDistribution.length === 0) {
       console.log("  No language data found");
     } else {
-      languageDistribution.forEach(({ lang, count }) => {
-        console.log(`  ${lang}: ${count} words`);
-      });
+      languageDistribution.forEach(
+        ({ lang, count }: { lang: string; count: number }) => {
+          console.log(`  ${lang}: ${count} words`);
+        }
+      );
     }
 
     // 6. Check user sessions
@@ -120,7 +122,7 @@ async function debugChartData() {
     if (userSessions.length === 0) {
       console.log("  No chat sessions found");
     } else {
-      userSessions.forEach((session, i) => {
+      userSessions.forEach((session: any, i: number) => {
         console.log(
           `  ${i + 1}. Chat ID: ${session.chatId}, Created: ${session.createdAt}`
         );
@@ -154,7 +156,7 @@ async function debugChartData() {
     if (dailyChats.length === 0) {
       console.log("  No chat activity in the last 7 days");
     } else {
-      dailyChats.forEach(({ date, count }) => {
+      dailyChats.forEach(({ date, count }: { date: string; count: number }) => {
         console.log(`  ${date}: ${count} chats`);
       });
     }

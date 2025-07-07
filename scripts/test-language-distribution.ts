@@ -46,9 +46,11 @@ async function testLanguageDistribution() {
     if (allTimeLanguageDistribution.length === 0) {
       console.log("  No language data found");
     } else {
-      allTimeLanguageDistribution.forEach(({ lang, count }) => {
-        console.log(`  ${lang}: ${count} words`);
-      });
+      allTimeLanguageDistribution.forEach(
+        ({ lang, count }: { lang: string; count: number }) => {
+          console.log(`  ${lang}: ${count} words`);
+        }
+      );
     }
 
     // 3. Check language distribution for last 30 days
@@ -73,9 +75,11 @@ async function testLanguageDistribution() {
     if (recentLanguageDistribution.length === 0) {
       console.log("  No recent language data found");
     } else {
-      recentLanguageDistribution.forEach(({ lang, count }) => {
-        console.log(`  ${lang}: ${count} words`);
-      });
+      recentLanguageDistribution.forEach(
+        ({ lang, count }: { lang: string; count: number }) => {
+          console.log(`  ${lang}: ${count} words`);
+        }
+      );
     }
 
     // 4. Check sample wordlist entries with words
@@ -93,7 +97,7 @@ async function testLanguageDistribution() {
       .limit(5);
 
     console.log(`\n📝 Sample wordlist entries:`);
-    sampleEntries.forEach((entry, i) => {
+    sampleEntries.forEach((entry: any, i: number) => {
       console.log(
         `  ${i + 1}. ID: ${entry.wordlistId}, Word: "${entry.word}" (${entry.lang}), Created: ${entry.createdAt}`
       );

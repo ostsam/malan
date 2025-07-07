@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get daily word counts (only for time-based ranges)
-    let dailyWords: any[] = [];
+    let dailyWords: Array<{ date: string; count: number }> = [];
     if (days > 0) {
       dailyWords = await db
         .select({
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get daily chat counts (only for time-based ranges)
-    let dailyChats: any[] = [];
+    let dailyChats: Array<{ date: string; count: number }> = [];
     if (days > 0) {
       dailyChats = await db
         .select({
@@ -62,20 +62,27 @@ export async function GET(request: NextRequest) {
     }
 
     // Get language distribution based on range
-    let languageDistributionQuery = db
-      .select({
-        lang: wordsTable.lang,
-        count: sql<number>`count(*)`,
-      })
-      .from(wordlist)
-      .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
-      .where(eq(wordlist.userId, userId));
-
-    // Add time filter for non-all-time ranges
+    let languageDistributionQuery;
     if (days > 0) {
-      languageDistributionQuery = languageDistributionQuery.where(
-        gte(wordlist.createdAt, startDate!)
-      );
+      languageDistributionQuery = db
+        .select({
+          lang: wordsTable.lang,
+          count: sql<number>`count(*)`,
+        })
+        .from(wordlist)
+        .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
+        .where(
+          and(eq(wordlist.userId, userId), gte(wordlist.createdAt, startDate!))
+        );
+    } else {
+      languageDistributionQuery = db
+        .select({
+          lang: wordsTable.lang,
+          count: sql<number>`count(*)`,
+        })
+        .from(wordlist)
+        .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
+        .where(eq(wordlist.userId, userId));
     }
 
     const languageDistribution = await languageDistributionQuery
@@ -84,7 +91,7 @@ export async function GET(request: NextRequest) {
 
     // Create date map for easy lookup (only for time-based ranges)
     const dateMap = new Map<string, { words: number; chats: number }>();
-    let dailyData: any[] = [];
+    let dailyData: Array<{ date: string; words: number; chats: number }> = [];
 
     if (days > 0) {
       // Initialize all dates in range
@@ -125,7 +132,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get actual streak history (only for time-based ranges)
-    let streakData: any[] = [];
+    let streakData: Array<{ date: string; streak: number }> = [];
     if (days > 0) {
       streakData = await getStreakHistory(userId, days);
     }

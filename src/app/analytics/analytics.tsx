@@ -33,17 +33,6 @@ import {
   Award,
 } from "lucide-react";
 
-interface DailyData {
-  date: string;
-  words: number;
-  chats: number;
-}
-
-interface StreakData {
-  date: string;
-  streak: number;
-}
-
 export default function AnalyticsPage() {
   const { stats, loading: statsLoading, error: statsError } = useUserStats();
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d" | "all-time">(
@@ -52,15 +41,12 @@ export default function AnalyticsPage() {
   const [languageRange, setLanguageRange] = useState<"current" | "all-time">(
     "current"
   );
-  const [activeTab, setActiveTab] = useState("activity");
-
   // Progressive loading: only load chart data when needed
   const {
     dailyData,
     streakData,
     languageDistribution,
     loading: chartLoading,
-    isVisible,
   } = useChartData(languageRange === "all-time" ? "all-time" : timeRange);
 
   // Enable page scrolling (override global overflow-hidden)
