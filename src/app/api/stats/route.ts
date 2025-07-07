@@ -70,7 +70,12 @@ export async function GET(request: NextRequest) {
       ),
     };
 
-    return NextResponse.json(stats);
+    const response = NextResponse.json(stats);
+    response.headers.set(
+      "Cache-Control",
+      "private, max-age=60, stale-while-revalidate=120"
+    );
+    return response;
   } catch (error) {
     console.error("Error fetching user stats:", error);
     return NextResponse.json(
@@ -79,4 +84,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
- 

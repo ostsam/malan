@@ -20,6 +20,7 @@ import {
   extractChineseWords,
   isChineseText,
 } from "@/lib/chinese-tokenizer-server";
+import { getCachedWordDefinition, setCachedWordDefinition } from "@/lib/cache";
 
 // Force dynamic rendering for this API route
 export const dynamic = "force-dynamic";
@@ -60,6 +61,23 @@ export async function GET(req: NextRequest) {
 
     const validatedData = validateDictionaryLookup(queryData);
     const { word, lang, target, provider } = validatedData;
+
+    // OPTIMIZATION: Check cache first
+    const cacheKey = `${word}:${lang}${target ? `:${target}` : ""}`;
+    const cachedResult = getCachedWordDefinition<{
+      word: string;
+      defs: Definition[];
+      source: string;
+    }>(word, lang, target);
+    if (cachedResult) {
+      console.log("[CACHE] Hit for word:", word);
+      const response = NextResponse.json(cachedResult);
+      response.headers.set(
+        "Cache-Control",
+        "public, max-age=3600, stale-while-revalidate=7200"
+      );
+      return response;
+    }
 
     // Handle Chinese word segmentation
     let searchWords = [word];
@@ -247,6 +265,17 @@ export async function GET(req: NextRequest) {
               (!target || correctedDefs.every((d) => d.translatedSense))
             ) {
               console.log("[API] Returning corrected data from DB");
+
+              const response = NextResponse.json({
+                word,
+                defs: correctedDefs,
+                source: "db",
+              });
+              response.headers.set(
+                "Cache-Control",
+                "public, max-age=3600, stale-while-revalidate=7200"
+              );
+              return response;
               return NextResponse.json({
                 word,
                 defs: correctedDefs,
@@ -269,7 +298,14 @@ export async function GET(req: NextRequest) {
       (!target || dbDefs.every((d) => d.translatedSense))
     ) {
       console.log("[API] Returning complete data from DB");
-      return NextResponse.json({ word, defs: dbDefs, source: "db" });
+      const result = { word, defs: dbDefs, source: "db" };
+      setCachedWordDefinition(word, lang, result, target);
+      const response = NextResponse.json(result);
+      response.headers.set(
+        "Cache-Control",
+        "public, max-age=3600, stale-while-revalidate=7200"
+      );
+      return response;
     }
 
     // If we have definitions but missing translations, we need to generate them
@@ -328,7 +364,18 @@ export async function GET(req: NextRequest) {
         console.log(
           "[API] Generated and saved translations, returning combined data"
         );
-        return NextResponse.json({ word, defs: combinedDefs, source: "db+ai" });
+        const result = {
+          word,
+          defs: combinedDefs,
+          source: "db+ai",
+        };
+        setCachedWordDefinition(word, lang, result, target);
+        const response = NextResponse.json(result);
+        response.headers.set(
+          "Cache-Control",
+          "public, max-age=1800, stale-while-revalidate=3600"
+        );
+        return response;
       } catch (translationError) {
         console.error(
           "[API] Failed to generate translations for existing definitions:",
@@ -738,7 +785,18 @@ export async function GET(req: NextRequest) {
           }
 
           await persistDefinitions(finalDefs);
-          return NextResponse.json({ word, defs: finalDefs, source: "google" });
+          const result = {
+            word,
+            defs: finalDefs,
+            source: "google",
+          };
+          setCachedWordDefinition(word, lang, result, target);
+          const response = NextResponse.json(result);
+          response.headers.set(
+            "Cache-Control",
+            "public, max-age=1800, stale-while-revalidate=3600"
+          );
+          return response;
         }
       } catch (error) {
         console.error("Gemini definition fetch failed:", error);
@@ -781,7 +839,18 @@ export async function GET(req: NextRequest) {
           }
 
           await persistDefinitions(finalDefs);
-          return NextResponse.json({ word, defs: finalDefs, source: "openai" });
+          const result = {
+            word,
+            defs: finalDefs,
+            source: "openai",
+          };
+          setCachedWordDefinition(word, lang, result, target);
+          const response = NextResponse.json(result);
+          response.headers.set(
+            "Cache-Control",
+            "public, max-age=1800, stale-while-revalidate=3600"
+          );
+          return response;
         }
       } catch (error) {
         console.error("OpenAI definition fetch failed:", error);
@@ -813,11 +882,18 @@ export async function GET(req: NextRequest) {
           }));
 
           await persistDefinitions(combinedDefs);
-          return NextResponse.json({
+          const result = {
             word,
             defs: combinedDefs,
             source: "google",
-          });
+          };
+          setCachedWordDefinition(word, lang, result, target);
+          const response = NextResponse.json(result);
+          response.headers.set(
+            "Cache-Control",
+            "public, max-age=1800, stale-while-revalidate=3600"
+          );
+          return response;
         }
       } catch (error) {
         console.error("Translation fallback failed:", error);
