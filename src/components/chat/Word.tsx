@@ -20,6 +20,7 @@ import {
   convertChineseText,
   getUserChineseScriptPreference,
 } from "@/lib/chinese-converter";
+import { useChineseWordPinyin } from "@/hooks/useChineseTokenizedText";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -232,6 +233,10 @@ export function Word({
             <div className="flex flex-col items-center">
               <span>{convertedWord}</span>
             </div>
+            {/* Display pinyin for Chinese words */}
+            {isChinese && pinyin && !pinyinLoading && (
+              <span className="text-sm opacity-80 font-normal">({pinyin})</span>
+            )}
             <button
               aria-label="Play pronunciation"
               onClick={async () => {
@@ -651,7 +656,7 @@ export function Word({
             transform: `translate(${drag.x}px, ${drag.y}px)`,
             cursor: isDragging ? "grabbing" : "grab",
           }}
-          className="bg-white dark:bg-slate-800 overflow-y-auto rounded-md shadow-lg"
+          className="glassmorphic bg-white/80 dark:bg-slate-800/80 overflow-y-auto rounded-md shadow-lg backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50"
         >
           {renderContent()}
         </div>

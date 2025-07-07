@@ -221,7 +221,7 @@ export function DashboardForm({ isDemo = false }: DashboardFormProps) {
       {/* Demo Recovery Alert (only in authenticated mode) */}
       {!isDemo && showDemoRecovery && recoveredDemoData && (
         <div className="w-full max-w-md mb-4 fade-in">
-          <Card className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950">
+          <Card className="glassmorphic border-blue-200 bg-blue-50/80 dark:border-blue-800 dark:bg-blue-950/80">
             <CardHeader className="pb-3">
               <CardTitle className="text-blue-800 dark:text-blue-200 text-lg flex items-center gap-2">
                 <MessageSquare className="h-5 w-5" />
@@ -255,7 +255,7 @@ export function DashboardForm({ isDemo = false }: DashboardFormProps) {
 
       {/* --------------------------- card --------------------------- */}
       <main className="relative w-full max-w-md fade-in delay-10">
-        <div className="bg-white/80 backdrop-blur-xl ring-1 ring-slate-200 rounded-3xl shadow-xl overflow-hidden">
+        <div className="glassmorphic bg-white/80 backdrop-blur-xl ring-1 ring-slate-200 rounded-3xl shadow-xl overflow-hidden">
           <div className="p-5 sm:p-6 space-y-6">
             {/* title */}
             <h1
@@ -394,7 +394,7 @@ export function DashboardForm({ isDemo = false }: DashboardFormProps) {
                 onClick={finalHandleStartLearning}
                 disabled={!currentIsFormComplete || currentIsLoading}
                 className={cn(
-                  "w-full flex items-center justify-center gap-2 text-lg sm:text-xl font-semibold text-white py-3 rounded-xl shadow-md transition-colors fade-in delay-4",
+                  "glassmorphic w-full flex items-center justify-center gap-2 text-lg sm:text-xl font-semibold text-white py-3 rounded-xl shadow-md transition-colors fade-in delay-4",
                   currentIsFormComplete && !currentIsLoading
                     ? "cursor-pointer hover:bg-[#120b4a] active:bg-slate-500"
                     : "cursor-not-allowed opacity-60"

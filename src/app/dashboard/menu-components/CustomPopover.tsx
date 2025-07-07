@@ -58,7 +58,10 @@ export function CustomPopover<T extends PopoverItem>({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-            <PopoverContent onOpenAutoFocus={(e) => e.preventDefault()} className="w-[--radix-popover-trigger-width] p-0">
+      <PopoverContent
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="glassmorphic w-[--radix-popover-trigger-width] p-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50"
+      >
         <Command>
           <CommandInput
             placeholder={placeholder}
