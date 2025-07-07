@@ -82,6 +82,10 @@ export async function getChat(chatId: string) {
     throw new Error("User not authenticated");
   }
 
+  if (!chatId || chatId === "undefined") {
+    throw new Error("Chat ID is required");
+  }
+
   // Use loadChat to get both chat session and messages
   const chatData = await loadChat(chatId);
 

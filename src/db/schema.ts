@@ -32,6 +32,15 @@ export const messagesTable = createTable(
       t.chatId,
       t.createdAt
     ),
+    // Performance optimization indexes for chat sessions
+    chatCreatedAscIdx: index("idx_messages_chat_created_asc").on(
+      t.chatId,
+      t.createdAt
+    ),
+    chatCreatedDescIdx: index("idx_messages_chat_created_desc").on(
+      t.chatId,
+      t.createdAt
+    ),
     foreignKey: foreignKey({
       columns: [t.chatId],
       foreignColumns: [userSession.chatId],
@@ -40,16 +49,29 @@ export const messagesTable = createTable(
   })
 );
 
-export const userSession = createTable("user-sessions-table", {
-  chatId: varchar("chatId", { length: 256 }).primaryKey(),
-  slug: varchar("slug", { length: 256 }).notNull(),
-  settings: jsonb("settings").notNull(),
-  createdAt: timestamp("createdAt", { withTimezone: true })
-    .default(sql`CURRENT_TIMESTAMP`)
-    .notNull(),
-  userId: varchar("userId", { length: 256 }),
-  isPinned: boolean("isPinned").default(false).notNull(),
-});
+export const userSession = createTable(
+  "user-sessions-table",
+  {
+    chatId: varchar("chatId", { length: 256 }).primaryKey(),
+    slug: varchar("slug", { length: 256 }).notNull(),
+    settings: jsonb("settings").notNull(),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
+    userId: varchar("userId", { length: 256 }),
+    isPinned: boolean("isPinned").default(false).notNull(),
+    lastMessageAt: timestamp("lastMessageAt", { withTimezone: true }),
+  },
+  (t) => ({
+    // Performance optimization indexes for chat sessions
+    userPinnedCreatedIdx: index("idx_user_session_user_pinned_created").on(
+      t.userId,
+      t.isPinned,
+      t.createdAt
+    ),
+    userIdIdx: index("idx_user_session_user_id").on(t.userId),
+  })
+);
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
