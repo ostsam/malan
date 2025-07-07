@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { wordlist, words as wordsTable } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import OptimizedWordlistClient from "./OptimizedWordlistClient";
 
 // OPTIMIZATION: Use dynamic rendering for better performance

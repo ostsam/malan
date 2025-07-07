@@ -6,9 +6,14 @@ import { interfaceColor } from "@/lib/theme";
 import { Word } from "./Word";
 import { useCJKTokenizedText } from "@/hooks/useChineseTokenizedText";
 
+interface ChatSettings {
+  selectedLanguage?: string;
+  nativeLanguage?: string;
+}
+
 interface ChatMessageProps {
   message: Message;
-  settings: any;
+  settings: ChatSettings;
   onSpeak: (text: string) => void;
   renderMessageContent: (content: Message["content"]) => string;
 }
@@ -81,12 +86,12 @@ function ChatMessageBase({
     // Regex-based tokenization for all other cases
     console.log("[ChatMessage] Using regex-based tokenization");
     const parts = text.match(
-      /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+)/gu
+      /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+)/gu
     ) || [text];
 
     return parts.map((tok, idx) => {
       const isWord =
-        /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
+        /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
           tok
         );
       if (isWord && tok.length > 0) {

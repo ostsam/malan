@@ -13,12 +13,13 @@ export const signIn = async (email: string, password: string) => {
       success: true,
       message: "User signed in successfully",
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Check if it's an email verification error
     if (
-      error?.status === 403 ||
-      error?.message?.includes("verify") ||
-      error?.message?.includes("verification")
+      error instanceof Error &&
+      ((error as Error & { status?: number })?.status === 403 ||
+        error.message?.includes("verify") ||
+        error.message?.includes("verification"))
     ) {
       return {
         success: false,
@@ -26,9 +27,11 @@ export const signIn = async (email: string, password: string) => {
       };
     }
 
+    const errorMessage =
+      error instanceof Error ? error.message : "Signin error occurred";
     return {
       success: false,
-      message: error?.message || "Signin error occurred",
+      message: errorMessage,
     };
   }
 };
@@ -50,10 +53,12 @@ export const signUp = async (
       success: true,
       message: "User signed up successfully",
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Signup error occurred";
     return {
       success: false,
-      message: error?.message || "Signup error occurred",
+      message: errorMessage,
     };
   }
 };

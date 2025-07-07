@@ -16,21 +16,32 @@ import { getUserProfile, getUserPreferences } from "@/app/actions/profile";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 
+interface Profile {
+  name?: string;
+  email?: string;
+  image?: string | null;
+}
+
+interface Preferences {
+  dailyGoal?: number;
+  emailNotifications?: boolean;
+}
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("profile");
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<any>(null);
-  const [preferences, setPreferences] = useState<any>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [preferences, setPreferences] = useState<Preferences | null>(null);
   const [prefsLoading, setPrefsLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const profileResult = await getUserProfile();
-        if (profileResult.success) {
+        if (profileResult.success && profileResult.profile) {
           setProfile(profileResult.profile);
         }
-      } catch (error) {
+      } catch {
         toast.error("Failed to load settings");
       } finally {
         setLoading(false);
@@ -43,10 +54,15 @@ export default function SettingsPage() {
     const loadPrefs = async () => {
       try {
         const prefsResult = await getUserPreferences();
-        if (prefsResult.success) {
-          setPreferences(prefsResult.preferences);
+        if (prefsResult.success && prefsResult.preferences) {
+          const raw = prefsResult.preferences;
+          const normalizedPrefs: Preferences = {
+            dailyGoal: raw.dailyGoal ?? undefined,
+            emailNotifications: raw.emailNotifications ?? undefined,
+          };
+          setPreferences(normalizedPrefs);
         }
-      } catch (error) {
+      } catch {
         toast.error("Failed to load preferences");
       } finally {
         setPrefsLoading(false);

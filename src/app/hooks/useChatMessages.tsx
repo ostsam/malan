@@ -29,7 +29,7 @@ export function useChatMessages(messages: Message[]) {
             return parsed.map((p) => p.text).join("");
           }
         }
-      } catch (e) {
+      } catch {
         return content;
       }
     }

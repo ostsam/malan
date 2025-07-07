@@ -1,6 +1,15 @@
 import useSWR from "swr";
-import * as React from "react";
-import { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo } from "react";
+
+interface WordlistItem {
+  createdAt: string;
+  word: string;
+  pos: string;
+  sense: string;
+  translatedSense: string | null;
+  examples: string[];
+  transLang: string | null;
+}
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
@@ -71,7 +80,7 @@ export function usePaginatedWordlist(
   }, [lang, nativeLang, limit, cursor, direction]);
 
   const { data, mutate, isLoading, error } = useSWR<{
-    items: any[];
+    items: WordlistItem[];
     pagination: {
       hasMore: boolean;
       nextCursor: string | null;
@@ -183,7 +192,7 @@ export function useDebouncedSearch(
 
 // OPTIMIZATION: Memoized word processing hook
 export function useProcessedWordlist(
-  items: any[],
+  items: WordlistItem[],
   ascending: boolean,
   query: string
 ) {
@@ -191,7 +200,7 @@ export function useProcessedWordlist(
     // Group definitions per word
     const map = new Map<
       string,
-      { defs: any[]; createdAt: string; transLang: string | null }
+      { defs: WordlistItem[]; createdAt: string; transLang: string | null }
     >();
 
     for (const it of items) {
@@ -217,6 +226,9 @@ export function useProcessedWordlist(
           sense: it.sense,
           translatedSense: it.translatedSense,
           examples: it.examples,
+          createdAt: it.createdAt || "",
+          word: it.word,
+          transLang: it.transLang ?? null,
         });
       }
     }
@@ -225,9 +237,7 @@ export function useProcessedWordlist(
       word,
       defs: obj.defs,
       createdAt: obj.createdAt,
-      transLang: obj.defs.find((d) => d.translatedSense)?.translatedSense
-        ? (obj.transLang ?? null)
-        : null,
+      transLang: obj.defs.some((d) => d.translatedSense) ? obj.transLang : null,
     }));
 
     // Sorting

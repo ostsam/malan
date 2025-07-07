@@ -167,12 +167,11 @@ export async function updateProfile(data: ProfileData) {
     console.log("✅ Profile updated successfully");
     revalidatePath("/settings");
     return { success: true, message: "Profile updated successfully" };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Profile update error:", error);
-    return {
-      success: false,
-      message: error?.message || "Failed to update profile",
-    };
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to update profile";
+    return { success: false, message: errorMessage };
   }
 }
 
@@ -212,11 +211,13 @@ export async function updatePreferences(data: PreferencesData) {
 
     revalidatePath("/settings");
     return { success: true, message: "Preferences updated successfully" };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Preferences update error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to update preferences";
     return {
       success: false,
-      message: error?.message || "Failed to update preferences",
+      message: errorMessage,
     };
   }
 }
@@ -247,11 +248,13 @@ export async function changePassword(
     });
 
     return { success: true, message: "Password changed successfully" };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Password change error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to change password";
     return {
       success: false,
-      message: error?.message || "Failed to change password",
+      message: errorMessage,
     };
   }
 }
@@ -273,11 +276,13 @@ export async function getUserPreferences() {
       success: true,
       preferences: preferences[0] || null,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get preferences error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to get preferences";
     return {
       success: false,
-      message: error?.message || "Failed to get preferences",
+      message: errorMessage,
     };
   }
 }
@@ -306,11 +311,13 @@ export async function getUserProfile() {
         image: session.user.image,
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Get profile error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to get profile";
     return {
       success: false,
-      message: error?.message || "Failed to get profile",
+      message: errorMessage,
     };
   }
 }

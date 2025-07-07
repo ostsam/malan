@@ -28,6 +28,16 @@ interface BatchWordStatusParams {
   words: Array<{ word: string; lang: string }>;
 }
 
+interface WordlistItem {
+  createdAt: string;
+  word: string;
+  pos: string;
+  sense: string;
+  translatedSense: string | null;
+  examples: string[];
+  transLang: string | null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth.api.getSession({ headers: req.headers });
@@ -302,7 +312,7 @@ async function getPaginatedWordlist(
     );
 
   // Step 5: Assemble the result - return ALL definitions for each word
-  const items: any[] = [];
+  const items: WordlistItem[] = [];
 
   for (const entry of entries) {
     const word = words.find((w) => w.id === entry.wordId);

@@ -12,13 +12,13 @@ import { interfaceColor } from "@/lib/theme";
 import Switch from "react-switch";
 import { Star, StarOff, Volume2 } from "lucide-react";
 import { useDemoWordSaved } from "@/hooks/useDemoWordlist";
-import { useChinesePinyin } from "@/hooks/useChineseTokenizedText";
 import { isChineseText } from "@/lib/chinese-tokenizer-server";
 import {
   convertChineseText,
   getUserChineseScriptPreference,
 } from "@/lib/chinese-converter";
 import { useJieba } from "@/hooks/useJieba";
+import { useOptimizedChineseWordPinyin } from "@/hooks/useOptimizedChineseTokenization";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -49,7 +49,7 @@ export function DemoWord({
   ...props
 }: WordProps) {
   const [useTarget, setUseTarget] = useState(false);
-  const [hasWiki, setHasWiki] = useState<boolean>(false);
+
   const [source, setSource] = useState<string | null>(null);
 
   /* ------------------------------- State ------------------------------ */
@@ -68,10 +68,9 @@ export function DemoWord({
 
   // Chinese-specific features
   const isChinese = lang === "zh" || isChineseText(currentWord);
-  const { pinyin, loading: pinyinLoading } = useChinesePinyin(
-    currentWord,
-    isChinese
-  );
+  const { pinyin } = useOptimizedChineseWordPinyin(currentWord, lang === "zh", {
+    toneType: "symbol",
+  });
 
   // Jieba tokenization for Chinese text
   const { cut: jiebaCut, isReady: jiebaReady } = useJieba();
@@ -112,8 +111,11 @@ export function DemoWord({
     convertWord();
   }, [currentWord, chineseScript, isChinese]);
 
-  const computeKey = () =>
-    `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`;
+  const computeKey = useCallback(
+    () =>
+      `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`,
+    [lang, useTarget, targetLang, currentWord]
+  );
 
   /* ----------------------------- Fetching ----------------------------- */
   const fetchDefinition = useCallback(async () => {
@@ -136,12 +138,11 @@ export function DemoWord({
       const resp = await promise;
       setData(resp);
       setSource(resp.source);
-      if (resp.source === "wiktionary") setHasWiki(true);
       return resp;
     } finally {
       setLoading(false);
     }
-  }, [lang, useTarget, targetLang, currentWord]);
+  }, [lang, useTarget, targetLang, currentWord, computeKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -159,14 +160,13 @@ export function DemoWord({
     return () => {
       cancelled = true;
     };
-  }, [open, computeKey]);
+  }, [open, computeKey, fetchDefinition]);
 
   /* ------------------------------ Events ------------------------------ */
   const openPopover = () => {
     setOpen(true);
     fetchDefinition();
   };
-  const closePopover = () => setOpen(false);
 
   // Long-press on touch devices
   const handleTouchStart = () => {
@@ -232,7 +232,7 @@ export function DemoWord({
               <span>{convertedWord}</span>
             </div>
             {/* Display pinyin for Chinese words */}
-            {isChinese && pinyin && !pinyinLoading && (
+            {isChinese && pinyin && (
               <span className="text-sm opacity-80 font-normal">({pinyin})</span>
             )}
             <button
@@ -354,61 +354,11 @@ export function DemoWord({
     );
   };
 
-  // Helper function to detect if text contains Chinese/Japanese characters
-  const isCJKText = (text: string): boolean => {
-    return /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(text);
-  };
-
-  // tokenize definition/ex sentences to clickable words
-  const tokenizeDef = (text: string) => {
-    // Simplified regex that better handles word boundaries
-    // Matches: word characters (including apostrophes), whitespace, or punctuation
-    const parts = text.match(
-      /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+)/gu
-    ) || [text];
-
-    const isCJK = isCJKText(text);
-    const result: React.ReactNode[] = [];
-
-    parts.forEach((tok, idx) => {
-      // Check if it's a word (letters, Chinese characters, or Japanese characters)
-      const isWord =
-        /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
-          tok
-        );
-
-      if (isWord && tok.length > 0) {
-        // Add space before word if it's not CJK and not the first word
-        if (!isCJK && idx > 0) {
-          result.push(<span key={`space-${idx}`}> </span>);
-        }
-
-        result.push(
-          <span
-            key={idx}
-            style={{ textDecoration: "none" }}
-            className={cn(
-              "cursor-pointer",
-              isUser
-                ? "hover:decoration-white hover:underline hover:decoration-2"
-                : "hover:decoration-[#170664] hover:underline hover:decoration-2",
-              "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
-            )}
-            onClick={() => {
-              setWordStack((s) => [...s, currentWord]);
-              setCurrentWord(tok.toLowerCase());
-              setData(null);
-            }}
-          >
-            {tok}
-          </span>
-        );
-      } else {
-        result.push(<React.Fragment key={idx}>{tok}</React.Fragment>);
-      }
-    });
-
-    return result;
+  // Helper function to detect if text contains any non-Latin script characters
+  const isNonLatinScript = (text: string): boolean => {
+    return /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]/.test(
+      text
+    );
   };
 
   // Async tokenization function that uses jieba for Chinese text
@@ -433,7 +383,7 @@ export function DemoWord({
 
       try {
         let tokens: string[];
-        const isCJK = isCJKText(text);
+        const isNonLatin = isNonLatinScript(text);
 
         // Use jieba for Chinese text if ready
         if (isChineseText(text) && jiebaReady) {
@@ -443,11 +393,11 @@ export function DemoWord({
           // Fallback to regex for non-Chinese or when jieba not ready
           console.log("[DemoWord] Using regex fallback for text:", text);
           const parts = text.match(
-            /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+)/gu
+            /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+)/gu
           ) || [text];
           tokens = parts.filter(
             (part) =>
-              /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
+              /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
                 part
               ) && part.length > 0
           );
@@ -456,8 +406,8 @@ export function DemoWord({
         // Convert tokens to React elements with proper spacing
         const tokenElements: React.ReactNode[] = [];
         tokens.forEach((token, idx) => {
-          // Add space before token if it's not CJK and not the first token
-          if (!isCJK && idx > 0) {
+          // Add space before token if it's not a non-Latin script and not the first token
+          if (!isNonLatin && idx > 0) {
             tokenElements.push(<span key={`space-${idx}`}> </span>);
           }
 
@@ -554,7 +504,7 @@ export function DemoWord({
       ];
     }
 
-    // Fallback to original tokenizeDef for immediate display
+    // Fallback to original tokenizeDefAsync for immediate display
     // This will trigger async tokenization and show loading state
     tokenizeDefAsync(text).catch(console.error);
     return [<span key="fallback">{text}</span>];
@@ -604,6 +554,12 @@ export function DemoWord({
     window.removeEventListener("mouseup", onMouseUpDrag);
     setIsDragging(false);
   };
+
+  useEffect(() => {
+    if (initialWord && lang) {
+      fetchDefinition();
+    }
+  }, [initialWord, lang, fetchDefinition]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

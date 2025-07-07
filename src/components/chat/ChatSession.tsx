@@ -20,7 +20,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSession } from "@/lib/auth-client";
 import Link from "next/link";
-import { ChineseScriptToggle } from "@/components/chinese-script-toggle";
+import Image from "next/image";
+
 import {
   convertChineseText,
   getUserChineseScriptPreference,
@@ -29,9 +30,15 @@ import {
 // Types for real and demo chat
 export interface SerializableChatData {
   slug?: string;
-  settings: any;
+  settings: ChatSettings;
   messages: Array<Omit<Message, "createdAt"> & { createdAt?: string }>;
   createdAt?: string;
+}
+
+export interface ChatSettings {
+  selectedLanguage?: string;
+  nativeLanguage?: string;
+  [key: string]: unknown;
 }
 
 export interface DemoSettings {
@@ -62,7 +69,7 @@ export function ChatSession({
   onSignupPrompt,
 }: ChatSessionProps) {
   // Initialize hooks based on mode
-  const demoSlugHook = useDemoChatSlug("", "demo");
+  const demoSlugHook = useDemoChatSlug("");
   const realSlugHook = useChatSlug(chatObject?.slug, id);
   const { slug, handleSlugUpdate, generateSlugFromMessage } = demoMode
     ? demoSlugHook
@@ -70,7 +77,17 @@ export function ChatSession({
 
   const { uiError, showError } = useChatErrors();
   const { ttsVoice } = useChatTTS(
-    demoMode ? demoSettings! : chatObject?.settings
+    demoMode
+      ? {
+          selectedLanguage: demoSettings!.selectedLanguage || "en",
+          interlocutor: demoSettings!.interlocutor,
+        }
+      : {
+          selectedLanguage: chatObject?.settings?.selectedLanguage || "en",
+          interlocutor: (chatObject?.settings as ChatSettings)?.interlocutor as
+            | string
+            | undefined,
+        }
   );
 
   // Check if user is authenticated
@@ -221,14 +238,7 @@ export function ChatSession({
     voice: ttsVoice,
   });
 
-  const {
-    pushToTalk,
-    setPushToTalk,
-    isMobile,
-    handleMicInteractionStart,
-    handleMicInteractionEnd,
-    handleMicClick,
-  } = useInputControls({
+  const { pushToTalk, setPushToTalk } = useInputControls({
     isRecording,
     isTranscribing,
     status,
@@ -237,7 +247,7 @@ export function ChatSession({
     stopAudioPlayback,
   });
 
-  const { rtlStyles, centerRTLStyles, languageCode } = useRTL({
+  const { centerRTLStyles, languageCode } = useRTL({
     selectedLanguage: demoMode
       ? demoSettings?.selectedLanguage
       : chatObject?.settings?.selectedLanguage,
@@ -324,13 +334,15 @@ export function ChatSession({
 
           {/* Center - Logo */}
           <div className="flex-1 flex justify-center">
-            <a href="/">
-              <img
+            <Link href="/">
+              <Image
                 src="/logo.svg"
                 alt="Malan Logo"
                 className="h-12 w-auto hover:opacity-70"
+                width={120}
+                height={48}
               />
-            </a>
+            </Link>
           </div>
 
           {/* Right side - Wordlist button for authenticated users */}
@@ -383,7 +395,12 @@ export function ChatSession({
               <ChatMessage
                 key={m.id}
                 message={m}
-                settings={settings}
+                settings={
+                  settings as {
+                    selectedLanguage?: string;
+                    nativeLanguage?: string;
+                  }
+                }
                 onSpeak={speak}
                 renderMessageContent={renderMessageContent}
               />
@@ -395,16 +412,20 @@ export function ChatSession({
             <div>
               <p className="text-2xl">Instructions:</p>
               <p className="text-l mt-3">
-                Begin speaking {settings?.selectedLanguageLabel}.{" "}
-                {settings?.interlocutor} will have you speaking fluidly about
-                your day, your interests, or anything else you'd like in no
-                time!
+                Begin speaking{" "}
+                {(settings as ChatSettings)?.selectedLanguageLabel as string}.{" "}
+                {(settings as ChatSettings)?.interlocutor as string} will have
+                you speaking fluidly about your day, your interests, or anything
+                else you&apos;d like in no time!
               </p>
             </div>
             <div className="text-md pb-4">
               <p>1. Press the button and speak to begin</p>
               <p>2. Release it to end the transmission.</p>
-              <p>3. Await response from {settings?.interlocutor}.</p>
+              <p>
+                3. Await response from{" "}
+                {(settings as ChatSettings)?.interlocutor as string}.
+              </p>
             </div>
           </div>
         )}
@@ -421,9 +442,10 @@ export function ChatSession({
               </CardHeader>
               <CardContent className="text-gray-700">
                 <p className="mb-4">
-                  You've reached the demo limit! Sign up now to continue your
-                  conversation with {settings?.interlocutor} and unlock
-                  unlimited learning.
+                  You&apos;ve reached the demo limit! Sign up now to continue
+                  your conversation with{" "}
+                  {(settings as ChatSettings)?.interlocutor as string} and
+                  unlock unlimited learning.
                 </p>
                 <Button
                   onClick={onSignupPrompt}
@@ -467,7 +489,7 @@ export function ChatSession({
           startRecording={startRecording}
           stopRecording={stopRecording}
           stopAudioPlayback={stopAudioPlayback}
-          selectedLanguage={settings?.selectedLanguage}
+          selectedLanguage={(settings as ChatSettings)?.selectedLanguage}
           onScriptChange={handleScriptChange}
         />
       ) : null}

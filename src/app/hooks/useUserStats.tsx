@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "@/lib/auth-client";
 
 interface UserStats {
@@ -17,7 +17,7 @@ export function useUserStats() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     if (!session?.user?.id) {
       setLoading(false);
       return;
@@ -43,11 +43,13 @@ export function useUserStats() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [session?.user?.id]);
 
   useEffect(() => {
-    fetchStats();
-  }, [session?.user?.id]);
+    if (session?.user?.id) {
+      fetchStats();
+    }
+  }, [session?.user?.id, fetchStats]);
 
   const refreshStats = () => {
     fetchStats();

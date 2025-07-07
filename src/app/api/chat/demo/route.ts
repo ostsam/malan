@@ -1,12 +1,6 @@
 import { openai } from "@ai-sdk/openai";
-import {
-  streamText,
-  appendResponseMessages,
-  createIdGenerator,
-  appendClientMessage,
-} from "ai";
+import { streamText, createIdGenerator, appendClientMessage } from "ai";
 import { formatSystemPrompt } from "@/app/lib/prompt-templates";
-import { NextRequest } from "next/server";
 
 // Allow streaming responses up to 60 seconds
 export const maxDuration = 60;

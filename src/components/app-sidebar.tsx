@@ -4,7 +4,6 @@ import {
   Bookmark,
   EditIcon,
   TrashIcon,
-  BookOpen,
   MoreVertical,
   Settings,
   LogOut,
@@ -51,10 +50,16 @@ export interface Chat {
   isPinned: boolean;
 }
 
+interface UserProfile {
+  name?: string;
+  email?: string;
+  image?: string | null;
+}
+
 export default function AppSidebar() {
   const router = useRouter();
   const [chatHistory, setChatHistory] = useState<Chat[]>([]);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -349,11 +354,11 @@ export default function AppSidebar() {
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <Avatar className="h-10 w-10 ring-2 ring-slate-200/50 dark:ring-slate-700/50">
                       <AvatarImage
-                        src={userProfile.image}
+                        src={userProfile.image ?? undefined}
                         alt={userProfile.name}
                       />
                       <AvatarFallback className="text-xs bg-slate-100 dark:bg-slate-800">
-                        {getInitials(userProfile.name)}
+                        {getInitials(userProfile.name ?? "")}
                       </AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">

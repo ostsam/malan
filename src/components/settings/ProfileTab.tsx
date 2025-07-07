@@ -24,9 +24,15 @@ const profileSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
 });
 
+interface Profile {
+  name?: string;
+  email?: string;
+  image?: string | null;
+}
+
 interface ProfileTabProps {
-  profile: any;
-  onProfileUpdate: (profile: any) => void;
+  profile: Profile | null;
+  onProfileUpdate: (profile: Profile) => void;
 }
 
 export function ProfileTab({ profile, onProfileUpdate }: ProfileTabProps) {
@@ -58,7 +64,7 @@ export function ProfileTab({ profile, onProfileUpdate }: ProfileTabProps) {
       } else {
         toast.error(result.message);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to update profile");
     } finally {
       setLoading(false);
@@ -111,8 +117,8 @@ export function ProfileTab({ profile, onProfileUpdate }: ProfileTabProps) {
       } else {
         toast.error(result.message || "Failed to upload avatar");
       }
-    } catch (error) {
-      console.error("Avatar upload error:", error);
+    } catch {
+      console.error("Avatar upload error");
       toast.error("Failed to upload avatar");
     } finally {
       setAvatarLoading(false);
@@ -136,8 +142,8 @@ export function ProfileTab({ profile, onProfileUpdate }: ProfileTabProps) {
       } else {
         toast.error(result.message || "Failed to remove avatar");
       }
-    } catch (error) {
-      console.error("Avatar remove error:", error);
+    } catch {
+      console.error("Avatar remove error");
       toast.error("Failed to remove avatar");
     } finally {
       setAvatarLoading(false);
@@ -159,7 +165,7 @@ export function ProfileTab({ profile, onProfileUpdate }: ProfileTabProps) {
       <div className="flex items-center gap-4">
         <div className="relative">
           <Avatar className="h-20 w-20">
-            <AvatarImage src={avatarUrl} alt={profile?.name} />
+            <AvatarImage src={avatarUrl ?? undefined} alt={profile?.name} />
             <AvatarFallback className="text-lg">
               {getInitials(profile?.name || "User")}
             </AvatarFallback>

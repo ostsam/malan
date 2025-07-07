@@ -581,7 +581,7 @@ export default function AnalyticsPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium text-[#3C18D9] dark:text-[#8B5CF6]">
-                    Today's Progress
+                    Today&apos;s Progress
                   </p>
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
                     {stats.todayWords}/{stats.dailyGoal}
@@ -795,7 +795,7 @@ export default function AnalyticsPage() {
                     </div>
                     <div className="flex justify-between items-center p-3 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg border border-slate-200/50 dark:border-slate-700/50">
                       <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                        Today's Progress
+                        Today&apos;s Progress
                       </span>
                       <span className="text-lg font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
                         {Math.round(stats.dailyProgress)}%

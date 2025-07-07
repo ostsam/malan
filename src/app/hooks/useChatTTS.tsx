@@ -1,6 +1,11 @@
 import { languageLearningData } from "@/app/dashboard/menu-data/languageLearningData";
 
-export function useChatTTS(settings: any) {
+interface TTSSettings {
+  selectedLanguage: string;
+  interlocutor?: string;
+}
+
+export function useChatTTS(settings: TTSSettings) {
   const selectedLanguageData = languageLearningData.find(
     (lang) => lang.value === settings.selectedLanguage
   );

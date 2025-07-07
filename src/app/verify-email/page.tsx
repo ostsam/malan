@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/card";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
+import Image from "next/image";
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams();
@@ -71,11 +73,13 @@ function VerifyEmailContent() {
             router.push("/dashboard");
           }, 2000);
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Email verification error:", error);
         setStatus("error");
         setMessage(
-          error?.message || "Failed to verify email. Please try again."
+          error instanceof Error
+            ? error.message
+            : "Failed to verify email. Please try again."
         );
         toast.error("Email verification failed");
       }
@@ -120,9 +124,15 @@ function VerifyEmailContent() {
   return (
     <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
       <div className="flex w-full max-w-sm flex-col gap-2">
-        <a href="/" className="flex items-center self-center font-medium">
-          <img src="/malan-caps.svg" alt="Malan" className="h-12 w-auto" />
-        </a>
+        <Link href="/" className="flex items-center self-center font-medium">
+          <Image
+            src="/malan-caps.svg"
+            alt="Malan"
+            className="h-12 w-auto"
+            width={120}
+            height={48}
+          />
+        </Link>
 
         <Card>
           <CardHeader className="text-center">
@@ -144,7 +154,7 @@ function VerifyEmailContent() {
               {status === "error" && (
                 <div className="space-y-2">
                   <p className="text-sm text-muted-foreground">
-                    If you're having trouble, you can:
+                    If you&apos;re having trouble, you can:
                   </p>
                   <div className="flex flex-col gap-2">
                     <Button
@@ -182,9 +192,18 @@ export default function VerifyEmailPage() {
       fallback={
         <div className="bg-muted flex min-h-svh flex-col items-center justify-center gap-6 p-6 md:p-10">
           <div className="flex w-full max-w-sm flex-col gap-2">
-            <a href="/" className="flex items-center self-center font-medium">
-              <img src="/malan-caps.svg" alt="Malan" className="h-12 w-auto" />
-            </a>
+            <Link
+              href="/"
+              className="flex items-center self-center font-medium"
+            >
+              <Image
+                src="/malan-caps.svg"
+                alt="Malan"
+                className="h-12 w-auto"
+                width={120}
+                height={48}
+              />
+            </Link>
             <Card>
               <CardHeader className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">

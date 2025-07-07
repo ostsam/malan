@@ -78,15 +78,11 @@ export async function POST(request: NextRequest) {
       message: "Avatar updated successfully",
       avatarUrl: dataUrl,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Avatar upload error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        message: error?.message || "Failed to upload avatar",
-      },
-      { status: 500 }
-    );
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to upload avatar";
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
 
@@ -120,12 +116,14 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: "Avatar removed successfully",
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("❌ Avatar delete error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to delete avatar";
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Failed to remove avatar",
+        message: errorMessage,
       },
       { status: 500 }
     );

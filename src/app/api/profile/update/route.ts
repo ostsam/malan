@@ -98,15 +98,16 @@ export async function POST(request: NextRequest) {
       success: true,
       message: "Profile updated successfully",
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("❌ Profile update error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to update profile";
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Failed to update profile",
+        message: errorMessage,
       },
       { status: 500 }
     );
   }
 }
- 

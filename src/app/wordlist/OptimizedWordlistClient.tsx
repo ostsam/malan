@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useCallback, useMemo, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Star,
   StarOff,
@@ -12,7 +12,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 import {
-  useWordSaved,
   useDebouncedSearch,
   useProcessedWordlist,
   useBatchWordStatus,
@@ -22,6 +21,7 @@ import { useOptimizedChineseWordPinyin } from "@/hooks/useOptimizedChineseTokeni
 import { interfaceColor } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import Switch from "react-switch";
+import { useWordSaved } from "@/hooks/useWordlist";
 
 interface RawItem {
   createdAt: string;
@@ -59,13 +59,11 @@ const OptimizedWordItem = React.memo(function OptimizedWordItem({
   lang,
   onToggle,
   nativeLang,
-  savedStatus,
 }: {
   entry: WordEntry;
   lang: string;
   onToggle: () => void;
   nativeLang: string;
-  savedStatus: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [useTarget, setUseTarget] = useState(false);
@@ -74,14 +72,15 @@ const OptimizedWordItem = React.memo(function OptimizedWordItem({
   // OPTIMIZATION: Use optimized Chinese pinyin hook
   const { pinyin } = useOptimizedChineseWordPinyin(entry.word, lang === "zh", {
     toneType: "symbol",
-    case: "lowercase",
   });
 
-  const hasTranslations = defs.some((d) => d.translatedSense);
+  // Add the useWordSaved hook to get the actual toggle function
+  const { saved, toggle } = useWordSaved(entry.word, lang);
 
   const handleToggle = useCallback(async () => {
-    await onToggle();
-  }, [onToggle]);
+    await toggle();
+    onToggle();
+  }, [toggle, onToggle]);
 
   return (
     <li className="glassmorphic border rounded-xl shadow-lg bg-white/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 transition-colors backdrop-blur-xl border-slate-200/50 dark:border-slate-700/50">
@@ -152,7 +151,6 @@ const OptimizedWordItem = React.memo(function OptimizedWordItem({
                 height={12}
                 width={24}
                 handleDiameter={10}
-                disabled={!hasTranslations}
               />
             </div>
             <span className="text-[10px] uppercase opacity-70">
@@ -203,9 +201,9 @@ const OptimizedWordItem = React.memo(function OptimizedWordItem({
             handleToggle();
           }}
           className="text-yellow-400 flex-shrink-0 mt-1 cursor-pointer"
-          aria-label={savedStatus ? "Remove from wordlist" : "Add to wordlist"}
+          aria-label={saved ? "Remove from wordlist" : "Add to wordlist"}
         >
-          {savedStatus ? (
+          {saved ? (
             <Star fill="currentColor" size={20} />
           ) : (
             <StarOff size={20} />
@@ -268,14 +266,14 @@ export default function OptimizedWordlistClient({
   } = usePaginatedWordlist(lang, nativeLang, 50);
 
   // OPTIMIZATION: Use processed wordlist hook
-  const { items, filteredItems } = useProcessedWordlist(
+  const { filteredItems } = useProcessedWordlist(
     rawItems.length > 0 ? rawItems : initialItems,
     ascending,
     debouncedQuery
   );
 
   // OPTIMIZATION: Batch word status check
-  const { savedStatuses, checkBatchStatus } = useBatchWordStatus();
+  const { checkBatchStatus } = useBatchWordStatus();
   const [batchChecked, setBatchChecked] = useState(false);
 
   // OPTIMIZATION: Check batch status when items change
@@ -445,9 +443,6 @@ export default function OptimizedWordlistClient({
                     lang={lang}
                     onToggle={mutate}
                     nativeLang={nativeLang}
-                    savedStatus={
-                      savedStatuses[`${entry.word}:${lang}`] ?? false
-                    }
                   />
                 ))}
               </ul>

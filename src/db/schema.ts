@@ -14,7 +14,6 @@ import {
   date,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
-import type { Message } from "ai";
 
 export const createTable = pgTableCreator((name) => `malan-chatbot_${name}`);
 
@@ -142,7 +141,7 @@ export const definitions = pgTable(
     examples: jsonb("examples")
       .notNull()
       .$type<string[]>()
-      .default([] as any),
+      .default([] as string[]),
     source: varchar("source", { length: 16 }).default("wiki").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),

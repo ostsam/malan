@@ -32,22 +32,6 @@ export const revalidate = 3600;
 /*           Heuristic: ensure defs are actually in requested language         */
 /* -------------------------------------------------------------------------- */
 
-// Naive script regex per language – extend for more languages as needed.
-const langScriptRegex: Record<string, RegExp> = {
-  ru: /[а-яА-ЯёЁ]/, // Cyrillic
-  he: /[\u0590-\u05FF]/, // Hebrew
-  ar: /[\u0600-\u06FF]/, // Arabic
-  fa: /[\u0600-\u06FF]/, // Persian
-  ja: /[\u3040-\u30FF\u4E00-\u9FFF]/, // Japanese Kana/Kanji
-  zh: /[\u4E00-\u9FFF]/, // Chinese Han
-};
-
-function defsMatchLanguage(defs: Definition[], langCode: string): boolean {
-  const regex = langScriptRegex[langCode];
-  if (!regex) return true; // No regex → assume match
-  return defs.some((d) => regex.test(d.sense));
-}
-
 export async function GET(req: NextRequest) {
   try {
     // Validate query parameters
@@ -385,10 +369,6 @@ export async function GET(req: NextRequest) {
     }
 
     // TEMPORARY: Disable wiki lookups until language detection improved
-    /*
-  const shouldTryWiki =
-    !provider || provider === "wiki" || provider === "wiktionary";
-  */
 
     // If no provider specified, try both AI providers in sequence
     const shouldTryGoogle = provider === "google" || !provider; // default to true if no provider specified

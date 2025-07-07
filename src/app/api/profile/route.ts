@@ -24,12 +24,14 @@ export async function GET(request: NextRequest) {
         image: session.user.image,
       },
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("❌ Profile fetch error:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "Failed to fetch profile";
     return NextResponse.json(
       {
         success: false,
-        message: error?.message || "Failed to fetch profile",
+        message: errorMessage,
       },
       { status: 500 }
     );

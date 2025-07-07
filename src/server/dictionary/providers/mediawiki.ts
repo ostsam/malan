@@ -1,5 +1,5 @@
 import type { Definition } from "../types";
-import { stripHtml } from "../helpers";
+import { stripHtml, parseWiktionary } from "../helpers";
 
 /**
  * Fetch definitions from language-specific Wiktionary using MediaWiki action=parse.
@@ -30,8 +30,9 @@ export async function fetchMediaWikiDefinition({
   try {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
-    const json: any = await res.json();
-    const html: string | undefined = json?.parse?.text;
+    const json: unknown = await res.json();
+    const html: string | undefined = (json as { parse?: { text?: string } })
+      ?.parse?.text;
     if (!html) return [];
 
     // Very light extraction: take first ordered list items
@@ -71,6 +72,29 @@ export async function fetchMediaWikiDefinition({
     }
     return defs;
   } catch {
+    return [];
+  }
+}
+
+export async function fetchFromMediaWiki(
+  word: string,
+  lang: string
+): Promise<Definition[]> {
+  try {
+    const response = await fetch(
+      `https://${lang}.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(
+        word
+      )}`
+    );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data: unknown = await response.json();
+    return parseWiktionary(data, lang);
+  } catch (error) {
+    console.error("MediaWiki fetch error:", error);
     return [];
   }
 }

@@ -1,6 +1,6 @@
-export interface LanguageOption {
-  value: string;
-  label: string;
+import type { PopoverItem } from "../menu-components/CustomPopover";
+
+export interface LanguageOption extends PopoverItem {
   rtl?: boolean;
   interlocutors: {
     male: string;

@@ -74,7 +74,7 @@ export function LoginForm({
       } else {
         toast.error("Failed to send verification email. Please try again.");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to send verification email. Please try again.");
     } finally {
       setResending(false);
@@ -246,7 +246,7 @@ export function LoginForm({
             </form>
           </Form>
           <div className="text-center text-sm mt-2">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{" "}
             <a
               href="/signup"
               className="text-primary underline-offset-4 underline"

@@ -17,6 +17,7 @@ async function runGeminiPrompt(prompt: string, temperature: number = 0.2) {
     model: getGeminiModel(),
     prompt,
     temperature,
+    maxTokens: 500,
   });
   return text.trim();
 }
@@ -36,6 +37,7 @@ async function runOpenAiPrompt(prompt: string, temperature: number = 0.2) {
     model: getOpenAiModel(),
     prompt,
     temperature,
+    maxTokens: 500,
   });
   return text.trim();
 }
@@ -44,49 +46,90 @@ async function runOpenAiPrompt(prompt: string, temperature: number = 0.2) {
  * Extract up to the first three definitions from the Wiktionary REST API JSON
  * keeping at most two example sentences for each.
  */
-export function parseWiktionary(json: any, filterLang?: string): Definition[] {
+export function parseWiktionary(
+  json: unknown,
+  filterLang?: string
+): Definition[] {
   const result: Definition[] = [];
 
   if (!json || typeof json !== "object") return result;
 
   // The Wiktionary REST response groups entries by language code key.
   // Each value is an array of entries with partOfSpeech and definitions arrays.
-  Object.entries<any>(json).forEach(([langKey, entries]) => {
-    if (filterLang && langKey.toLowerCase() !== filterLang.toLowerCase())
-      return;
+  Object.entries(json as Record<string, unknown>).forEach(
+    ([langKey, entries]) => {
+      if (filterLang && langKey.toLowerCase() !== filterLang.toLowerCase())
+        return;
 
-    if (!Array.isArray(entries)) return;
+      if (!Array.isArray(entries)) return;
 
-    entries.forEach((entry: any) => {
-      if (result.length >= 3) return; // stop early
+      entries.forEach((entry: unknown) => {
+        if (result.length >= 3) return; // stop early
+        if (!entry || typeof entry !== "object") return;
+        const e = entry as {
+          partOfSpeech?: string;
+          pos?: string;
+          definitions?: unknown[];
+        };
+        const pos: string = e.partOfSpeech || e.pos || "unknown";
+        const defs = Array.isArray(e.definitions) ? e.definitions : [];
 
-      const pos: string = entry.partOfSpeech || entry.pos || "unknown";
-      const defs = Array.isArray(entry.definitions) ? entry.definitions : [];
+        defs.forEach((d: unknown) => {
+          if (result.length >= 3) return;
+          if (!d || (typeof d !== "string" && typeof d !== "object")) return;
+          const defObj =
+            typeof d === "string"
+              ? { definition: d }
+              : (d as {
+                  definition?: string;
+                  meaning?: string;
+                  examples?: unknown[];
+                });
+          const rawSense: string =
+            typeof d === "string"
+              ? d
+              : defObj.definition || defObj.meaning || "";
+          const sense = stripHtml(rawSense);
+          if (!sense) return;
 
-      defs.forEach((d: any) => {
-        if (result.length >= 3) return;
+          const examplesRaw = defObj.examples || [];
+          const examples: string[] = (examplesRaw as unknown[])
+            .map((e) => {
+              const exampleText =
+                typeof e === "string"
+                  ? e
+                  : (
+                      e as {
+                        example?: string;
+                        text?: string;
+                        translation?: string;
+                      }
+                    ).example ||
+                    (
+                      e as {
+                        example?: string;
+                        text?: string;
+                        translation?: string;
+                      }
+                    ).text ||
+                    (
+                      e as {
+                        example?: string;
+                        text?: string;
+                        translation?: string;
+                      }
+                    ).translation ||
+                    "";
+              return stripHtml(exampleText);
+            })
+            .filter(Boolean)
+            .slice(0, 2);
 
-        const rawSense: string =
-          typeof d === "string" ? d : d.definition || d.meaning || "";
-        const sense = stripHtml(rawSense);
-        if (!sense) return;
-
-        const examplesRaw = d.examples || [];
-        const examples: string[] = (examplesRaw as any[])
-          .map((e) => {
-            const exampleText =
-              typeof e === "string"
-                ? e
-                : e.example || e.text || e.translation || "";
-            return stripHtml(exampleText);
-          })
-          .filter(Boolean)
-          .slice(0, 2);
-
-        result.push({ pos, sense, examples });
+          result.push({ pos, sense, examples });
+        });
       });
-    });
-  });
+    }
+  );
 
   return result.slice(0, 3);
 }
@@ -122,7 +165,7 @@ export async function fetchGeminiDefinition({
     const jsonMatch = fenceClean.match(/\[\s*{[\s\S]*?}\s*]/);
     const jsonString = jsonMatch ? jsonMatch[0] : fenceClean;
 
-    let data: any;
+    let data: unknown;
     try {
       data = JSON.parse(jsonString);
     } catch {
@@ -204,7 +247,13 @@ export async function translateDefinitions(
     const translatedDefs = await Promise.all(
       defs.map(async (def) => {
         const srcLang = sourceLang || "the original language";
-        const prompt = `Translate the following dictionary definition from ${srcLang} to ${targetLang} for a language learner. Return ONLY the translation, nothing else:\n\nDefinition: "${def.sense}"\n\nTranslation:`;
+        const prompt = `Translate the following dictionary definition from ${srcLang} to ${targetLang} for a language learner.
+
+Original definition: "${def.sense}"
+
+Provide the most natural, idiomatic equivalent in ${targetLang}. Think about how a native speaker would actually express this concept in everyday conversation, not how it would be literally translated. Return ONLY the most natural translation, nothing else.
+
+Translation:`;
         let geminiResult: string | undefined = undefined;
         let openaiResult: string | undefined = undefined;
         let used: "gemini" | "openai" | "none" = "none";
@@ -240,8 +289,8 @@ export async function translateDefinitions(
           console.error("[LLM_TRANSLATE] Gemini failed:", err);
           console.error("[LLM_TRANSLATE] Gemini error details:", {
             message: err instanceof Error ? err.message : String(err),
-            code: (err as any)?.code,
-            status: (err as any)?.status,
+            code: (err as Error & { code?: string })?.code,
+            status: (err as Error & { status?: number })?.status,
           });
         }
         // Fallback to OpenAI if Gemini fails
@@ -311,7 +360,7 @@ export async function fillMissingExamples(
     if (!content) return defs;
 
     const fenceClean = content.replace(/```[a-z]*[\s\n]*([\s\S]*?)```/i, "$1");
-    let data: any;
+    let data: unknown;
     try {
       data = JSON.parse(fenceClean);
     } catch {
@@ -345,7 +394,7 @@ export async function fetchOpenAiDefinition({
     const jsonMatch = fenceClean.match(/\[\s*{[\s\S]*?}\s*]/);
     const jsonString = jsonMatch ? jsonMatch[0] : fenceClean;
 
-    let data: any;
+    let data: unknown;
     try {
       data = JSON.parse(jsonString);
     } catch {
