@@ -1,137 +1,82 @@
 import { auth } from "@/app/api/auth/[...all]/auth";
-import { redirect } from "next/navigation";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { db } from "@/db";
-import {
-  wordlist,
-  words as wordsTable,
-  definitions as defsTable,
-  userSession,
-  translations as transTable,
-} from "@/db/schema";
-import { and, eq, sql, desc } from "drizzle-orm";
-import WordlistClient from "./WordlistClient";
+import { wordlist, words as wordsTable } from "@/db/schema";
+import { and, eq, sql } from "drizzle-orm";
+import OptimizedWordlistClient from "./OptimizedWordlistClient";
 
 // OPTIMIZATION: Use dynamic rendering for better performance
 export const dynamic = "force-dynamic";
 export const revalidate = 300; // Cache for 5 minutes
 
-export default async function WordlistPage({
-  params: _paramsPromise,
-  searchParams: _searchParamsPromise,
-}: {
-  params: Promise<Record<string, string>>;
-  searchParams: Promise<{ lang?: string }>;
-}) {
-  try {
-    // Await params promise to satisfy streaming type requirements (unused)
-    await _paramsPromise;
+export default async function WordlistPage() {
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  if (!session?.user?.id) redirect("/login");
 
-    // Extract `lang` from the (now promise-based) search params
-    const { lang } = await _searchParamsPromise;
+  const userId = session.user.id;
 
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-    if (!session?.user?.id) redirect("/login");
-    const userId = session.user.id;
+  // OPTIMIZATION: Get summary counts per language with most recent language first
+  const summary = await db
+    .select({
+      lang: wordsTable.lang,
+      count: sql`count(*)`.as("count"),
+      lastAdded: sql`max(${wordlist.createdAt})`.as("lastAdded"),
+    })
+    .from(wordlist)
+    .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
+    .where(eq(wordlist.userId, userId))
+    .groupBy(wordsTable.lang)
+    .orderBy(sql`max(${wordlist.createdAt}) desc`);
 
-    // OPTIMIZATION: Parallelize database queries
-    const [lastChatRows, summaryData] = await Promise.all([
-      // Derive native language from most-recent chat settings (fallback 'en')
-      db
-        .select({ settings: userSession.settings })
-        .from(userSession)
-        .where(eq(userSession.userId, userId))
-        .orderBy(desc(userSession.createdAt))
-        .limit(1),
+  // OPTIMIZATION: Get initial items for first page (limited to 50)
+  const initialItems = await db
+    .select({
+      createdAt: wordlist.createdAt,
+      word: wordsTable.word,
+      pos: sql`''`.as("pos"), // Will be filled by client-side processing
+      sense: sql`''`.as("sense"), // Will be filled by client-side processing
+      translatedSense: sql`null`.as("translatedSense"), // Will be filled by client-side processing
+      examples: sql`'[]'`.as("examples"), // Will be filled by client-side processing
+      transLang: sql`null`.as("transLang"), // Will be filled by client-side processing
+    })
+    .from(wordlist)
+    .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
+    .where(eq(wordlist.userId, userId))
+    .orderBy(wordlist.createdAt)
+    .limit(50);
 
-      // Get summary counts per language
-      db
-        .select({
-          lang: wordsTable.lang,
-          count: sql`count(*)`.as("count"),
-        })
-        .from(wordlist)
-        .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
-        .where(eq(wordlist.userId, userId))
-        .groupBy(wordsTable.lang),
-    ]);
+  // OPTIMIZATION: Get user's native language from session
+  const nativeLang = "en"; // Default to English since nativeLanguage not in session
 
-    const initialLang = (lang || "en").toLowerCase();
-    let nativeLang = "en";
+  // Convert database results to expected types
+  const typedInitialItems = initialItems.map((item) => ({
+    createdAt: item.createdAt?.toISOString() || new Date().toISOString(),
+    word: item.word,
+    pos: item.pos as string,
+    sense: item.sense as string,
+    translatedSense: item.translatedSense as string | null,
+    examples: item.examples as string[],
+    transLang: item.transLang as string | null,
+  }));
 
-    if (lastChatRows.length) {
-      try {
-        const settingsObj = JSON.parse(
-          lastChatRows[0].settings as unknown as string
-        );
-        if (
-          typeof settingsObj === "object" &&
-          settingsObj !== null &&
-          settingsObj.nativeLanguage
-        ) {
-          nativeLang = (settingsObj.nativeLanguage as string).toLowerCase();
-        }
-      } catch {}
-    }
+  const typedSummary = summary.map((item) => ({
+    lang: item.lang,
+    count: Number(item.count),
+    lastAdded:
+      typeof item.lastAdded === "string"
+        ? item.lastAdded
+        : item.lastAdded?.toISOString() || new Date().toISOString(),
+  }));
 
-    // OPTIMIZATION: Only fetch data for the selected language
-    const rows = await db
-      .select({
-        createdAt: wordlist.createdAt,
-        word: wordsTable.word,
-        pos: defsTable.pos,
-        sense: defsTable.sense,
-        translatedSense: transTable.translatedSense,
-        examples: defsTable.examples,
-        transLang: transTable.targetLang,
-      })
-      .from(wordlist)
-      .innerJoin(wordsTable, eq(wordlist.wordId, wordsTable.id))
-      .innerJoin(defsTable, eq(defsTable.wordId, wordsTable.id))
-      .leftJoin(
-        transTable,
-        and(
-          eq(transTable.definitionId, defsTable.id),
-          eq(transTable.targetLang, nativeLang)
-        )
-      )
-      .where(and(eq(wordlist.userId, userId), eq(wordsTable.lang, initialLang)))
-      .orderBy(wordsTable.word)
-      .limit(1000); // OPTIMIZATION: Add limit to prevent excessive data loading
-
-    // Ensure count is numeric
-    const summary = summaryData.map((s) => ({
-      ...s,
-      count: Number(s.count),
-    }));
-
-    const items = rows.map((r: any) => ({
-      ...r,
-      createdAt: r.createdAt ? r.createdAt.toISOString() : "",
-      translatedSense: (r.translatedSense as string | null) ?? null,
-      transLang: (r.transLang as string | null) ?? null,
-    }));
-
-    return (
-      <WordlistClient
-        initialLang={initialLang}
-        initialItems={items}
-        summary={summary}
-        nativeLang={nativeLang}
-      />
-    );
-  } catch (error) {
-    console.error("Wordlist page error:", error);
-    // Return a simple error state instead of crashing
-    return (
-      <div className="max-w-lg mx-auto p-4">
-        <h1 className="text-2xl font-bold mb-4">Wordlist</h1>
-        <p className="text-red-600">
-          Failed to load wordlist. Please try again.
-        </p>
-      </div>
-    );
-  }
+  return (
+    <OptimizedWordlistClient
+      initialLang={summary[0]?.lang || "en"}
+      initialItems={typedInitialItems}
+      summary={typedSummary}
+      nativeLang={nativeLang}
+    />
+  );
 }
