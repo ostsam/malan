@@ -82,7 +82,7 @@ async function addAnalyticsIndexes() {
     {
       name: "idx_user_session_user_created_at",
       sql: `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_session_user_created_at 
-            ON "user-sessions-table"("userId", "createdAt")`,
+            ON "malan-chatbot_user-sessions-table"("userId", "createdAt")`,
     },
     {
       name: "idx_user_preferences_user_id",
@@ -97,7 +97,7 @@ async function addAnalyticsIndexes() {
     {
       name: "idx_user_session_user_created_at_desc",
       sql: `CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_session_user_created_at_desc 
-            ON "user-sessions-table"("userId", "createdAt" DESC)`,
+            ON "malan-chatbot_user-sessions-table"("userId", "createdAt" DESC)`,
     },
   ];
 
