@@ -62,14 +62,21 @@ export default async function WordlistPage() {
     transLang: item.transLang as string | null,
   }));
 
-  const typedSummary = summary.map((item) => ({
-    lang: item.lang,
-    count: Number(item.count),
-    lastAdded:
-      typeof item.lastAdded === "string"
-        ? item.lastAdded
-        : item.lastAdded?.toISOString() || new Date().toISOString(),
-  }));
+  const typedSummary = summary.map((item) => {
+    let lastAdded: string = "";
+    if (typeof item.lastAdded === "string") {
+      lastAdded = item.lastAdded;
+    } else if (item.lastAdded instanceof Date) {
+      lastAdded = item.lastAdded.toISOString();
+    } else {
+      lastAdded = "";
+    }
+    return {
+      lang: item.lang,
+      count: Number(item.count),
+      lastAdded,
+    };
+  });
 
   return (
     <OptimizedWordlistClient

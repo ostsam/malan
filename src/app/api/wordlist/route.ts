@@ -216,20 +216,20 @@ async function getPaginatedWordlist(
   const { limit, cursor, direction } = pagination;
 
   // Step 1: Get paginated wordlist entries
-  let whereConditions = [
+  const baseConditions = [
     eq(wordlist.userId, userId),
     eq(wordsTable.lang, lang),
   ];
 
   // Add cursor condition
-  if (cursor) {
-    const cursorDate = new Date(cursor);
-    if (direction === "forward") {
-      whereConditions.push(lt(wordlist.createdAt, cursorDate));
-    } else {
-      whereConditions.push(gt(wordlist.createdAt, cursorDate));
-    }
-  }
+  const whereConditions = cursor
+    ? [
+        ...baseConditions,
+        direction === "forward"
+          ? lt(wordlist.createdAt, new Date(cursor))
+          : gt(wordlist.createdAt, new Date(cursor)),
+      ]
+    : baseConditions;
 
   const wordlistEntries = await db
     .select({

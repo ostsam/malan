@@ -27,7 +27,13 @@ async function checkIndexExists(indexName: string): Promise<boolean> {
     SELECT 1 FROM pg_indexes 
     WHERE indexname = ${indexName}
   `);
-  return result.length > 0;
+  // Support both array and object with rows property
+  if (Array.isArray(result)) {
+    return result.length > 0;
+  } else if (result && Array.isArray((result as any).rows)) {
+    return (result as any).rows.length > 0;
+  }
+  return false;
 }
 
 async function createIndex(
@@ -181,9 +187,15 @@ async function analyzeQueryPerformance() {
       LIMIT 5
     `);
 
-    if (slowQueries.length > 0) {
+    const slowQueriesArr = Array.isArray(slowQueries)
+      ? slowQueries
+      : slowQueries && Array.isArray((slowQueries as any).rows)
+        ? (slowQueries as any).rows
+        : [];
+
+    if (slowQueriesArr.length > 0) {
       console.log("\n🐌 Current slow queries (before optimization):");
-      slowQueries.forEach((query: any, i: number) => {
+      slowQueriesArr.forEach((query: any, i: number) => {
         console.log(
           `${i + 1}. Mean time: ${query.mean_time}ms, Calls: ${query.calls}`
         );
@@ -205,9 +217,15 @@ async function analyzeQueryPerformance() {
       ORDER BY idx_scan DESC
     `);
 
-    if (indexUsage.length > 0) {
+    const indexUsageArr = Array.isArray(indexUsage)
+      ? indexUsage
+      : indexUsage && Array.isArray((indexUsage as any).rows)
+        ? (indexUsage as any).rows
+        : [];
+
+    if (indexUsageArr.length > 0) {
       console.log("\n📊 Index usage statistics:");
-      indexUsage.forEach((index: any) => {
+      indexUsageArr.forEach((index: any) => {
         console.log(
           `${index.indexname}: ${index.idx_scan} scans, ${index.idx_tup_read} tuples read`
         );

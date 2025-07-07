@@ -37,14 +37,20 @@ async function measureQuery(
   const startTime = process.hrtime.bigint();
 
   try {
-    const result = await db.execute(sql.raw(query), params);
+    const result = await db.execute(sql.raw(query));
     const endTime = process.hrtime.bigint();
     const duration = Number(endTime - startTime) / 1_000_000; // Convert to milliseconds
+
+    const resultArr = Array.isArray(result)
+      ? result
+      : result && Array.isArray((result as any).rows)
+        ? (result as any).rows
+        : [];
 
     return {
       testName: query.substring(0, 50) + "...",
       duration,
-      rowCount: result.length,
+      rowCount: resultArr.length,
       query,
     };
   } catch (error) {
@@ -225,11 +231,18 @@ async function analyzeIndexUsage() {
       ORDER BY idx_scan DESC
     `);
 
-    if (indexUsage.length > 0) {
+    // Normalize indexUsage to array
+    const indexUsageArr = Array.isArray(indexUsage)
+      ? indexUsage
+      : indexUsage && Array.isArray((indexUsage as any).rows)
+        ? (indexUsage as any).rows
+        : [];
+
+    if (indexUsageArr.length > 0) {
       console.log("\n📊 Index Usage Analysis:");
       console.log("=".repeat(80));
 
-      indexUsage.forEach((index: any) => {
+      indexUsageArr.forEach((index: any) => {
         const efficiency =
           index.selectivity_percent > 80
             ? "✅"
@@ -269,9 +282,16 @@ async function checkSlowQueries() {
       LIMIT 5
     `);
 
-    if (slowQueries.length > 0) {
+    // Normalize slowQueries to array
+    const slowQueriesArr = Array.isArray(slowQueries)
+      ? slowQueries
+      : slowQueries && Array.isArray((slowQueries as any).rows)
+        ? (slowQueries as any).rows
+        : [];
+
+    if (slowQueriesArr.length > 0) {
       console.log("\n🚨 Slow Queries Detected:");
-      slowQueries.forEach((query: any, i: number) => {
+      slowQueriesArr.forEach((query: any, i: number) => {
         console.log(
           `${i + 1}. Mean time: ${query.mean_time}ms | Calls: ${query.calls}`
         );

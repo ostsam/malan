@@ -12,7 +12,7 @@ import {
   definitions as defsTable,
   translations as transTable,
 } from "@/db/schema";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 // import { fetchMediaWikiDefinition } from "@/server/dictionary/providers/mediawiki"; // Disabled temporarily
 import type { Definition } from "@/server/dictionary/types";
 import { validateDictionaryLookup } from "@/lib/validation-schemas";
@@ -63,7 +63,6 @@ export async function GET(req: NextRequest) {
     const { word, lang, target, provider } = validatedData;
 
     // OPTIMIZATION: Check cache first
-    const cacheKey = `${word}:${lang}${target ? `:${target}` : ""}`;
     const cachedResult = getCachedWordDefinition<{
       word: string;
       defs: Definition[];
