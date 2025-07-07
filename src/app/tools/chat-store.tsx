@@ -97,6 +97,11 @@ export async function loadUserChatHistory(
 }
 
 export async function loadChat(id: string): Promise<ChatData> {
+  if (!id || id === "undefined") {
+    throw new Error("Chat ID is required");
+  }
+
+  // OPTIMIZATION: Use a single query with proper ordering
   const sessionResult = await db
     .select()
     .from(userSession)
@@ -112,6 +117,7 @@ export async function loadChat(id: string): Promise<ChatData> {
   );
   const slug = sessionResult[0].slug;
 
+  // OPTIMIZATION: Use the new index for efficient message loading
   const messageRecords = await db
     .select()
     .from(messagesTable)
@@ -171,6 +177,20 @@ export async function appendNewMessages({
 
   // Insert only the new messages
   await db.insert(messagesTable).values(messagesToInsert);
+
+  // OPTIMIZATION: Update lastMessageAt in userSession when new messages are added
+  const latestMessageTime = newMessages.reduce((latest, msg) => {
+    const msgTime =
+      msg.createdAt instanceof Date
+        ? msg.createdAt
+        : new Date(msg.createdAt || Date.now());
+    return msgTime > latest ? msgTime : latest;
+  }, new Date(0));
+
+  await db
+    .update(userSession)
+    .set({ lastMessageAt: latestMessageTime })
+    .where(eq(userSession.chatId, id));
 
   if (existingMessages.length === 0) {
     const firstUserMessage = newMessages.find((msg) => msg.role === "user");

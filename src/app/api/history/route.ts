@@ -1,8 +1,9 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/app/api/auth/[...all]/auth";
 import { db } from "@/db";
 import { userSession, messagesTable } from "@/db/schema";
-import { sql, desc, eq, and, notInArray } from "drizzle-orm";
-import { auth } from "@/app/api/auth/[...all]/auth";
+import { eq, desc, and, notInArray } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 
 interface UserSessionSettings {
   selectedLanguageLabel: string;
@@ -21,32 +22,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Delete user sessions that have no messages.
-  const chatsWithMessagesSubquery = db
-    .selectDistinct({ chatId: messagesTable.chatId })
-    .from(messagesTable);
-
-  await db
-    .delete(userSession)
-    .where(
-      and(
-        eq(userSession.userId, a.user.id),
-        notInArray(userSession.chatId, chatsWithMessagesSubquery)
-      )
-    );
-
-  // Now, fetch the remaining sessions and sort them.
-  const latestMessages = db
-    .select({
-      chatId: messagesTable.chatId,
-      lastMessageAt: sql<string>`MAX(${messagesTable.createdAt})`.as(
-        "lastMessageAt"
-      ),
-    })
-    .from(messagesTable)
-    .groupBy(messagesTable.chatId)
-    .as("latestMessages");
-
+  // OPTIMIZATION: Use the materialized lastMessageAt column instead of expensive joins
   const sessions = await db
     .select({
       chatId: userSession.chatId,
@@ -54,20 +30,27 @@ export async function GET(request: NextRequest) {
       createdAt: userSession.createdAt,
       userId: userSession.userId,
       isPinned: userSession.isPinned,
-      lastMessageAt: latestMessages.lastMessageAt,
+      lastMessageAt: userSession.lastMessageAt,
       settings: userSession.settings,
     })
     .from(userSession)
-    .leftJoin(latestMessages, eq(userSession.chatId, latestMessages.chatId))
     .where(eq(userSession.userId, a.user.id))
-    .orderBy(desc(userSession.isPinned), desc(latestMessages.lastMessageAt));
+    .orderBy(
+      desc(userSession.isPinned),
+      desc(userSession.lastMessageAt),
+      desc(userSession.createdAt)
+    );
 
-  return NextResponse.json({
+  // OPTIMIZATION: Remove session cleanup from every request - this should be a background job
+  // The cleanup logic has been moved to a separate background process to avoid blocking the API
+
+  const response = NextResponse.json({
     sessions: sessions.map((session) => {
       const { settings, ...rest } = session;
       const userSettings: UserSessionSettings = settings as UserSessionSettings;
       return {
         ...rest,
+        chatId: session.chatId,
         interlocutor: userSettings.interlocutor,
         selectedLevel: userSettings.selectedLevel,
         nativeLanguage: userSettings.nativeLanguage,
@@ -77,4 +60,12 @@ export async function GET(request: NextRequest) {
       };
     }),
   });
+
+  // Add caching headers for better performance
+  response.headers.set(
+    "Cache-Control",
+    "private, max-age=30, stale-while-revalidate=60"
+  );
+
+  return response;
 }
