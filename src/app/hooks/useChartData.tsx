@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import useSWR from "swr";
 
 interface DailyData {
@@ -12,9 +12,15 @@ interface StreakData {
   streak: number;
 }
 
+interface LanguageDistribution {
+  lang: string;
+  count: number;
+}
+
 interface ChartData {
   dailyData: DailyData[];
   streakData: StreakData[];
+  languageDistribution: LanguageDistribution[];
 }
 
 // Fetcher for chart data
@@ -30,7 +36,7 @@ const chartFetcher = async (url: string): Promise<ChartData> => {
   return response.json();
 };
 
-export function useChartData(timeRange: "7d" | "30d" | "90d") {
+export function useChartData(timeRange: "7d" | "30d" | "90d" | "all-time") {
   const [isVisible, setIsVisible] = useState(false);
 
   // Use intersection observer to lazy load chart data
@@ -68,42 +74,10 @@ export function useChartData(timeRange: "7d" | "30d" | "90d") {
     }
   );
 
-  // Generate fallback mock data if API is not available
-  const generateMockData = useCallback((range: "7d" | "30d" | "90d") => {
-    const days = range === "7d" ? 7 : range === "30d" ? 30 : 90;
-    const today = new Date();
-
-    const daily: DailyData[] = [];
-    const streak: StreakData[] = [];
-
-    for (let i = days - 1; i >= 0; i--) {
-      const date = new Date(today);
-      date.setDate(date.getDate() - i);
-      const dateStr = date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      });
-
-      // Generate realistic but varied data
-      const words =
-        Math.floor(Math.random() * 15) + (Math.random() > 0.3 ? 5 : 0);
-      const chats =
-        Math.floor(Math.random() * 3) + (Math.random() > 0.5 ? 1 : 0);
-
-      daily.push({ date: dateStr, words, chats });
-
-      // Generate streak data (more realistic)
-      const currentStreak = 5; // Default fallback
-      const streakValue = i < currentStreak ? currentStreak - i : 0;
-      streak.push({ date: dateStr, streak: streakValue });
-    }
-
-    return { dailyData: daily, streakData: streak };
-  }, []);
-
   return {
-    dailyData: data?.dailyData || generateMockData(timeRange).dailyData,
-    streakData: data?.streakData || generateMockData(timeRange).streakData,
+    dailyData: data?.dailyData || [],
+    streakData: data?.streakData || [],
+    languageDistribution: data?.languageDistribution || [],
     loading: isLoading,
     error: error?.message || null,
     isVisible,

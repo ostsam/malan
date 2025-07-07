@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/app/api/auth/[...all]/auth";
 import { db } from "@/db";
-import { userSession, messagesTable } from "@/db/schema";
-import { eq, desc, and, notInArray } from "drizzle-orm";
-import { sql } from "drizzle-orm";
+import { userSession } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 
 interface UserSessionSettings {
   selectedLanguageLabel: string;

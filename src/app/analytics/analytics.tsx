@@ -33,28 +33,21 @@ import {
   Award,
 } from "lucide-react";
 
-interface DailyData {
-  date: string;
-  words: number;
-  chats: number;
-}
-
-interface StreakData {
-  date: string;
-  streak: number;
-}
-
 export default function AnalyticsPage() {
   const { stats, loading: statsLoading, error: statsError } = useUserStats();
-  const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
-
+  const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d" | "all-time">(
+    "30d"
+  );
+  const [languageRange, setLanguageRange] = useState<"current" | "all-time">(
+    "current"
+  );
   // Progressive loading: only load chart data when needed
   const {
     dailyData,
     streakData,
+    languageDistribution,
     loading: chartLoading,
-    isVisible,
-  } = useChartData(timeRange);
+  } = useChartData(languageRange === "all-time" ? "all-time" : timeRange);
 
   // Enable page scrolling (override global overflow-hidden)
   useEffect(() => {
@@ -91,18 +84,121 @@ export default function AnalyticsPage() {
     background: "#F8FAFC",
   };
 
-  const pieData = [
-    {
-      name: "Words Saved",
-      value: stats?.wordCount || 0,
-      color: chartColors.primary,
-    },
-    {
-      name: "Chat Sessions",
-      value: stats?.chatCount || 0,
-      color: chartColors.secondary,
-    },
-  ];
+  // Language code to display name mapping
+  const getLanguageName = (code: string) => {
+    const languageNames: Record<string, string> = {
+      en: "English",
+      es: "Spanish",
+      fr: "French",
+      de: "German",
+      it: "Italian",
+      pt: "Portuguese",
+      ru: "Russian",
+      ja: "Japanese",
+      ko: "Korean",
+      zh: "Chinese",
+      ar: "Arabic",
+      hi: "Hindi",
+      tr: "Turkish",
+      nl: "Dutch",
+      sv: "Swedish",
+      da: "Danish",
+      no: "Norwegian",
+      fi: "Finnish",
+      pl: "Polish",
+      cs: "Czech",
+      hu: "Hungarian",
+      ro: "Romanian",
+      bg: "Bulgarian",
+      hr: "Croatian",
+      sk: "Slovak",
+      sl: "Slovenian",
+      et: "Estonian",
+      lv: "Latvian",
+      lt: "Lithuanian",
+      mt: "Maltese",
+      el: "Greek",
+      he: "Hebrew",
+      th: "Thai",
+      vi: "Vietnamese",
+      id: "Indonesian",
+      ms: "Malay",
+      fil: "Filipino",
+      sw: "Swahili",
+      am: "Amharic",
+      bn: "Bengali",
+      ur: "Urdu",
+      fa: "Persian",
+      ne: "Nepali",
+      si: "Sinhala",
+      my: "Burmese",
+      km: "Khmer",
+      lo: "Lao",
+      mn: "Mongolian",
+      ka: "Georgian",
+      hy: "Armenian",
+      az: "Azerbaijani",
+      kk: "Kazakh",
+      ky: "Kyrgyz",
+      uz: "Uzbek",
+      tg: "Tajik",
+      ps: "Pashto",
+      ku: "Kurdish",
+      sd: "Sindhi",
+      gu: "Gujarati",
+      pa: "Punjabi",
+      or: "Odia",
+      ta: "Tamil",
+      te: "Telugu",
+      kn: "Kannada",
+      ml: "Malayalam",
+      as: "Assamese",
+      mr: "Marathi",
+      sa: "Sanskrit",
+      bo: "Tibetan",
+      dz: "Dzongkha",
+      ug: "Uyghur",
+      yi: "Yiddish",
+      gd: "Scottish Gaelic",
+      cy: "Welsh",
+      br: "Breton",
+      ga: "Irish",
+      is: "Icelandic",
+      fo: "Faroese",
+      sq: "Albanian",
+      mk: "Macedonian",
+      sr: "Serbian",
+      bs: "Bosnian",
+      me: "Montenegrin",
+      sh: "Serbo-Croatian",
+      uk: "Ukrainian",
+      be: "Belarusian",
+    };
+    return languageNames[code] || code.toUpperCase();
+  };
+
+  // Generate pie chart data from language distribution
+  const pieData =
+    languageDistribution?.map((item, index) => {
+      const colors = [
+        chartColors.primary,
+        chartColors.secondary,
+        chartColors.accent,
+        "#F59E0B", // Amber
+        "#EF4444", // Red
+        "#8B5CF6", // Purple
+        "#06B6D4", // Cyan
+        "#84CC16", // Lime
+        "#F97316", // Orange
+        "#EC4899", // Pink
+      ];
+
+      return {
+        name: getLanguageName(item.lang),
+        value: Number(item.count) || 0,
+        color: colors[index % colors.length],
+      };
+    }) || [];
 
   // Show loading state only for initial stats load
   if (statsLoading && !stats) {
@@ -600,13 +696,16 @@ export default function AnalyticsPage() {
                     <select
                       value={timeRange}
                       onChange={(e) =>
-                        setTimeRange(e.target.value as "7d" | "30d" | "90d")
+                        setTimeRange(
+                          e.target.value as "7d" | "30d" | "90d" | "all-time"
+                        )
                       }
                       className="px-3 py-2 glassmorphic text-sm focus:border-[#3C18D9] dark:focus:border-[#8B5CF6] focus:outline-none focus:ring-2 focus:ring-[#3C18D9]/20 dark:focus:ring-[#8B5CF6]/20 transition-all duration-300"
                     >
                       <option value="7d">Last 7 days</option>
                       <option value="30d">Last 30 days</option>
                       <option value="90d">Last 90 days</option>
+                      <option value="all-time">All Time</option>
                     </select>
                   </div>
                 </CardHeader>
@@ -707,10 +806,24 @@ export default function AnalyticsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="glassmorphic">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-[#3C18D9] dark:text-[#8B5CF6]">
-                      <Award className="h-5 w-5" />
-                      Learning Distribution
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-[#3C18D9] dark:text-[#8B5CF6]">
+                        <Award className="h-5 w-5" />
+                        Learning Distribution
+                      </CardTitle>
+                      <select
+                        value={languageRange}
+                        onChange={(e) =>
+                          setLanguageRange(
+                            e.target.value as "current" | "all-time"
+                          )
+                        }
+                        className="px-3 py-2 glassmorphic text-sm focus:border-[#3C18D9] dark:focus:border-[#8B5CF6] focus:outline-none focus:ring-2 focus:ring-[#3C18D9]/20 dark:focus:ring-[#8B5CF6]/20 transition-all duration-300"
+                      >
+                        <option value="current">Current Range</option>
+                        <option value="all-time">All Time</option>
+                      </select>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <ResponsiveContainer width="100%" height={300}>
