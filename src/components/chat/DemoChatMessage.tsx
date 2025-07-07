@@ -1,10 +1,10 @@
 import { Message } from "ai";
 import { Volume2 } from "lucide-react";
 import { useRTL } from "@/app/hooks/useRTL";
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { interfaceColor } from "@/lib/theme";
 import { DemoWord } from "./DemoWord";
-import { useCJKTokenizedText } from "@/hooks/useChineseTokenizedText";
+import { tokenizeText, TokenizedWord } from "@/lib/tokenizer";
 
 interface ChatSettings {
   selectedLanguage?: string;
@@ -31,73 +31,160 @@ function DemoChatMessageBase({
 
   const isUser = message.role === "user";
   const rawContent = renderMessageContent(message.content);
-
   const langCode = settings?.selectedLanguage || "en";
 
-  // Use CJK tokenization for Chinese text
-  const { tokens: chineseTokens, loading: chineseLoading } =
-    useCJKTokenizedText(
-      typeof rawContent === "string" ? rawContent : "",
-      langCode
-    );
+  // State for tokenized content
+  const [tokenizedContent, setTokenizedContent] = useState<
+    React.ReactNode[] | null
+  >(null);
+  const [isTokenizing, setIsTokenizing] = useState(false);
 
-  const tokenize = (text: string) => {
-    // For Chinese text, use the CJK tokenizer with robust fallback
-    if (langCode === "zh") {
-      if (chineseLoading) {
-        // Show raw text while loading
-        return <span>{text}</span>;
+  // Tokenize content using the new unified tokenizer
+  const tokenizeContent = useCallback(
+    async (text: string) => {
+      if (!text || typeof text !== "string") {
+        return [];
       }
-      if (chineseTokens && chineseTokens.length > 0) {
-        return chineseTokens.map((token, idx) => {
-          if (token.isChinese) {
-            return (
+
+      console.log("[DemoChatMessage] Tokenizing content:", { text, langCode });
+      setIsTokenizing(true);
+
+      try {
+        const tokens: TokenizedWord[] = await tokenizeText(text, langCode);
+        console.log("[DemoChatMessage] Received tokens:", tokens);
+
+        const tokenElements: React.ReactNode[] = [];
+
+        if (tokens.length > 0) {
+          // Sort tokens by start position to ensure correct order
+          const sortedTokens = tokens.sort(
+            (a, b) => (a.start || 0) - (b.start || 0)
+          );
+
+          console.log("[DemoChatMessage] Sorted tokens:", sortedTokens);
+
+          let lastEnd = 0;
+
+          sortedTokens.forEach((token, idx) => {
+            const start = token.start || 0;
+            const end = token.end || start + token.word.length;
+
+            console.log("[DemoChatMessage] Processing token:", {
+              token,
+              start,
+              end,
+              idx,
+            });
+
+            // Skip if this token overlaps with the previous one
+            if (start < lastEnd) {
+              console.log(
+                "[DemoChatMessage] Skipping overlapping token:",
+                token.word
+              );
+              return;
+            }
+
+            // Add any text between the last token and this one (preserves original spacing)
+            if (start > lastEnd) {
+              const spacingText = text.slice(lastEnd, start);
+              console.log(
+                "[DemoChatMessage] Spacing text found:",
+                spacingText,
+                "for language:",
+                langCode,
+                "token language:",
+                token.language,
+                "isJapanese:",
+                token.isJapanese,
+                "isChinese:",
+                token.isChinese
+              );
+
+              // Check if the current token contains non-Latin script characters
+              const hasNonLatinScript =
+                /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(
+                  token.word
+                );
+
+              // Only add spacing for Latin script tokens
+              if (spacingText && !hasNonLatinScript) {
+                console.log(
+                  "[DemoChatMessage] Adding spacing text for Latin script:",
+                  spacingText
+                );
+                tokenElements.push(
+                  <span key={`spacing-${idx}`}>{spacingText}</span>
+                );
+              } else if (spacingText && hasNonLatinScript) {
+                console.log(
+                  "[DemoChatMessage] Skipping spacing text for non-Latin script:",
+                  spacingText
+                );
+              }
+            }
+
+            // Add the token
+            console.log(
+              "[DemoChatMessage] Creating Word component for:",
+              token.word
+            );
+            tokenElements.push(
               <DemoWord
                 key={idx}
                 initialWord={token.word}
-                lang={settings?.selectedLanguage || "en"}
+                lang={langCode}
                 targetLang={settings?.nativeLanguage}
-                isUser={message.role === "user"}
+                isUser={isUser}
               >
                 {token.word}
               </DemoWord>
             );
+
+            lastEnd = end;
+          });
+
+          // Add any remaining text after the last token
+          if (lastEnd < text.length) {
+            const remainingText = text.slice(lastEnd);
+            if (remainingText) {
+              console.log(
+                "[DemoChatMessage] Adding remaining text:",
+                remainingText
+              );
+              tokenElements.push(<span key="remaining">{remainingText}</span>);
+            }
           }
-          return <React.Fragment key={idx}>{token.word}</React.Fragment>;
-        });
+        }
+
+        console.log(
+          "[DemoChatMessage] Created token elements:",
+          tokenElements.length
+        );
+        return tokenElements;
+      } catch (error) {
+        console.error("[DemoChatMessage] Error tokenizing content:", error);
+        // Fallback to raw text
+        return [<span key="fallback">{text}</span>];
+      } finally {
+        setIsTokenizing(false);
       }
-      // Fallback: use regex-based tokenization if no tokens
+    },
+    [langCode, settings?.nativeLanguage, isUser]
+  );
+
+  // Tokenize content when it changes
+  useEffect(() => {
+    if (typeof rawContent === "string") {
+      tokenizeContent(rawContent).then(setTokenizedContent);
+    } else {
+      setTokenizedContent(null);
     }
-
-    // Regex-based tokenization for all other cases
-    const parts = text.match(
-      /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+)/gu
-    ) || [text];
-
-    return parts.map((tok, idx) => {
-      const isWord =
-        /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
-          tok
-        );
-      if (isWord && tok.length > 0) {
-        return (
-          <DemoWord
-            key={idx}
-            initialWord={tok}
-            lang={settings?.selectedLanguage || "en"}
-            targetLang={settings?.nativeLanguage}
-            isUser={message.role === "user"}
-          >
-            {tok}
-          </DemoWord>
-        );
-      }
-      return <React.Fragment key={idx}>{tok}</React.Fragment>;
-    });
-  };
+  }, [rawContent, tokenizeContent]);
 
   const messageContent =
-    typeof rawContent === "string" ? tokenize(rawContent) : rawContent;
+    tokenizedContent ||
+    (isTokenizing ? <span>Loading...</span> : <span>{rawContent}</span>);
 
   const handleSpeak = () => {
     if (typeof rawContent === "string" && rawContent.trim().length > 0) {

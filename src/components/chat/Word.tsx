@@ -19,6 +19,7 @@ import {
   getUserChineseScriptPreference,
 } from "@/lib/chinese-converter";
 import { useOptimizedChineseWordPinyin } from "@/hooks/useOptimizedChineseTokenization";
+import { tokenizeText, TokenizedWord } from "@/lib/tokenizer";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -48,6 +49,13 @@ export function Word({
   className,
   ...props
 }: WordProps) {
+  console.log("[Word] Component rendered with props:", {
+    initialWord,
+    lang,
+    targetLang,
+    isUser,
+  });
+
   const [useTarget, setUseTarget] = useState(false);
 
   const [source, setSource] = useState<string | null>(null);
@@ -119,6 +127,13 @@ export function Word({
 
   /* ----------------------------- Fetching ----------------------------- */
   const fetchDefinition = useCallback(async () => {
+    console.log("[Word] fetchDefinition called with:", {
+      currentWord,
+      lang,
+      useTarget,
+      targetLang,
+    });
+
     let promise = dictCache.get(computeKey());
     if (!promise) {
       const url = new URL(`/api/dict`, window.location.origin);
@@ -128,6 +143,8 @@ export function Word({
         url.searchParams.set("target", targetLang);
       }
 
+      console.log("[Word] Making API call to:", url.toString());
+
       promise = fetch(url.toString()).then((res) =>
         res.json()
       ) as Promise<DictResponse>;
@@ -136,10 +153,14 @@ export function Word({
     setLoading(true);
     try {
       const resp = await promise;
+      console.log("[Word] API response:", resp);
       setData(resp);
       setSource(resp.source);
 
       return resp;
+    } catch (error) {
+      console.error("[Word] API error:", error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -165,15 +186,24 @@ export function Word({
 
   /* ------------------------------ Events ------------------------------ */
   const openPopover = () => {
+    console.log("[Word] openPopover called with currentWord:", currentWord);
+    console.log("[Word] Component props:", {
+      initialWord,
+      lang,
+      targetLang,
+      isUser,
+    });
     setOpen(true);
     fetchDefinition();
   };
 
   // Long-press on touch devices
   const handleTouchStart = () => {
+    console.log("[Word] handleTouchStart called");
     longPressTimer.current = setTimeout(openPopover, 500);
   };
   const handleTouchEnd = () => {
+    console.log("[Word] handleTouchEnd called");
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
@@ -349,56 +379,47 @@ export function Word({
     );
   };
 
-  // Async tokenization function that uses jieba for Chinese text
+  // Async tokenization function that uses the new tokenizer for all languages
   const tokenizeDefAsync = useCallback(
     async (text: string): Promise<React.ReactNode[]> => {
+      console.log("[Word] tokenizeDefAsync called with:", { text, lang });
+
       if (!text || typeof text !== "string") {
+        console.log("[Word] Empty or invalid text, returning empty array");
         return [];
       }
 
       // Check if we already have this text tokenized
       if (tokenizedTexts.has(text)) {
+        console.log("[Word] Using cached tokenization for:", text);
         return tokenizedTexts.get(text)!;
       }
 
       // Check if we're already tokenizing this text
       if (tokenizationLoading.has(text)) {
+        console.log("[Word] Tokenization already in progress for:", text);
         return [<span key="loading">Loading...</span>];
       }
 
       // Mark as loading
       setTokenizationLoading((prev) => new Set(prev).add(text));
+      console.log("[Word] Starting tokenization for:", text);
 
       try {
-        let tokens: string[];
-        const isNonLatin = isNonLatinScript(text);
-
-        // Use jieba for Chinese text if ready
-        if (isChineseText(text) && jiebaReady) {
-          console.log("[Word] Using jieba for Chinese text:", text);
-          tokens = await jiebaCut(text);
-        } else {
-          // Fallback to regex for non-Chinese or when jieba not ready
-          console.log("[Word] Using regex fallback for text:", text);
-          const parts = text.match(
-            /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+)/gu
-          ) || [text];
-          tokens = parts.filter(
-            (part) =>
-              /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
-                part
-              ) && part.length > 0
-          );
-        }
+        // Use the new unified tokenizer
+        const tokens: TokenizedWord[] = await tokenizeText(text, lang);
+        console.log("[Word] Received tokens from tokenizer:", tokens);
 
         // Convert tokens to React elements with proper spacing
         const tokenElements: React.ReactNode[] = [];
         tokens.forEach((token, idx) => {
-          // Add space before token if it's not a non-Latin script and not the first token
-          if (!isNonLatin && idx > 0) {
+          // Add space before token if it's not the first token
+          if (idx > 0) {
             tokenElements.push(<span key={`space-${idx}`}> </span>);
           }
 
+          // --- Furigana extension point ---
+          // If token.reading exists (Japanese), you can render furigana here in the future
           tokenElements.push(
             <span
               key={idx}
@@ -412,14 +433,17 @@ export function Word({
               )}
               onClick={() => {
                 setWordStack((s) => [...s, currentWord]);
-                setCurrentWord(token.toLowerCase());
+                setCurrentWord(token.word.toLowerCase());
                 setData(null);
               }}
             >
-              {token}
+              {/* For future: render <ruby>{token.word}<rt>{token.reading}</rt></ruby> if token.reading exists */}
+              {token.word}
             </span>
           );
         });
+
+        console.log("[Word] Created token elements:", tokenElements.length);
 
         // Cache the result
         setTokenizedTexts((prev) => new Map(prev).set(text, tokenElements));
@@ -435,16 +459,10 @@ export function Word({
           newSet.delete(text);
           return newSet;
         });
+        console.log("[Word] Tokenization completed for:", text);
       }
     },
-    [
-      jiebaCut,
-      jiebaReady,
-      tokenizedTexts,
-      tokenizationLoading,
-      isUser,
-      currentWord,
-    ]
+    [lang, tokenizedTexts, tokenizationLoading, isUser, currentWord]
   );
 
   // Effect to tokenize text when data changes
@@ -580,11 +598,16 @@ export function Word({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
+      {console.log("[Word] Rendering Word component for:", convertedWord)}
       <PopoverTrigger asChild>
         <span
           role="button"
           tabIndex={0}
-          onClick={openPopover}
+          onClick={(e) => {
+            console.log("[Word] Click event triggered on word:", convertedWord);
+            console.log("[Word] Event target:", e.target);
+            openPopover();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();

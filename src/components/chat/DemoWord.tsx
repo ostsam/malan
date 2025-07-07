@@ -19,6 +19,7 @@ import {
 } from "@/lib/chinese-converter";
 import { useJieba } from "@/hooks/useJieba";
 import { useOptimizedChineseWordPinyin } from "@/hooks/useOptimizedChineseTokenization";
+import { tokenizeText, TokenizedWord } from "@/lib/tokenizer";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -361,7 +362,7 @@ export function DemoWord({
     );
   };
 
-  // Async tokenization function that uses jieba for Chinese text
+  // Async tokenization function that uses the new tokenizer for all languages
   const tokenizeDefAsync = useCallback(
     async (text: string): Promise<React.ReactNode[]> => {
       if (!text || typeof text !== "string") {
@@ -382,35 +383,19 @@ export function DemoWord({
       setTokenizationLoading((prev) => new Set(prev).add(text));
 
       try {
-        let tokens: string[];
-        const isNonLatin = isNonLatinScript(text);
-
-        // Use jieba for Chinese text if ready
-        if (isChineseText(text) && jiebaReady) {
-          console.log("[DemoWord] Using jieba for Chinese text:", text);
-          tokens = await jiebaCut(text);
-        } else {
-          // Fallback to regex for non-Chinese or when jieba not ready
-          console.log("[DemoWord] Using regex fallback for text:", text);
-          const parts = text.match(
-            /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+)/gu
-          ) || [text];
-          tokens = parts.filter(
-            (part) =>
-              /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
-                part
-              ) && part.length > 0
-          );
-        }
+        // Use the new unified tokenizer
+        const tokens: TokenizedWord[] = await tokenizeText(text, lang);
 
         // Convert tokens to React elements with proper spacing
         const tokenElements: React.ReactNode[] = [];
         tokens.forEach((token, idx) => {
-          // Add space before token if it's not a non-Latin script and not the first token
-          if (!isNonLatin && idx > 0) {
+          // Add space before token if it's not the first token
+          if (idx > 0) {
             tokenElements.push(<span key={`space-${idx}`}> </span>);
           }
 
+          // --- Furigana extension point ---
+          // If token.reading exists (Japanese), you can render furigana here in the future
           tokenElements.push(
             <span
               key={idx}
@@ -424,11 +409,12 @@ export function DemoWord({
               )}
               onClick={() => {
                 setWordStack((s) => [...s, currentWord]);
-                setCurrentWord(token.toLowerCase());
+                setCurrentWord(token.word.toLowerCase());
                 setData(null);
               }}
             >
-              {token}
+              {/* For future: render <ruby>{token.word}<rt>{token.reading}</rt></ruby> if token.reading exists */}
+              {token.word}
             </span>
           );
         });
@@ -449,14 +435,7 @@ export function DemoWord({
         });
       }
     },
-    [
-      jiebaCut,
-      jiebaReady,
-      tokenizedTexts,
-      tokenizationLoading,
-      isUser,
-      currentWord,
-    ]
+    [lang, tokenizedTexts, tokenizationLoading, isUser, currentWord]
   );
 
   // Effect to tokenize text when data changes
