@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import useSWR from "swr";
 import { useSession } from "@/lib/auth-client";
 
 interface UserStats {
@@ -11,54 +11,43 @@ interface UserStats {
   dailyProgress: number;
 }
 
+// Fetcher function for SWR
+const fetcher = async (url: string): Promise<UserStats> => {
+  const response = await fetch(url, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch stats");
+  }
+
+  return response.json();
+};
+
 export function useUserStats() {
   const { data: session } = useSession();
-  const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const fetchStats = useCallback(async () => {
-    if (!session?.user?.id) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-
-      const response = await fetch("/api/stats", {
-        credentials: "include",
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch stats");
-      }
-
-      const data = await response.json();
-      setStats(data);
-    } catch (err) {
-      console.error("Error fetching user stats:", err);
-      setError(err instanceof Error ? err.message : "Failed to fetch stats");
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.user?.id]);
-
-  useEffect(() => {
-    if (session?.user?.id) {
-      fetchStats();
-    }
-  }, [session?.user?.id, fetchStats]);
-
-  const refreshStats = () => {
-    fetchStats();
-  };
+  const {
+    data: stats,
+    error,
+    isLoading,
+    mutate,
+  } = useSWR<UserStats>(session?.user?.id ? "/api/stats" : null, fetcher, {
+    // Optimize for analytics page usage
+    revalidateOnFocus: false, // Don't refetch when window gains focus
+    revalidateOnReconnect: true, // Refetch when network reconnects
+    refreshInterval: 300000, // Refresh every 5 minutes
+    dedupingInterval: 60000, // Dedupe requests within 1 minute
+    errorRetryCount: 3,
+    errorRetryInterval: 5000,
+    // Keep data fresh for analytics
+    keepPreviousData: true,
+  });
 
   return {
-    stats,
-    loading,
-    error,
-    refreshStats,
+    stats: stats || null,
+    loading: isLoading,
+    error: error?.message || null,
+    refreshStats: mutate,
   };
 }
