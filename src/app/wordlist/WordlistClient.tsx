@@ -7,6 +7,7 @@ import { useWordSaved } from "@/hooks/useWordlist";
 import { interfaceColor } from "@/lib/theme";
 import { cn } from "@/lib/utils";
 import Switch from "react-switch";
+import { useChineseWordPinyin } from "@/hooks/useChineseTokenizedText";
 
 interface RawItem {
   createdAt: string;
@@ -178,10 +179,10 @@ export default function WordlistClient({
             <button
               key={s.lang}
               className={cn(
-                "px-3 py-1 rounded-full text-sm border transition-colors",
+                "glassmorphic text-slate-400 px-3 py-1 rounded-full text-sm border transition-colors backdrop-blur-sm",
                 active
-                  ? "bg-[#3C18D9] text-white border-transparent"
-                  : "bg-white dark:bg-slate-800 border-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  ? "bg-[#3C18D9] text-slate-800 border-transparent shadow-lg"
+                  : "bg-white/80 dark:bg-slate-800/80 border-slate-200/60 dark:border-slate-600/60 hover:bg-white dark:hover:bg-slate-700"
               )}
               onClick={() => setLang(s.lang)}
             >
@@ -205,14 +206,17 @@ export default function WordlistClient({
   }, []);
 
   return (
-    <div className="max-w-lg mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4 flex items-center justify-center gap-2">
+    <div className="glassmorphic max-w-lg mx-auto p-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-xl shadow-lg border border-slate-200/50 dark:border-slate-700/50">
+      <h1
+        className="text-2xl font-bold mb-4 flex items-center justify-center gap-2"
+        style={{ color: interfaceColor }}
+      >
         <BookOpen className="h-6 w-6" style={{ color: interfaceColor }} />
         Wordlist
       </h1>
 
       {/* Search & controls */}
-      <div className="flex flex-wrap gap-2 mb-4 items-center">
+      <div className="glassmorphic flex flex-wrap gap-2 mb-4 items-center p-3 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-lg border border-slate-200/50 dark:border-slate-700/50">
         {/* Language tabs */}
         {languageTabs}
 
@@ -222,12 +226,12 @@ export default function WordlistClient({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search…"
-          className="flex-1 border rounded px-2 py-1 text-sm bg-white dark:bg-slate-800"
+          className="glassmorphic flex-1 border rounded px-2 py-1 text-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-600/60"
         />
 
         {/* Order toggle button */}
         <button
-          className="flex items-center gap-1 text-sm border px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700"
+          className="glassmorphic flex items-center gap-1 text-sm border px-2 py-1 rounded hover:bg-white/80 dark:hover:bg-slate-700/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-600/60 transition-all duration-300"
           onClick={() => setAscending((v) => !v)}
         >
           <ArrowUpDown size={14} />
@@ -278,8 +282,14 @@ function WordItem({
     onToggle();
   }, [toggle, onToggle]);
 
+  // Add pinyin for the word
+  const { pinyin } = useChineseWordPinyin(entry.word, lang === "zh", {
+    toneType: "symbol",
+    case: "lowercase",
+  });
+
   return (
-    <li className="border rounded-xl shadow-sm bg-white/80 dark:bg-slate-900/60 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+    <li className="glassmorphic border rounded-xl shadow-lg bg-white/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 transition-colors backdrop-blur-xl border-slate-200/50 dark:border-slate-700/50">
       <div
         role="button"
         tabIndex={0}
@@ -293,7 +303,7 @@ function WordItem({
         className="w-full p-2 flex justify-between items-start gap-3 text-left focus:outline-none focus:ring-2 focus:ring-ring"
       >
         <div className="min-w-0">
-          <p className="font-semibold truncate mb-1 flex items-center gap-1">
+          <p className="font-semibold text-xl truncate mb-1 flex items-center gap-1">
             {entry.word}
             <button
               aria-label="Play pronunciation"
@@ -322,6 +332,8 @@ function WordItem({
               <Volume2 size={14} />
             </button>
           </p>
+          {/* Pinyin display under the word */}
+          {pinyin && <p className="text-base opacity-80 mb-1">{pinyin}</p>}
           {/* per-word toggle */}
           <div className="flex items-center gap-1 mb-2">
             <span className="text-[10px] uppercase opacity-70">{lang}</span>
@@ -366,7 +378,7 @@ function WordItem({
                 )}
               >
                 <div className="flex items-start gap-2">
-                  <span className="text-center w-10 bg-[#3C18D9]/10 text-[#3C18D9] text-[8px] font-semibold py-1 px-1 rounded uppercase">
+                  <span className="glassmorphic text-center w-11 bg-[#3C18D9]/20 text-[#3C18D9] text-[8px] font-semibold py-1 px-1 rounded uppercase backdrop-blur-sm border border-[#3C18D9]/30">
                     {abbreviatePOS(d.pos)}
                   </span>
                   <span className="flex-1 break-words">

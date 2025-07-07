@@ -656,7 +656,7 @@ export function Word({
             transform: `translate(${drag.x}px, ${drag.y}px)`,
             cursor: isDragging ? "grabbing" : "grab",
           }}
-          className="bg-white dark:bg-slate-800 overflow-y-auto rounded-md shadow-lg"
+          className="glassmorphic bg-white/80 dark:bg-slate-800/80 overflow-y-auto rounded-md shadow-lg backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50"
         >
           {renderContent()}
         </div>

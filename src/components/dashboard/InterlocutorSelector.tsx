@@ -22,7 +22,7 @@ export function InterlocutorSelector({
   if (!selectedLanguage) return null;
 
   return (
-    <section className="p-3 rounded-xl bg-white border border-slate-200 space-y-4 fade-in delay-3">
+    <section className="glassmorphic p-3 rounded-xl bg-white/80 border border-slate-200 space-y-4 fade-in delay-3">
       <h2
         className="text-center text-base sm:text-lg font-medium"
         style={{ color: interfaceColor }}

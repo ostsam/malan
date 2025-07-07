@@ -23,7 +23,7 @@ export interface UserStats {
 
 export function QuickStats({ stats }: { stats: UserStats }) {
   return (
-    <div className="p-2 space-y-2 border-b border-slate-200/60 dark:border-slate-700/60">
+    <div className="glassmorphic p-2 space-y-2 border-b border-slate-200/60 dark:border-slate-700/60">
       {/* Daily Progress */}
       <div className="space-y-1">
         <div className="flex items-center justify-between text-xs">
@@ -49,7 +49,7 @@ export function QuickStats({ stats }: { stats: UserStats }) {
       {/* Stats Grid */}
       <div className="grid grid-cols-3 gap-2">
         {/* Words Saved */}
-        <div className="text-center p-1 rounded bg-[rgba(23,6,100,0.06)] dark:bg-[rgba(23,6,100,0.12)] hover:bg-[rgba(23,6,100,0.1)] dark:hover:bg-[rgba(23,6,100,0.18)] transition-colors">
+        <div className="glassmorphic text-center p-1 rounded bg-white/60 dark:bg-slate-800/60 hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors backdrop-blur-xl shadow-lg border border-slate-200/50 dark:border-slate-700/50">
           <div className="flex justify-center mb-0.5">
             <BookOpen className="h-3 w-3" style={{ color: interfaceColor }} />
           </div>
@@ -62,7 +62,7 @@ export function QuickStats({ stats }: { stats: UserStats }) {
         </div>
 
         {/* Chat Sessions */}
-        <div className="text-center p-1 rounded bg-[rgba(23,6,100,0.06)] dark:bg-[rgba(23,6,100,0.12)] hover:bg-[rgba(23,6,100,0.1)] dark:hover:bg-[rgba(23,6,100,0.18)] transition-colors">
+        <div className="glassmorphic text-center p-1 rounded bg-white/60 dark:bg-slate-800/60 hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors backdrop-blur-xl shadow-lg border border-slate-200/50 dark:border-slate-700/50">
           <div className="flex justify-center mb-0.5">
             <MessageCircle
               className="h-3 w-3"
@@ -78,7 +78,7 @@ export function QuickStats({ stats }: { stats: UserStats }) {
         </div>
 
         {/* Current Streak */}
-        <div className="text-center p-1 rounded bg-[rgba(23,6,100,0.06)] dark:bg-[rgba(23,6,100,0.12)] hover:bg-[rgba(23,6,100,0.1)] dark:hover:bg-[rgba(23,6,100,0.18)] transition-colors">
+        <div className="glassmorphic text-center p-1 rounded bg-white/60 dark:bg-slate-800/60 hover:bg-white/80 dark:hover:bg-slate-800/80 transition-colors backdrop-blur-xl shadow-lg border border-slate-200/50 dark:border-slate-700/50">
           <div className="flex justify-center mb-0.5">
             <Flame className="h-3 w-3" style={{ color: interfaceColor }} />
           </div>
@@ -104,7 +104,7 @@ export function QuickStats({ stats }: { stats: UserStats }) {
           <Button
             variant="outline"
             size="sm"
-            className="w-full h-8 text-xs bg-[rgba(23,6,100,0.06)] dark:bg-[rgba(23,6,100,0.12)] hover:bg-[rgba(23,6,100,0.1)] dark:hover:bg-[rgba(23,6,100,0.18)] border-slate-200/60 dark:border-slate-600/60 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-300"
+            className="glassmorphic w-full h-8 text-xs bg-white/60 dark:bg-slate-800/60 hover:bg-white/80 dark:hover:bg-slate-800/80 border-slate-200/60 dark:border-slate-600/60 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-300 backdrop-blur-xl shadow-lg"
           >
             <BarChart3
               className="h-3 w-3 mr-1"
@@ -121,7 +121,7 @@ export function QuickStats({ stats }: { stats: UserStats }) {
           <Button
             variant="outline"
             size="sm"
-            className="w-full h-8 text-xs bg-[rgba(23,6,100,0.06)] dark:bg-[rgba(23,6,100,0.12)] hover:bg-[rgba(23,6,100,0.1)] dark:hover:bg-[rgba(23,6,100,0.18)] border-slate-200/60 dark:border-slate-600/60 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-300"
+            className="glassmorphic w-full h-8 text-xs bg-white/60 dark:bg-slate-800/60 hover:bg-white/80 dark:hover:bg-slate-800/80 border-slate-200/60 dark:border-slate-600/60 hover:border-slate-300 dark:hover:border-slate-500 transition-all duration-300 backdrop-blur-xl shadow-lg"
           >
             <BookOpen
               className="h-3 w-3 mr-1"

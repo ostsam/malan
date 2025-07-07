@@ -500,7 +500,7 @@ export default function AnalyticsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-10 px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-2 border-slate-200/50 dark:border-slate-600/50 hover:bg-white/90 dark:hover:bg-slate-800/90 hover:border-slate-300 dark:hover:border-slate-500 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl group"
+                className="h-10 px-4 glassmorphic border-2 hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl group"
               >
                 <ArrowLeft className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
                 Back to Dashboard
@@ -511,14 +511,14 @@ export default function AnalyticsPage() {
           {/* Title with Malan logo styling */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-[#3C18D9] to-[#8B5CF6] rounded-xl flex items-center justify-center shadow-lg">
-                <TrendingUp className="h-6 w-6 text-white" />
+              <div className="w-12 h-12 glassmorphic flex items-center justify-center shadow-lg">
+                <TrendingUp className="h-6 w-6 text-[#3C18D9] dark:text-[#8B5CF6]" />
               </div>
               <h1 className="text-4xl font-bold bg-gradient-to-r from-[#3C18D9] to-[#8B5CF6] bg-clip-text text-transparent">
                 Learning Analytics
               </h1>
             </div>
-            <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
+            <p className="text-slate-800 dark:text-slate-400 text-lg max-w-2xl mx-auto">
               Track your language learning progress and achievements with
               detailed insights into your daily activity, streaks, and learning
               patterns.
@@ -528,66 +528,66 @@ export default function AnalyticsPage() {
 
         {/* Quick Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8 animate-in fade-in-0 duration-500">
-          <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-            <CardContent className="p-2 sm:p-3 md:p-4">
+          <Card className="glassmorphic hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+            <CardContent className="p-3 sm:p-4 md:p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-[#3C18D9] dark:text-[#8B5CF6]">
+                  <p className="text-sm sm:text-base font-medium text-[#3C18D9] dark:text-[#8B5CF6]">
                     Total Words
                   </p>
-                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
                     {stats.wordCount}
                   </p>
                 </div>
-                <BookOpen className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
+                <BookOpen className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-            <CardContent className="p-2 sm:p-3 md:p-4">
+          <Card className="glassmorphic hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+            <CardContent className="p-3 sm:p-4 md:p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-[#3C18D9] dark:text-[#8B5CF6]">
+                  <p className="text-sm sm:text-base font-medium text-[#3C18D9] dark:text-[#8B5CF6]">
                     Chat Sessions
                   </p>
-                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
                     {stats.chatCount}
                   </p>
                 </div>
-                <Activity className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
+                <Activity className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-            <CardContent className="p-2 sm:p-3 md:p-4">
+          <Card className="glassmorphic hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+            <CardContent className="p-3 sm:p-4 md:p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-[#3C18D9] dark:text-[#8B5CF6]">
+                  <p className="text-sm sm:text-base font-medium text-[#3C18D9] dark:text-[#8B5CF6]">
                     Current Streak
                   </p>
-                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
                     {stats.streak} days
                   </p>
                 </div>
-                <Flame className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
+                <Flame className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
-            <CardContent className="p-2 sm:p-3 md:p-4">
+          <Card className="glassmorphic hover:shadow-2xl transition-all duration-300 hover:scale-105 group">
+            <CardContent className="p-3 sm:p-4 md:p-5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs sm:text-sm font-medium text-[#3C18D9] dark:text-[#8B5CF6]">
+                  <p className="text-sm sm:text-base font-medium text-[#3C18D9] dark:text-[#8B5CF6]">
                     Today's Progress
                   </p>
-                  <p className="text-lg sm:text-xl md:text-2xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
+                  <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
                     {stats.todayWords}/{stats.dailyGoal}
                   </p>
                 </div>
-                <Target className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
+                <Target className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
               </div>
             </CardContent>
           </Card>
@@ -599,7 +599,7 @@ export default function AnalyticsPage() {
           className="space-y-6 animate-in fade-in-0 duration-500"
           style={{ animationDelay: "200ms" }}
         >
-          <TabsList className="grid w-full grid-cols-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-lg rounded-xl overflow-hidden">
+          <TabsList className="grid w-full grid-cols-3 glassmorphic rounded-xl overflow-hidden">
             <TabsTrigger
               value="activity"
               className="data-[state=active]:bg-[#3C18D9] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
@@ -621,7 +621,7 @@ export default function AnalyticsPage() {
           </TabsList>
 
           <TabsContent value="activity" className="space-y-6">
-            <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl">
+            <Card className="glassmorphic">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2 text-[#3C18D9] dark:text-[#8B5CF6]">
@@ -633,7 +633,7 @@ export default function AnalyticsPage() {
                     onChange={(e) =>
                       setTimeRange(e.target.value as "7d" | "30d" | "90d")
                     }
-                    className="px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm focus:border-[#3C18D9] dark:focus:border-[#8B5CF6] focus:outline-none focus:ring-2 focus:ring-[#3C18D9]/20 dark:focus:ring-[#8B5CF6]/20 transition-all duration-300 shadow-sm"
+                    className="px-3 py-2 glassmorphic text-sm focus:border-[#3C18D9] dark:focus:border-[#8B5CF6] focus:outline-none focus:ring-2 focus:ring-[#3C18D9]/20 dark:focus:ring-[#8B5CF6]/20 transition-all duration-300"
                   >
                     <option value="7d">Last 7 days</option>
                     <option value="30d">Last 30 days</option>
@@ -674,7 +674,7 @@ export default function AnalyticsPage() {
           </TabsContent>
 
           <TabsContent value="streak" className="space-y-6">
-            <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl">
+            <Card className="glassmorphic">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-[#3C18D9] dark:text-[#8B5CF6]">
                   <Flame className="h-5 w-5" />
@@ -716,7 +716,7 @@ export default function AnalyticsPage() {
 
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl">
+              <Card className="glassmorphic">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-[#3C18D9] dark:text-[#8B5CF6]">
                     <Award className="h-5 w-5" />
@@ -753,7 +753,7 @@ export default function AnalyticsPage() {
                     {pieData.map((item, index) => (
                       <div
                         key={index}
-                        className="flex items-center gap-2 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-200/50 dark:border-slate-700/50"
+                        className="flex items-center gap-2 glassmorphic px-3 py-2"
                       >
                         <div
                           className="w-3 h-3 rounded-full shadow-sm"
@@ -768,7 +768,7 @@ export default function AnalyticsPage() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-xl">
+              <Card className="glassmorphic">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-[#3C18D9] dark:text-[#8B5CF6]">
                     <Calendar className="h-5 w-5" />

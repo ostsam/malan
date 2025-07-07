@@ -45,7 +45,7 @@ export const GroupedChatList = ({
       {sortedGroupKeys.map((groupTitle) => (
         <div key={groupTitle}>
           <h3
-            className="sticky top-0 z-100 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm text-xs font-bold text-slate-600 dark:text-slate-300 px-2 py-1 rounded-lg uppercase tracking-wide mb-2"
+            className="glassmorphic sticky top-0 z-100 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm text-xs font-bold text-slate-600 dark:text-slate-300 px-2 py-1 rounded-lg uppercase tracking-wide mb-2"
             style={{ color: interfaceColor }}
           >
             {groupTitle}
@@ -85,7 +85,7 @@ export const GroupedChatList = ({
                     </div>
                     <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-400 mt-1 gap-2">
                       <span
-                        className="font-semibold flex-shrink-0 px-2 py-0.5 rounded-full text-xs"
+                        className="glassmorphic font-semibold flex-shrink-0 px-2 py-0.5 rounded-full text-xs backdrop-blur-sm"
                         style={{
                           color: interfaceColor,
                           backgroundColor: `${interfaceColor}15`,

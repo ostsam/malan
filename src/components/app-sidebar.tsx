@@ -295,7 +295,7 @@ export default function AppSidebar() {
         collapsible="offcanvas"
         className="group animate-in fade-in-0 duration-150"
       >
-        <SidebarContent className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/40 dark:border-slate-700/40 shadow-xl">
+        <SidebarContent className="glassmorphic bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-r border-slate-200/40 dark:border-slate-700/40 shadow-xl">
           {/* Quick Stats Header */}
           <QuickStats stats={stats} />
 
@@ -331,7 +331,7 @@ export default function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter className="border-t border-slate-200/40 dark:border-slate-700/40 bg-slate-50/60 dark:bg-slate-800/60 backdrop-blur-xl">
+        <SidebarFooter className="glassmorphic border-t border-slate-200/40 dark:border-slate-700/40 bg-slate-50/60 dark:bg-slate-800/60 backdrop-blur-xl">
           <div className="p-0.5">
             {/* User Profile Section - Maintains original dimensions */}
             <div className="flex items-center justify-between w-full">
@@ -378,7 +378,7 @@ export default function AppSidebar() {
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent
-                      className="w-56 p-2 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-xl rounded-xl"
+                      className="glassmorphic w-56 p-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 shadow-xl rounded-xl"
                       align="end"
                       side="top"
                       sideOffset={8}
