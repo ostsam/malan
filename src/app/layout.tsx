@@ -2,6 +2,7 @@ import "./globals.css";
 import { Analytics } from "@vercel/analytics/react";
 import { Inter } from "next/font/google";
 import LazyToaster from "@/components/LazyToaster";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -79,6 +80,7 @@ export default function RootLayout({
         {children}
         <Analytics />
         <LazyToaster />
+        <ServiceWorkerRegistration />
       </body>
     </html>
   );
