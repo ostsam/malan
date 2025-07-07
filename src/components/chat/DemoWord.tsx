@@ -111,8 +111,11 @@ export function DemoWord({
     convertWord();
   }, [currentWord, chineseScript, isChinese]);
 
-  const computeKey = () =>
-    `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`;
+  const computeKey = useCallback(
+    () =>
+      `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`,
+    [lang, useTarget, targetLang, currentWord]
+  );
 
   /* ----------------------------- Fetching ----------------------------- */
   const fetchDefinition = useCallback(async () => {
@@ -139,7 +142,7 @@ export function DemoWord({
     } finally {
       setLoading(false);
     }
-  }, [lang, useTarget, targetLang, currentWord]);
+  }, [lang, useTarget, targetLang, currentWord, computeKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -157,7 +160,7 @@ export function DemoWord({
     return () => {
       cancelled = true;
     };
-  }, [open, computeKey]);
+  }, [open, computeKey, fetchDefinition]);
 
   /* ------------------------------ Events ------------------------------ */
   const openPopover = () => {
@@ -358,63 +361,6 @@ export function DemoWord({
     );
   };
 
-  // Keep the original isCJKText for backward compatibility
-  const isCJKText = (text: string): boolean => {
-    return /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(text);
-  };
-
-  // tokenize definition/ex sentences to clickable words
-  const tokenizeText = (text: string): React.ReactNode[] => {
-    // Simplified regex that better handles word boundaries
-    // Matches: word characters (including apostrophes), whitespace, or punctuation
-    const parts = text.match(
-      /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+)/gu
-    ) || [text];
-
-    const isNonLatin = isNonLatinScript(text);
-    const result: React.ReactNode[] = [];
-
-    parts.forEach((tok, idx) => {
-      // Check if it's a word (letters, Chinese characters, or Japanese characters)
-      const isWord =
-        /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
-          tok
-        );
-
-      if (isWord && tok.length > 0) {
-        // Add space before word if it's not a non-Latin script and not the first word
-        if (!isNonLatin && idx > 0) {
-          result.push(<span key={`space-${idx}`}> </span>);
-        }
-
-        result.push(
-          <span
-            key={idx}
-            style={{ textDecoration: "none" }}
-            className={cn(
-              "cursor-pointer",
-              isUser
-                ? "hover:decoration-white hover:underline hover:decoration-2"
-                : "hover:decoration-[#170664] hover:underline hover:decoration-2",
-              "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
-            )}
-            onClick={() => {
-              setWordStack((s) => [...s, currentWord]);
-              setCurrentWord(tok.toLowerCase());
-              setData(null);
-            }}
-          >
-            {tok}
-          </span>
-        );
-      } else {
-        result.push(<React.Fragment key={idx}>{tok}</React.Fragment>);
-      }
-    });
-
-    return result;
-  };
-
   // Async tokenization function that uses jieba for Chinese text
   const tokenizeDefAsync = useCallback(
     async (text: string): Promise<React.ReactNode[]> => {
@@ -609,13 +555,11 @@ export function DemoWord({
     setIsDragging(false);
   };
 
-  const hasTranslations = data?.defs.some((d) => d.translatedSense);
-
   useEffect(() => {
     if (initialWord && lang) {
       fetchDefinition();
     }
-  }, [lang, fetchDefinition]);
+  }, [initialWord, lang, fetchDefinition]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

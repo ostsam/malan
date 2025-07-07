@@ -59,13 +59,11 @@ const OptimizedWordItem = React.memo(function OptimizedWordItem({
   lang,
   onToggle,
   nativeLang,
-  savedStatus,
 }: {
   entry: WordEntry;
   lang: string;
   onToggle: () => void;
   nativeLang: string;
-  savedStatus: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [useTarget, setUseTarget] = useState(false);
@@ -78,8 +76,6 @@ const OptimizedWordItem = React.memo(function OptimizedWordItem({
 
   // Add the useWordSaved hook to get the actual toggle function
   const { saved, toggle } = useWordSaved(entry.word, lang);
-
-  const hasTranslations = defs.some((d) => d.translatedSense);
 
   const handleToggle = useCallback(async () => {
     await toggle();
@@ -277,7 +273,7 @@ export default function OptimizedWordlistClient({
   );
 
   // OPTIMIZATION: Batch word status check
-  const { savedStatuses, checkBatchStatus } = useBatchWordStatus();
+  const { checkBatchStatus } = useBatchWordStatus();
   const [batchChecked, setBatchChecked] = useState(false);
 
   // OPTIMIZATION: Check batch status when items change
@@ -447,7 +443,6 @@ export default function OptimizedWordlistClient({
                     lang={lang}
                     onToggle={mutate}
                     nativeLang={nativeLang}
-                    savedStatus={savedStatuses[`${entry.word}:${lang}`] ?? true}
                   />
                 ))}
               </ul>

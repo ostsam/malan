@@ -111,8 +111,11 @@ export function Word({
     convertWord();
   }, [currentWord, chineseScript, isChinese]);
 
-  const computeKey = () =>
-    `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`;
+  const computeKey = useCallback(
+    () =>
+      `${lang}:${useTarget && targetLang ? targetLang : lang}:${currentWord.toLowerCase()}`,
+    [lang, useTarget, targetLang, currentWord]
+  );
 
   /* ----------------------------- Fetching ----------------------------- */
   const fetchDefinition = useCallback(async () => {
@@ -140,7 +143,7 @@ export function Word({
     } finally {
       setLoading(false);
     }
-  }, [lang, useTarget, targetLang, currentWord]);
+  }, [lang, useTarget, targetLang, currentWord, computeKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -158,7 +161,7 @@ export function Word({
     return () => {
       cancelled = true;
     };
-  }, [open, computeKey]);
+  }, [open, computeKey, fetchDefinition]);
 
   /* ------------------------------ Events ------------------------------ */
   const openPopover = () => {
@@ -346,11 +349,6 @@ export function Word({
     );
   };
 
-  // Keep the original isCJKText for backward compatibility
-  const isCJKText = (text: string): boolean => {
-    return /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(text);
-  };
-
   // Async tokenization function that uses jieba for Chinese text
   const tokenizeDefAsync = useCallback(
     async (text: string): Promise<React.ReactNode[]> => {
@@ -506,7 +504,14 @@ export function Word({
     };
 
     tokenizeAllTexts();
-  }, [data, open, useTarget, tokenizedTexts]);
+  }, [
+    data,
+    open,
+    useTarget,
+    tokenizedTexts,
+    tokenizationLoading,
+    tokenizeDefAsync,
+  ]);
 
   // Helper function to get tokenized text from cache or fallback
   const getTokenizedText = (text: string): React.ReactNode[] => {

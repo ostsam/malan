@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import {
   isChineseText,
   extractChineseWords,
@@ -13,7 +13,7 @@ const isServer = typeof window === "undefined";
 // Dynamic import for client-side only
 let tokenizeChineseText: ((text: string) => Promise<TokenizedWord[]>) | null =
   null;
-let pinyinPro: any = null;
+let pinyinPro: typeof import("pinyin-pro") | null = null;
 
 // Initialize client-side functions only when needed
 const initializeClientFunctions = async () => {
@@ -143,7 +143,6 @@ export function useCJKTokenizedTextWithPinyin(
                   pattern: pinyinOptions?.pattern || "pinyin",
                   removeNonZh: pinyinOptions?.removeNonZh || false,
                   v: pinyinOptions?.v || false,
-                  case: pinyinOptions?.case || "lowercase",
                 });
 
                 // Remove spaces within the token to group pinyin for this word

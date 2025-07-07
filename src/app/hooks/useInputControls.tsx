@@ -52,6 +52,7 @@ export const useInputControls = ({
     isTranscribing,
     status,
     startRecording,
+    stopAudioPlayback,
   ]);
 
   const handleMicInteractionEnd = useCallback(() => {
@@ -79,6 +80,7 @@ export const useInputControls = ({
     status,
     startRecording,
     stopRecording,
+    stopAudioPlayback,
   ]);
 
   const handleMicClick = useCallback(() => {
@@ -100,6 +102,7 @@ export const useInputControls = ({
     status,
     startRecording,
     stopRecording,
+    stopAudioPlayback,
   ]);
 
   const handleKeyDown = useCallback(
@@ -124,29 +127,6 @@ export const useInputControls = ({
         if (stopAudioPlayback) {
           stopAudioPlayback();
         }
-      }
-    },
-    [isRecording, stopRecording, stopAudioPlayback]
-  );
-
-  const handleTouchStart = useCallback(
-    (event: React.TouchEvent) => {
-      event.preventDefault();
-      if (!isRecording && !isTranscribing && status !== "in_progress") {
-        startRecording();
-      }
-    },
-    [isRecording, isTranscribing, status, startRecording, stopAudioPlayback]
-  );
-
-  const handleTouchEnd = useCallback(
-    (event: React.TouchEvent) => {
-      event.preventDefault();
-      if (isRecording) {
-        stopRecording();
-      }
-      if (stopAudioPlayback) {
-        stopAudioPlayback();
       }
     },
     [isRecording, stopRecording, stopAudioPlayback]
