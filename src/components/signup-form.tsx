@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { signIn, signUp } from "@/lib/server/users";
+import { signUp } from "@/lib/server/users";
 import {
   Form,
   FormControl,
@@ -20,7 +20,7 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { toast } from "sonner";
-import { Loader2, Mail, CheckCircle } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { useState } from "react";
 
 import { z } from "zod";
@@ -104,7 +104,8 @@ export function SignUpForm({
             </div>
             <CardTitle className="text-xl">Check your email</CardTitle>
             <CardDescription>
-              We've sent a verification link to <strong>{userEmail}</strong>
+              We&apos;ve sent a verification link to{" "}
+              <strong>{userEmail}</strong>
             </CardDescription>
           </CardHeader>
           <CardContent className="text-center">

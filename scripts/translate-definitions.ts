@@ -99,7 +99,7 @@ async function translateInto(
           // Insert each translation row
           for (let i = 0; i < ids.length; i++) {
             const defId = ids[i];
-            const tSense = translated[i]?.sense || defs[i].sense;
+            const tSense = translated[i]?.translatedSense || defs[i].sense;
             await db
               .insert(translations)
               .values({

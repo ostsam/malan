@@ -32,15 +32,27 @@ async function ChatPageContent({ params }: ChatPageProps) {
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4">Chat not found</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            The chat you're looking for doesn't exist or you don't have access
-            to it.
+            The chat you&apos;re looking for doesn&apos;t exist or you
+            don&apos;t have access to it.
           </p>
         </div>
       </div>
     );
   }
 
-  return <ChatSession id={id} chatObject={chatObject} demoMode={false} />;
+  // Normalize settings to convert null to undefined
+  const normalizedChatObject = {
+    ...chatObject,
+    settings: {
+      ...chatObject.settings,
+      selectedLanguage: chatObject.settings.selectedLanguage ?? undefined,
+      nativeLanguage: chatObject.settings.nativeLanguage ?? undefined,
+    },
+  };
+
+  return (
+    <ChatSession id={id} chatObject={normalizedChatObject} demoMode={false} />
+  );
 }
 
 export default function ChatPage(props: ChatPageProps) {

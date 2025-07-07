@@ -13,8 +13,6 @@ export interface UseTranscriptionReturn {
   clearTranscriptionError: () => void;
 }
 
-
-
 export function useTranscription({
   onTranscriptionSuccess,
 }: UseTranscriptionProps): UseTranscriptionReturn {
@@ -47,7 +45,7 @@ export function useTranscription({
           let errorData;
           try {
             errorData = await response.json();
-          } catch (e) {
+          } catch {
             // If response is not JSON, use status text
             throw new Error(
               response.statusText || "Transcription request failed"
@@ -75,11 +73,11 @@ export function useTranscription({
           transcribedText += decoder.decode(value, { stream: true });
         }
         onTranscriptionSuccess(transcribedText);
-      } catch (err: any) {
-        console.error("Error transcribing audio:", err);
-        setTranscriptionError(
-          err.message || "An error occurred during transcription."
-        );
+      } catch (err: unknown) {
+        console.error("Transcription error:", err);
+        const errorMessage =
+          err instanceof Error ? err.message : "Transcription failed";
+        setTranscriptionError(errorMessage);
       } finally {
         setIsTranscribing(false);
       }

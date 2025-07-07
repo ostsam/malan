@@ -2,6 +2,7 @@ import { auth } from "@/app/api/auth/[...all]/auth";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import Image from "next/image";
 
 export default async function Homepage() {
   const session = await auth.api.getSession({
@@ -15,7 +16,13 @@ export default async function Homepage() {
   return (
     <main className="flex h-dvh flex-col items-center justify-center p-4">
       <div>
-        <img src="/logo.svg" alt="Logo" className="h-50 w-auto" />
+        <Image
+          src="/logo.svg"
+          alt="Logo"
+          className="h-50 w-auto"
+          width={200}
+          height={80}
+        />
       </div>
       <div className="text-center">
         <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">

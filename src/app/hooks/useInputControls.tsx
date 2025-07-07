@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from "react";
 
 type UseInputControlsProps = {
   isRecording: boolean;
@@ -23,24 +23,24 @@ export const useInputControls = ({
   useEffect(() => {
     const checkIsMobile = () => {
       const userAgent =
-        typeof window.navigator === 'undefined' ? '' : navigator.userAgent;
+        typeof window.navigator === "undefined" ? "" : navigator.userAgent;
       const mobileRegex =
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
       const hasTouch =
-        typeof window !== 'undefined' &&
-        ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+        typeof window !== "undefined" &&
+        ("ontouchstart" in window || navigator.maxTouchPoints > 0);
       setIsMobile(
         mobileRegex.test(userAgent) || (hasTouch && window.innerWidth < 768)
       );
     };
     checkIsMobile(); // Initial check
-    window.addEventListener('resize', checkIsMobile);
-    return () => window.removeEventListener('resize', checkIsMobile);
+    window.addEventListener("resize", checkIsMobile);
+    return () => window.removeEventListener("resize", checkIsMobile);
   }, []);
 
   const handleMicInteractionStart = useCallback(() => {
     if (isMobile && pushToTalk) {
-      if (!isRecording && !isTranscribing && status !== 'submitted') {
+      if (!isRecording && !isTranscribing && status !== "submitted") {
         stopAudioPlayback();
         startRecording();
       }
@@ -61,7 +61,7 @@ export const useInputControls = ({
           stopRecording();
         }
       } else {
-        if (!(isTranscribing || status === 'submitted')) {
+        if (!(isTranscribing || status === "submitted")) {
           if (isRecording) {
             stopRecording();
           } else {
@@ -85,7 +85,7 @@ export const useInputControls = ({
     if (isMobile) {
       return;
     }
-    if (!(isTranscribing || status === 'submitted')) {
+    if (!(isTranscribing || status === "submitted")) {
       if (isRecording) {
         stopRecording();
       } else {
@@ -102,54 +102,66 @@ export const useInputControls = ({
     stopRecording,
   ]);
 
-  useEffect(() => {
-    if (isMobile) {
-      return;
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.shiftKey && event.code === 'KeyZ') {
+  const handleKeyDown = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.shiftKey && event.code === "KeyZ" && !event.repeat) {
         event.preventDefault();
-        if (pushToTalk) {
-          if (!isRecording && !isTranscribing && status !== 'submitted') {
-            stopAudioPlayback();
-            startRecording();
-          }
-        } else {
-          if (!isTranscribing && status !== 'submitted') {
-            if (isRecording) {
-              stopRecording();
-            } else {
-              stopAudioPlayback();
-              startRecording();
-            }
-          }
+        if (!isRecording && !isTranscribing && status !== "in_progress") {
+          startRecording();
         }
       }
-    };
+    },
+    [isRecording, isTranscribing, status, startRecording]
+  );
 
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (pushToTalk && event.code === 'KeyZ' && isRecording) {
+  const handleKeyUp = useCallback(
+    (event: KeyboardEvent) => {
+      if (event.code === "KeyZ") {
         event.preventDefault();
+        if (isRecording) {
+          stopRecording();
+        }
+        if (stopAudioPlayback) {
+          stopAudioPlayback();
+        }
+      }
+    },
+    [isRecording, stopRecording, stopAudioPlayback]
+  );
+
+  const handleTouchStart = useCallback(
+    (event: React.TouchEvent) => {
+      event.preventDefault();
+      if (!isRecording && !isTranscribing && status !== "in_progress") {
+        startRecording();
+      }
+    },
+    [isRecording, isTranscribing, status, startRecording, stopAudioPlayback]
+  );
+
+  const handleTouchEnd = useCallback(
+    (event: React.TouchEvent) => {
+      event.preventDefault();
+      if (isRecording) {
         stopRecording();
       }
-    };
+      if (stopAudioPlayback) {
+        stopAudioPlayback();
+      }
+    },
+    [isRecording, stopRecording, stopAudioPlayback]
+  );
 
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [
-    isMobile,
-    pushToTalk,
-    isRecording,
-    isTranscribing,
-    status,
-    startRecording,
-    stopRecording,
-  ]);
+  useEffect(() => {
+    if (pushToTalk) {
+      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener("keyup", handleKeyUp);
+      return () => {
+        document.removeEventListener("keydown", handleKeyDown);
+        document.removeEventListener("keyup", handleKeyUp);
+      };
+    }
+  }, [pushToTalk, handleKeyDown, handleKeyUp]);
 
   return {
     pushToTalk,

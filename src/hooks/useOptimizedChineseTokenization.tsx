@@ -1,6 +1,5 @@
 "use client";
 
-import * as React from "react";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { isChineseText } from "@/lib/chinese-tokenizer-server";
 
@@ -17,8 +16,10 @@ const globalPinyinCache: TokenizationCache = {};
 const CACHE_EXPIRY = 5 * 60 * 1000; // 5 minutes
 
 // Lazy-loaded modules
-let pinyinPro: any = null;
-let tokenizeChineseText: any = null;
+let pinyinPro: typeof import("pinyin-pro") | null = null;
+let tokenizeChineseText:
+  | typeof import("@/lib/chinese-tokenizer").tokenizeChineseText
+  | null = null;
 
 // OPTIMIZATION: Lazy load Chinese processing modules
 const loadChineseModules = async () => {
@@ -41,7 +42,7 @@ const loadChineseModules = async () => {
 };
 
 // OPTIMIZATION: Debounced tokenization to avoid excessive processing
-const useDebounce = (value: any, delay: number) => {
+const useDebounce = <T,>(value: T, delay: number) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
@@ -73,7 +74,6 @@ export function useOptimizedChineseWordPinyin(
     pattern?: "pinyin" | "initial" | "final" | "num" | "first";
     removeNonZh?: boolean;
     v?: boolean;
-    case?: "lowercase" | "uppercase" | "capitalize";
   }
 ) {
   const [pinyin, setPinyin] = useState("");
@@ -155,7 +155,6 @@ export function useOptimizedChineseWordPinyin(
           pattern: options?.pattern || "pinyin",
           removeNonZh: options?.removeNonZh || false,
           v: options?.v || false,
-          case: options?.case || "lowercase",
         });
 
         const result = pinyinResult.replace(/\s+/g, "");
@@ -197,7 +196,6 @@ export function useBatchChineseTokenization(
     pattern?: "pinyin" | "initial" | "final" | "num" | "first";
     removeNonZh?: boolean;
     v?: boolean;
-    case?: "lowercase" | "uppercase" | "capitalize";
   }
 ) {
   const [results, setResults] = useState<Record<string, string>>({});
@@ -245,12 +243,12 @@ export function useBatchChineseTokenization(
         if (wordsToProcess.length > 0) {
           const pinyinPromises = wordsToProcess.map(async (word) => {
             try {
+              if (!pinyinPro) throw new Error("pinyinPro not loaded");
               const pinyinResult = pinyinPro.pinyin(word, {
                 toneType: options?.toneType || "symbol",
                 pattern: options?.pattern || "pinyin",
                 removeNonZh: options?.removeNonZh || false,
                 v: options?.v || false,
-                case: options?.case || "lowercase",
               });
 
               const result = pinyinResult.replace(/\s+/g, "");

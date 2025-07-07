@@ -71,7 +71,7 @@ const dictionaryLookupSchema = z.object({
     ),
   lang: languageCodeSchema,
   target: languageCodeSchema.optional(),
-  provider: z.enum(["wiki", "gpt", "google"]).optional(),
+  provider: z.enum(["gpt", "google"]).optional(),
 });
 
 // Profile updates

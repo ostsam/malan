@@ -1,9 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
-export function useDemoChatSlug(
-  initialSlug: string | undefined,
-  id: string | undefined
-) {
+export function useDemoChatSlug(initialSlug: string | undefined) {
   const [slug, setSlug] = useState(initialSlug || "New Chat");
 
   const handleSlugUpdate = async (newSlug: string) => {

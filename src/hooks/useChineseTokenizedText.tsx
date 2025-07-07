@@ -11,7 +11,8 @@ import type { TokenizedWord } from "@/lib/chinese-tokenizer";
 const isServer = typeof window === "undefined";
 
 // Dynamic import for client-side only
-let tokenizeChineseText: any = null;
+let tokenizeChineseText: ((text: string) => Promise<TokenizedWord[]>) | null =
+  null;
 let pinyinPro: any = null;
 
 // Initialize client-side functions only when needed
@@ -38,7 +39,7 @@ const initializePinyinPro = async () => {
 };
 
 // Simple cache for tokenization results
-const tokenizationCache = new Map<string, any[]>();
+const tokenizationCache = new Map<string, TokenizedWordWithPinyin[]>();
 const pinyinCache = new Map<string, string>();
 
 // Cache version to force invalidation when defaults change
@@ -136,6 +137,7 @@ export function useCJKTokenizedTextWithPinyin(
           tokenizedWords.map(async (token: TokenizedWord) => {
             if (token.isChinese && token.word) {
               try {
+                if (!pinyinPro) throw new Error("pinyinPro not loaded");
                 const pinyinResult = pinyinPro.pinyin(token.word, {
                   toneType: pinyinOptions?.toneType || "symbol",
                   pattern: pinyinOptions?.pattern || "pinyin",
@@ -267,12 +269,12 @@ export function useChinesePinyin(
         const tokenPinyin = await Promise.all(
           tokenizedWords.map(async (token: TokenizedWord) => {
             if (token.isChinese && token.word) {
+              if (!pinyinPro) throw new Error("pinyinPro not loaded");
               const pinyinResult = pinyinPro.pinyin(token.word, {
                 toneType: options?.toneType || "symbol",
                 pattern: options?.pattern || "pinyin",
                 removeNonZh: options?.removeNonZh || false,
                 v: options?.v || false,
-                case: options?.case || "lowercase",
               });
               // Remove spaces within the token
               return pinyinResult.replace(/\s+/g, "");
@@ -341,11 +343,11 @@ export function useCJKTokenizedText(
   text: string,
   langCode?: string
 ): {
-  tokens: any[] | null;
+  tokens: TokenizedWord[] | null;
   loading: boolean;
   error: Error | null;
 } {
-  const [tokens, setTokens] = useState<any[] | null>(null);
+  const [tokens, setTokens] = useState<TokenizedWord[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 

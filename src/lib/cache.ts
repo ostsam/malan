@@ -6,7 +6,7 @@ interface CacheEntry<T> {
 }
 
 class MemoryCache {
-  private cache = new Map<string, CacheEntry<any>>();
+  private cache = new Map<string, CacheEntry<unknown>>();
   private maxSize = 1000; // Maximum number of entries
   private cleanupInterval = 5 * 60 * 1000; // 5 minutes
 
@@ -38,7 +38,7 @@ class MemoryCache {
       return null;
     }
 
-    return entry.data;
+    return entry.data as T;
   }
 
   has(key: string): boolean {

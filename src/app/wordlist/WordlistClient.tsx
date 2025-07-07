@@ -101,10 +101,8 @@ export default function WordlistClient({
     }
   );
 
-  const rawItems = itemsData?.items ?? [];
-
-  // OPTIMIZATION: Memoize expensive data processing
-  const { items, filteredItems } = useMemo(() => {
+  const processedItems = useMemo(() => {
+    const rawItems = itemsData?.items ?? [];
     // Group definitions per word
     const map = new Map<
       string,
@@ -166,8 +164,8 @@ export default function WordlistClient({
         )
       : items;
 
-    return { items, filteredItems };
-  }, [rawItems, ascending, query]);
+    return { filteredItems };
+  }, [itemsData?.items, ascending, query]);
 
   // OPTIMIZATION: Memoize language tabs to prevent unnecessary re-renders
   const languageTabs = useMemo(
@@ -239,11 +237,11 @@ export default function WordlistClient({
         </button>
       </div>
 
-      {filteredItems.length === 0 ? (
+      {processedItems.filteredItems.length === 0 ? (
         <p>No matching words.</p>
       ) : (
         <ul className="space-y-3">
-          {filteredItems.map((entry) => (
+          {processedItems.filteredItems.map((entry) => (
             <WordItem
               key={entry.word}
               entry={entry}

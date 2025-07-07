@@ -30,20 +30,25 @@ export interface ChatMetadata {
   settings: ChatSettings;
 }
 
-export async function generateDescriptiveSlug(firstMessage: string, selectedLanguageLabel?: string): Promise<string> {
+export async function generateDescriptiveSlug(
+  firstMessage: string,
+  selectedLanguageLabel?: string
+): Promise<string> {
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   const prompt = `Generate a sentence in ${selectedLanguageLabel} explaining the topic of this message: "${firstMessage}" in order to summarize this conversation. ONLY WRITE IN ${selectedLanguageLabel}!.`;
-  
+
   const response = await client.chat.completions.create({
     model: "gpt-4o-mini",
-    messages: [{
-      role: "user",
-      content: prompt
-    }],
+    messages: [
+      {
+        role: "user",
+        content: prompt,
+      },
+    ],
     max_tokens: 8,
     temperature: 0.2,
   });
-  
+
   return response.choices[0].message.content?.trim() || "";
 }
 
@@ -85,7 +90,9 @@ export async function loadUserChatHistory(
     id: session.id,
     slug: session.slug,
     createdAt: session.createdAt ?? new Date(),
-    settings: parseChatSettings(session.settings as Partial<ChatSettings> | null),
+    settings: parseChatSettings(
+      session.settings as Partial<ChatSettings> | null
+    ),
   }));
 }
 
@@ -100,7 +107,9 @@ export async function loadChat(id: string): Promise<ChatData> {
     throw new Error(`Chat session with id ${id} not found.`);
   }
 
-  const settings = parseChatSettings(sessionResult[0].settings as Partial<ChatSettings> | null);
+  const settings = parseChatSettings(
+    sessionResult[0].settings as Partial<ChatSettings> | null
+  );
   const slug = sessionResult[0].slug;
 
   const messageRecords = await db
@@ -115,10 +124,16 @@ export async function loadChat(id: string): Promise<ChatData> {
     role: record.role as Message["role"],
     createdAt: record.createdAt || undefined,
     content: record.content!,
-    parts: record.parts as any,
+    parts: record.parts as Message["parts"],
   }));
 
-  return { settings, messages, id, slug, createdAt: sessionResult[0].createdAt };
+  return {
+    settings,
+    messages,
+    id,
+    slug,
+    createdAt: sessionResult[0].createdAt,
+  };
 }
 
 export async function appendNewMessages({
@@ -145,8 +160,8 @@ export async function appendNewMessages({
       msg.createdAt instanceof Date
         ? msg.createdAt
         : msg.createdAt
-        ? new Date(msg.createdAt)
-        : new Date(),
+          ? new Date(msg.createdAt)
+          : new Date(),
     parts: msg.parts || [], // Ensure parts is an array, even if undefined in msg
     content:
       typeof msg.content === "string"
@@ -160,21 +175,25 @@ export async function appendNewMessages({
   if (existingMessages.length === 0) {
     const firstUserMessage = newMessages.find((msg) => msg.role === "user");
     if (firstUserMessage) {
-      const sessionResult = await db.select({ settings: userSession.settings })
+      const sessionResult = await db
+        .select({ settings: userSession.settings })
         .from(userSession)
         .where(eq(userSession.chatId, id))
         .limit(1);
-      
+
       if (sessionResult.length === 0) return;
-      
-      const settings = parseChatSettings(sessionResult[0].settings as Partial<ChatSettings> | null);
-      
+
+      const settings = parseChatSettings(
+        sessionResult[0].settings as Partial<ChatSettings> | null
+      );
+
       const descriptiveSlug = await generateDescriptiveSlug(
         firstUserMessage.content as string,
         settings.selectedLanguageLabel ?? undefined
       );
-      
-      await db.update(userSession)
+
+      await db
+        .update(userSession)
         .set({ slug: descriptiveSlug })
         .where(eq(userSession.chatId, id));
     }
@@ -198,7 +217,7 @@ function parseChatSettings(
   if (typeof settings === "string") {
     try {
       const parsedJson = JSON.parse(settings);
-      if (typeof parsedJson === 'object' && parsedJson !== null) {
+      if (typeof parsedJson === "object" && parsedJson !== null) {
         parsed = parsedJson;
       }
     } catch {
@@ -215,7 +234,8 @@ function parseChatSettings(
     if (Object.prototype.hasOwnProperty.call(parsed, key)) {
       const value = parsed[key as keyof typeof parsed];
       if (value !== null && value !== undefined) {
-        (cleanParsed as any)[key] = value;
+        (cleanParsed as Partial<ChatSettings>)[key as keyof ChatSettings] =
+          value;
       }
     }
   }

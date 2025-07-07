@@ -1,6 +1,8 @@
+import type { Converter } from "opencc-js";
+
 // Initialize converters
-let simplifiedToTraditional: any = null;
-let traditionalToSimplified: any = null;
+let simplifiedToTraditional: Converter | null = null;
+let traditionalToSimplified: Converter | null = null;
 
 async function initConverters() {
   if (!simplifiedToTraditional) {

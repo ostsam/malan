@@ -18,7 +18,12 @@ import { useState } from "react";
 export interface PopoverItem {
   value: string;
   label: string;
-  [key: string]: any;
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | undefined
+    | Record<string, unknown>;
 }
 
 interface CustomPopoverProps<T extends PopoverItem> {

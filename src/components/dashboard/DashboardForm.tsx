@@ -14,27 +14,41 @@ import { levelsData } from "@/app/dashboard/menu-data/levelsData";
 import { useDashboardForm } from "@/app/hooks/useDashboardForm";
 import { InterlocutorSelector } from "@/components/dashboard/InterlocutorSelector";
 import { interfaceColor } from "@/lib/theme";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { MessageSquare, Star, ArrowRight } from "lucide-react";
+import { MessageSquare, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
+import Image from "next/image";
 
 interface DashboardFormProps {
   isDemo?: boolean;
+}
+
+interface DemoData {
+  messages?: Array<{
+    role: string;
+    content: string;
+    createdAt?: string;
+  }>;
+  settings?: {
+    nativeLanguage?: string;
+    nativeLanguageLabel?: string;
+    selectedLanguage?: string;
+    selectedLanguageLabel?: string;
+    selectedLevel?: string;
+    interlocutor?: string;
+  };
+  [key: string]: unknown;
 }
 
 export function DashboardForm({ isDemo = false }: DashboardFormProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [showDemoRecovery, setShowDemoRecovery] = useState(false);
-  const [recoveredDemoData, setRecoveredDemoData] = useState<any>(null);
+  const [recoveredDemoData, setRecoveredDemoData] = useState<DemoData | null>(
+    null
+  );
 
   // Demo-specific state
   const [demoIsLoading, setDemoIsLoading] = useState(false);
@@ -213,9 +227,15 @@ export function DashboardForm({ isDemo = false }: DashboardFormProps) {
 
       {/* --------------------------- logo --------------------------- */}
       <header className="flex flex-col items-center mb-3 fade-in">
-        <a href="/" className="hover:opacity-70">
-          <img src="/logo.svg" alt="Malan Logo" className="h-12 w-auto" />
-        </a>
+        <Link href="/" className="hover:opacity-70">
+          <Image
+            src="/logo.svg"
+            alt="Malan Logo"
+            className="h-12 w-auto"
+            width={120}
+            height={48}
+          />
+        </Link>
       </header>
 
       {/* Demo Recovery Alert (only in authenticated mode) */}
@@ -394,12 +414,16 @@ export function DashboardForm({ isDemo = false }: DashboardFormProps) {
                 onClick={finalHandleStartLearning}
                 disabled={!currentIsFormComplete || currentIsLoading}
                 className={cn(
-                  "glassmorphic w-full flex items-center justify-center gap-2 text-lg sm:text-xl font-semibold text-white py-3 rounded-xl shadow-md transition-colors fade-in delay-4",
+                  "glassmorphic w-full flex items-center justify-center gap-2 text-lg sm:text-xl font-semibold py-3 rounded-xl shadow-md transition-all duration-300 fade-in delay-4",
                   currentIsFormComplete && !currentIsLoading
-                    ? "cursor-pointer hover:bg-[#120b4a] active:bg-slate-500"
-                    : "cursor-not-allowed opacity-60"
+                    ? "cursor-pointer hover:bg-[#120b4a] active:bg-slate-500 text-white"
+                    : "cursor-not-allowed bg-slate-400 dark:bg-slate-600 text-slate-500 dark:text-slate-300 opacity-80"
                 )}
-                style={{ backgroundColor: interfaceColor }}
+                style={
+                  currentIsFormComplete && !currentIsLoading
+                    ? { backgroundColor: interfaceColor }
+                    : {}
+                }
               >
                 {currentIsLoading ? (
                   <>

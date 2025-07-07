@@ -1,9 +1,30 @@
 // Performance monitoring utility
+interface PerformanceMetadata {
+  success?: boolean;
+  cacheHit?: boolean;
+  apiName?: string;
+  cacheName?: string;
+  hit?: boolean;
+  pageName?: string;
+}
+
 interface PerformanceMetric {
   name: string;
   value: number;
   timestamp: number;
-  metadata?: Record<string, any>;
+  metadata?: PerformanceMetadata;
+}
+
+interface PerformanceStats {
+  count: number;
+  average: number;
+  min: number;
+  max: number;
+  lastValue: number;
+}
+
+interface PerformanceStatsMap {
+  [key: string]: PerformanceStats;
 }
 
 class PerformanceMonitor {
@@ -55,13 +76,13 @@ class PerformanceMonitor {
   }
 
   // Get performance statistics
-  getStats(timeWindow: number = 60000): Record<string, any> {
+  getStats(timeWindow: number = 60000): PerformanceStatsMap {
     const now = Date.now();
     const recentMetrics = this.metrics.filter(
       (m) => now - m.timestamp < timeWindow
     );
 
-    const stats: Record<string, any> = {};
+    const stats: PerformanceStatsMap = {};
 
     // Group metrics by name
     const groupedMetrics = recentMetrics.reduce(

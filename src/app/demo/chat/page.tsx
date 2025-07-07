@@ -63,7 +63,7 @@ export default function DemoChatPage() {
           <div className="text-center max-w-md mx-auto p-6">
             <h1 className="text-2xl font-bold mb-4">Demo Limit Reached</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              You've reached the demo limit. Sign up now to continue your
+              You&apos;ve reached the demo limit. Sign up now to continue your
               conversation with {demoSettings.interlocutor} and unlock unlimited
               learning.
             </p>

@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Form,
   FormControl,
@@ -15,31 +14,24 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { updatePreferences } from "@/app/actions/profile";
 import { toast } from "sonner";
-import { Loader2, Languages, Target, Volume2, Bell } from "lucide-react";
-import { languageLearningData } from "@/app/dashboard/menu-data/languageLearningData";
-import { nativeLanguageData } from "@/app/dashboard/menu-data/nativeLanguageData";
+import { Loader2, Target, Bell } from "lucide-react";
 
 const preferencesSchema = z.object({
-  nativeLanguage: z.string().optional(),
-  targetLanguage: z.string().optional(),
   dailyGoal: z.number().min(1).max(100).optional(),
-  ttsVoice: z.string().optional(),
   emailNotifications: z.boolean().optional(),
 });
 
+interface Preferences {
+  dailyGoal?: number;
+  emailNotifications?: boolean;
+}
+
 interface PreferencesTabProps {
-  preferences: any;
-  onPreferencesUpdate: (preferences: any) => void;
+  preferences: Preferences | null;
+  onPreferencesUpdate: (preferences: Preferences) => void;
 }
 
 export function PreferencesTab({
@@ -51,10 +43,7 @@ export function PreferencesTab({
   const form = useForm<z.infer<typeof preferencesSchema>>({
     resolver: zodResolver(preferencesSchema),
     defaultValues: {
-      nativeLanguage: preferences?.nativeLanguage || "",
-      targetLanguage: preferences?.targetLanguage || "",
       dailyGoal: preferences?.dailyGoal || 10,
-      ttsVoice: preferences?.ttsVoice || "nova",
       emailNotifications: preferences?.emailNotifications ?? true,
     },
   });
@@ -69,20 +58,12 @@ export function PreferencesTab({
       } else {
         toast.error(result.message);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to update preferences");
     } finally {
       setLoading(false);
     }
   };
-
-  const ttsVoices = [
-    { value: "nova", label: "Nova (Female)" },
-    { value: "echo", label: "Echo (Male)" },
-    { value: "fable", label: "Fable (Male)" },
-    { value: "onyx", label: "Onyx (Male)" },
-    { value: "alloy", label: "Alloy (Male)" },
-  ];
 
   return (
     <div className="space-y-6">
