@@ -39,6 +39,7 @@ import { useRTL } from "@/app/hooks/useRTL";
 import { signOut } from "@/lib/auth-client";
 import { QuickStats, UserStats } from "@/components/QuickStats";
 import { AppSidebarSkeleton } from "@/components/app-sidebar-skeleton";
+import { useCachedChatHistory } from "@/app/hooks/useCachedChatHistory";
 
 export interface Chat {
   chatId: string;
@@ -58,10 +59,9 @@ interface UserProfile {
 
 export default function AppSidebar() {
   const router = useRouter();
-  const [chatHistory, setChatHistory] = useState<Chat[]>([]);
+  const { history: chatHistory, loading, refresh, persist, hasLoadedOnce } = useCachedChatHistory();
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [stats, setStats] = useState<UserStats | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const { isRTLLanguage } = useRTL({
@@ -69,14 +69,11 @@ export default function AppSidebar() {
     nativeLanguage: null,
   });
 
+  // Fetch user profile and stats only (chat history is now handled by the hook)
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
     setError(null);
     Promise.all([
-      fetch("/api/history", { credentials: "include" }).then((res) =>
-        res.ok ? res.json() : Promise.reject("Failed to load chat history")
-      ),
       fetch("/api/profile", { credentials: "include" }).then((res) =>
         res.ok ? res.json() : Promise.reject("Failed to load profile")
       ),
@@ -84,17 +81,14 @@ export default function AppSidebar() {
         res.ok ? res.json() : Promise.reject("Failed to load stats")
       ),
     ])
-      .then(([historyData, profileData, statsData]) => {
+      .then(([profileData, statsData]) => {
         if (!isMounted) return;
-        setChatHistory(historyData.sessions || []);
         setUserProfile(profileData.profile || null);
         setStats(statsData || null);
-        setLoading(false);
       })
       .catch((err) => {
         if (!isMounted) return;
         setError(typeof err === "string" ? err : "Failed to load sidebar data");
-        setLoading(false);
       });
     return () => {
       isMounted = false;
@@ -112,59 +106,58 @@ export default function AppSidebar() {
     }
   };
 
+  // Optimistic update helpers for chat actions
   const handleTogglePin = async (chatId: string, isPinned: boolean) => {
-    const originalChatHistory = [...chatHistory];
     const updatedChatHistory = chatHistory.map((chat) =>
       chat.chatId === chatId ? { ...chat, isPinned: !chat.isPinned } : chat
     );
-    setChatHistory(updatedChatHistory);
+    persist(updatedChatHistory);
     toast.success(isPinned ? "Chat unpinned!" : "Chat pinned!");
     try {
       await togglePinStatus(chatId);
+      refresh((error) => toast.error("Failed to refresh chat list after pin: " + (error instanceof Error ? error.message : "Unknown error")));
     } catch (error) {
-      console.error("Failed to toggle pin status:", error);
-      setChatHistory(originalChatHistory);
       toast.error("Failed to update pin status. Please try again.");
+      refresh((error) => toast.error("Failed to refresh chat list after pin: " + (error instanceof Error ? error.message : "Unknown error")));
     }
   };
 
   const handleUpdateSlug = async (chatId: string, currentSlug: string) => {
     const newSlug = prompt("Enter new slug:", currentSlug);
     if (newSlug && newSlug !== currentSlug) {
-      const originalChatHistory = [...chatHistory];
       const updatedChatHistory = chatHistory.map((chat) =>
         chat.chatId === chatId ? { ...chat, slug: newSlug } : chat
       );
-      setChatHistory(updatedChatHistory);
+      persist(updatedChatHistory);
       toast.success("Slug updated successfully!");
       try {
         await updateChatSlug(chatId, newSlug);
+        refresh((error) => toast.error("Failed to refresh chat list after slug update: " + (error instanceof Error ? error.message : "Unknown error")));
       } catch (error) {
-        console.error("Failed to update slug:", error);
-        setChatHistory(originalChatHistory);
         toast.error("Failed to update slug. Please try again.");
+        refresh((error) => toast.error("Failed to refresh chat list after slug update: " + (error instanceof Error ? error.message : "Unknown error")));
       }
     }
   };
 
   const handleDeleteChat = async (chatId: string) => {
     if (confirm("Are you sure you want to delete this chat?")) {
-      const originalChatHistory = [...chatHistory];
       const updatedChatHistory = chatHistory.filter(
         (chat) => chat.chatId !== chatId
       );
-      setChatHistory(updatedChatHistory);
+      persist(updatedChatHistory);
       toast.success("Chat deleted successfully!");
       try {
         await deleteChat(chatId);
+        refresh((error) => toast.error("Failed to refresh chat list after delete: " + (error instanceof Error ? error.message : "Unknown error")));
       } catch (error) {
-        console.error("Failed to delete chat:", error);
-        setChatHistory(originalChatHistory);
         toast.error("Failed to delete chat. Please try again.");
+        refresh((error) => toast.error("Failed to refresh chat list after delete: " + (error instanceof Error ? error.message : "Unknown error")));
       }
     }
   };
 
+  // Use chatHistory from the hook for rendering
   const pinnedChats = chatHistory.filter((chat) => chat.isPinned);
   const recentChats = chatHistory.filter((chat) => !chat.isPinned);
 
@@ -278,7 +271,8 @@ export default function AppSidebar() {
     </ul>
   );
 
-  if (loading) {
+  // Only show skeleton if loading and not hasLoadedOnce
+  if (loading && !hasLoadedOnce) {
     return <AppSidebarSkeleton />;
   }
   if (error) {
