@@ -47,6 +47,7 @@ export default function AnalyticsPage() {
     streakData,
     languageDistribution,
     loading: chartLoading,
+    error,
   } = useChartData(languageRange === "all-time" ? "all-time" : timeRange);
 
   // Enable page scrolling (override global overflow-hidden)
@@ -203,310 +204,30 @@ export default function AnalyticsPage() {
   // Show loading state only for initial stats load
   if (statsLoading && !stats) {
     return (
-      <div className="min-h-screen relative" style={{ overflowY: "auto" }}>
-        {/* Background gradient effects matching Malan theme */}
-        <div className="fixed inset-0 -z-20 flex items-center justify-center">
-          <div
-            className="w-[1600px] h-[1600px] rounded-full blur-[160px] opacity-60 animate-[spin-slow_45s_linear_infinite]"
-            style={{
-              background:
-                "conic-gradient(from_180deg_at_50%_50%,rgba(23,6,100,0.85)_0%,rgba(35,12,120,0.75)_25%,rgba(55,20,140,0.65)_50%,rgba(75,30,160,0.6)_75%,rgba(23,6,100,0.85)_100%)",
-            }}
-          />
-        </div>
-
-        {/* Radial burst effects */}
-        <div className="fixed -top-32 -left-48 -z-10">
-          <div
-            className="w-[650px] h-[650px] rounded-full blur-[90px] opacity-55 animate-[pulse-float_12s_ease-in-out_infinite]"
-            style={{
-              background:
-                "radial-gradient(circle at 30% 30%,rgba(23,6,100,0.85) 0%,rgba(23,6,100,0) 70%)",
-            }}
-          />
-        </div>
-
-        <div className="fixed bottom-0 right-0 -z-10">
-          <div
-            className="w-[600px] h-[600px] rounded-full blur-[90px] opacity-50 animate-[pulse-float_14s_ease-in-out_infinite]"
-            style={{
-              background:
-                "radial-gradient(circle at 70% 70%,rgba(55,20,140,0.75) 0%,rgba(55,20,140,0) 70%)",
-              animationDelay: "2s",
-            }}
-          />
-        </div>
-
-        {/* Fine noise overlay */}
-        <div
-          className="fixed inset-0 -z-10 mix-blend-multiply opacity-[0.22]"
-          style={{
-            backgroundImage:
-              "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22%3E%3Crect width=%22160%22 height=%22160%22 fill=%22%23FFFFFF%22/%3E%3Ccircle cx=%2240%22 cy=%2240%22 r=%221.2%22 fill=%22%23170664%22 opacity=%22.1%22/%3E%3Ccircle cx=%2280%22 cy=%2280%22 r=%221.2%22 fill=%22%23170664%22 opacity=%22.1%22/%3E%3Ccircle cx=%22120%22 cy=%22120%22 r=%221.2%22 fill=%22%23170664%22 opacity=%22.1%22/%3E%3C/svg%3E')",
-          }}
-        />
-
-        <div className="container mx-auto max-w-6xl p-6 relative z-10">
-          {/* Header */}
-          <div className="mb-8">
-            {/* Navigation */}
-            <div className="flex items-center justify-between mb-6">
-              <Link href="/dashboard">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-2 border-slate-200/50 dark:border-slate-600/50 hover:bg-white/90 dark:hover:bg-slate-800/90 hover:border-slate-300 dark:hover:border-slate-500 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl group"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                  Back to Dashboard
-                </Button>
-              </Link>
-            </div>
-
-            {/* Title with Malan logo styling */}
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#3C18D9] to-[#8B5CF6] rounded-xl flex items-center justify-center shadow-lg">
-                  <TrendingUp className="h-6 w-6 text-white" />
-                </div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-[#3C18D9] to-[#8B5CF6] bg-clip-text text-transparent">
-                  Learning Analytics
-                </h1>
-              </div>
-              <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
-                Track your language learning progress and achievements with
-                detailed insights into your daily activity, streaks, and
-                learning patterns.
-              </p>
-            </div>
-          </div>
-
-          {/* Loading skeleton with fade-in animation */}
-          <div className="animate-in fade-in-0 duration-500">
-            {/* Quick Stats Cards Skeleton */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
-              {[...Array(4)].map((_, i) => (
-                <Card
-                  key={i}
-                  className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl animate-in fade-in-0 duration-500"
-                  style={{ animationDelay: `${i * 100}ms` }}
-                >
-                  <CardContent className="p-2 sm:p-3 md:p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse" />
-                        <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-12 animate-pulse" />
-                      </div>
-                      <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Charts Skeleton */}
-            <Tabs defaultValue="activity" className="space-y-6">
-              <TabsList
-                className="grid w-full grid-cols-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-lg rounded-xl overflow-hidden animate-in fade-in-0 duration-500"
-                style={{ animationDelay: "400ms" }}
-              >
-                <TabsTrigger
-                  value="activity"
-                  className="data-[state=active]:bg-[#3C18D9] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
-                >
-                  Daily Activity
-                </TabsTrigger>
-                <TabsTrigger
-                  value="streak"
-                  className="data-[state=active]:bg-[#3C18D9] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
-                >
-                  Streak History
-                </TabsTrigger>
-                <TabsTrigger
-                  value="overview"
-                  className="data-[state=active]:bg-[#3C18D9] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
-                >
-                  Overview
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="activity" className="space-y-6">
-                <Card
-                  className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl animate-in fade-in-0 duration-500"
-                  style={{ animationDelay: "500ms" }}
-                >
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2 text-[#3C18D9] dark:text-[#8B5CF6]">
-                        <TrendingUp className="h-5 w-5" />
-                        Daily Learning Activity
-                      </CardTitle>
-                      <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-32 animate-pulse" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[400px] bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center text-lg text-slate-500">
+        Loading analytics...
       </div>
     );
   }
 
-  if (statsError || !stats) {
+  // Show error state for stats or chart data
+  if (statsError || error) {
     return (
-      <div className="min-h-screen relative" style={{ overflowY: "auto" }}>
-        {/* Background gradient effects matching Malan theme */}
-        <div className="fixed inset-0 -z-20 flex items-center justify-center">
-          <div
-            className="w-[1600px] h-[1600px] rounded-full blur-[160px] opacity-60 animate-[spin-slow_45s_linear_infinite]"
-            style={{
-              background:
-                "conic-gradient(from_180deg_at_50%_50%,rgba(23,6,100,0.85)_0%,rgba(35,12,120,0.75)_25%,rgba(55,20,140,0.65)_50%,rgba(75,30,160,0.6)_75%,rgba(23,6,100,0.85)_100%)",
-            }}
-          />
-        </div>
+      <div className="min-h-screen flex items-center justify-center text-lg text-red-600">
+        Failed to load analytics: {statsError || error}
+      </div>
+    );
+  }
 
-        {/* Radial burst effects */}
-        <div className="fixed -top-32 -left-48 -z-10">
-          <div
-            className="w-[650px] h-[650px] rounded-full blur-[90px] opacity-55 animate-[pulse-float_12s_ease-in-out_infinite]"
-            style={{
-              background:
-                "radial-gradient(circle at 30% 30%,rgba(23,6,100,0.85) 0%,rgba(23,6,100,0) 70%)",
-            }}
-          />
-        </div>
-
-        <div className="fixed bottom-0 right-0 -z-10">
-          <div
-            className="w-[600px] h-[600px] rounded-full blur-[90px] opacity-50 animate-[pulse-float_14s_ease-in-out_infinite]"
-            style={{
-              background:
-                "radial-gradient(circle at 70% 70%,rgba(55,20,140,0.75) 0%,rgba(55,20,140,0) 70%)",
-              animationDelay: "2s",
-            }}
-          />
-        </div>
-
-        {/* Fine noise overlay */}
-        <div
-          className="fixed inset-0 -z-10 mix-blend-multiply opacity-[0.22]"
-          style={{
-            backgroundImage:
-              "url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22160%22 height=%22160%22 viewBox=%220 0 160 160%22%3E%3Crect width=%22160%22 height=%22160%22 fill=%22%23FFFFFF%22/%3E%3Ccircle cx=%2240%22 cy=%2240%22 r=%221.2%22 fill=%22%23170664%22 opacity=%22.1%22/%3E%3Ccircle cx=%2280%22 cy=%2280%22 r=%221.2%22 fill=%22%23170664%22 opacity=%22.1%22/%3E%3Ccircle cx=%22120%22 cy=%22120%22 r=%221.2%22 fill=%22%23170664%22 opacity=%22.1%22/%3E%3C/svg%3E')",
-          }}
-        />
-
-        <div className="container mx-auto max-w-6xl p-6 relative z-10">
-          {/* Header */}
-          <div className="mb-8">
-            {/* Navigation */}
-            <div className="flex items-center justify-between mb-6">
-              <Link href="/dashboard">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 px-4 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-2 border-slate-200/50 dark:border-slate-600/50 hover:bg-white/90 dark:hover:bg-slate-800/90 hover:border-slate-300 dark:hover:border-slate-500 rounded-xl transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl group"
-                >
-                  <ArrowLeft className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-300" />
-                  Back to Dashboard
-                </Button>
-              </Link>
-            </div>
-
-            {/* Title with Malan logo styling */}
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#3C18D9] to-[#8B5CF6] rounded-xl flex items-center justify-center shadow-lg">
-                  <TrendingUp className="h-6 w-6 text-white" />
-                </div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-[#3C18D9] to-[#8B5CF6] bg-clip-text text-transparent">
-                  Learning Analytics
-                </h1>
-              </div>
-              <p className="text-slate-600 dark:text-slate-400 text-lg max-w-2xl mx-auto">
-                Track your language learning progress and achievements with
-                detailed insights into your daily activity, streaks, and
-                learning patterns.
-              </p>
-            </div>
-          </div>
-
-          {/* Silent error state - just show loading skeleton */}
-          <div className="animate-in fade-in-0 duration-500">
-            {/* Quick Stats Cards Skeleton */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-8">
-              {[...Array(4)].map((_, i) => (
-                <Card
-                  key={i}
-                  className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl animate-in fade-in-0 duration-500"
-                  style={{ animationDelay: `${i * 100}ms` }}
-                >
-                  <CardContent className="p-2 sm:p-3 md:p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-2">
-                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-16 animate-pulse" />
-                        <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-12 animate-pulse" />
-                      </div>
-                      <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-
-            {/* Charts Skeleton */}
-            <Tabs defaultValue="activity" className="space-y-6">
-              <TabsList
-                className="grid w-full grid-cols-3 bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-lg rounded-xl overflow-hidden animate-in fade-in-0 duration-500"
-                style={{ animationDelay: "400ms" }}
-              >
-                <TabsTrigger
-                  value="activity"
-                  className="data-[state=active]:bg-[#3C18D9] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
-                >
-                  Daily Activity
-                </TabsTrigger>
-                <TabsTrigger
-                  value="streak"
-                  className="data-[state=active]:bg-[#3C18D9] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
-                >
-                  Streak History
-                </TabsTrigger>
-                <TabsTrigger
-                  value="overview"
-                  className="data-[state=active]:bg-[#3C18D9] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all duration-300"
-                >
-                  Overview
-                </TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="activity" className="space-y-6">
-                <Card
-                  className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-xl border border-slate-200/40 dark:border-slate-700/40 shadow-xl animate-in fade-in-0 duration-500"
-                  style={{ animationDelay: "500ms" }}
-                >
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="flex items-center gap-2 text-[#3C18D9] dark:text-[#8B5CF6]">
-                        <TrendingUp className="h-5 w-5" />
-                        Daily Learning Activity
-                      </CardTitle>
-                      <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-32 animate-pulse" />
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-[400px] bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+  // Show empty state if all chart data is empty
+  if (
+    (!dailyData || dailyData.length === 0) &&
+    (!streakData || streakData.length === 0) &&
+    (!languageDistribution || languageDistribution.length === 0)
+  ) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-lg text-slate-500">
+        No analytics data available for this range.
       </div>
     );
   }
@@ -600,7 +321,7 @@ export default function AnalyticsPage() {
                     Total Words
                   </p>
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
-                    {stats.wordCount}
+                    {stats?.wordCount ?? 0}
                   </p>
                 </div>
                 <BookOpen className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
@@ -616,7 +337,7 @@ export default function AnalyticsPage() {
                     Chat Sessions
                   </p>
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
-                    {stats.chatCount}
+                    {stats?.chatCount ?? 0}
                   </p>
                 </div>
                 <Activity className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
@@ -632,7 +353,7 @@ export default function AnalyticsPage() {
                     Current Streak
                   </p>
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
-                    {stats.streak} days
+                    {stats?.streak ?? 0} days
                   </p>
                 </div>
                 <Flame className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
@@ -648,7 +369,7 @@ export default function AnalyticsPage() {
                     Today&apos;s Progress
                   </p>
                   <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
-                    {stats.todayWords}/{stats.dailyGoal}
+                    {stats?.todayWords ?? 0}/{stats?.dailyGoal ?? 0}
                   </p>
                 </div>
                 <Target className="h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9 text-[#3C18D9] dark:text-[#8B5CF6] group-hover:scale-110 transition-transform duration-300" />
@@ -884,7 +605,7 @@ export default function AnalyticsPage() {
                           Best Streak
                         </span>
                         <span className="text-lg font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
-                          {stats.longestStreak} days
+                          {stats?.longestStreak ?? 0} days
                         </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg border border-slate-200/50 dark:border-slate-700/50">
@@ -892,7 +613,7 @@ export default function AnalyticsPage() {
                           Daily Goal
                         </span>
                         <span className="text-lg font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
-                          {stats.dailyGoal} words
+                          {stats?.dailyGoal ?? 0} words
                         </span>
                       </div>
                       <div className="flex justify-between items-center p-3 bg-slate-50/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-lg border border-slate-200/50 dark:border-slate-700/50">
@@ -900,7 +621,7 @@ export default function AnalyticsPage() {
                           Today&apos;s Progress
                         </span>
                         <span className="text-lg font-bold text-[#3C18D9] dark:text-[#8B5CF6]">
-                          {Math.round(stats.dailyProgress)}%
+                          {Math.round(stats?.dailyProgress ?? 0)}%
                         </span>
                       </div>
                     </div>
