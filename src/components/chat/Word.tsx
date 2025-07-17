@@ -20,7 +20,7 @@ import {
   getUserChineseScriptPreference,
 } from "@/lib/chinese-converter";
 import { useOptimizedChineseWordPinyin } from "@/hooks/useOptimizedChineseTokenization";
-import { tokenizeText, TokenizedWord } from "@/lib/tokenizer";
+import { tokenizeText } from "@/lib/composable-tokenizer";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -49,23 +49,52 @@ interface ClickableTextProps {
 }
 
 function ClickableText({ text, lang, onWordClick, className }: ClickableTextProps) {
-  // Simple word splitting - split on spaces and punctuation
+  const [tokens, setTokens] = React.useState<string[] | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (["zh", "ja", "th"].includes(lang)) {
+        const tokenObjs = await tokenizeText(text, lang);
+        if (!cancelled) setTokens(tokenObjs.map(t => t.word));
+      } else {
+        setTokens(null); // Use default split
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [text, lang]);
+
+  if (tokens) {
+    return (
+      <span className={className}>
+        {tokens.map((word, index) => (
+          <span
+            key={index}
+            className={cn(
+              INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
+              INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
+            )}
+            onClick={() => onWordClick(word.toLowerCase())}
+          >
+            {word}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  // Fallback: original logic for non-CJK/Thai
   const words = text.split(/(\s+|[.,!?;:()[\]{}"'`~@#$%^&*+=|\\/<>])/);
-  
   return (
     <span className={className}>
       {words.map((word, index) => {
-        // Skip empty strings and pure whitespace
         if (!word || /^\s+$/.test(word)) {
           return <span key={index}>{word}</span>;
         }
-        
-        // Check if it's a punctuation mark
         if (/^[.,!?;:()[\]{}"'`~@#$%^&*+=|\\/<>]+$/.test(word)) {
           return <span key={index}>{word}</span>;
         }
-        
-        // It's a word - make it clickable
         return (
           <span
             key={index}
@@ -85,6 +114,18 @@ function ClickableText({ text, lang, onWordClick, className }: ClickableTextProp
 
 // Module-level cache shared across component instances
 const dictCache = new Map<string, Promise<DictResponse>>();
+
+// Helper function to parse translatedSense format: "word (definition)"
+function parseTranslation(text: string): { word: string; definition: string } | null {
+  const match = text.match(/^(.+?)\s*\((.+)\)$/);
+  if (match) {
+    return {
+      word: match[1].trim(),
+      definition: match[2].trim()
+    };
+  }
+  return null;
+}
 
 export function Word({
   initialWord,
@@ -444,49 +485,67 @@ export function Word({
 
         {/* Definitions list */}
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 text-left text-med">
-          {data.defs.map((d, i) => (
-            <div key={i} className="">
-              <p className="font-semibold mb-1">
-                {d.pos}:{" "}
-                <ClickableText
-                  text={useTarget && d.translatedSense ? d.translatedSense : d.sense}
-                  lang={lang}
-                  onWordClick={handlePopoverWordClick}
-                />
-              </p>
-              {!useTarget && d.translatedSense && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
-                  <ClickableText
-                    text={d.translatedSense}
-                    lang={lang}
-                    onWordClick={handlePopoverWordClick}
-                  />
+          {data.defs.map((d, i) => {
+            const displayText = useTarget && d.translatedSense ? d.translatedSense : d.sense;
+            const parsedTranslation = parseTranslation(displayText);
+            
+            return (
+              <div key={i} className="">
+                <p className="font-semibold mb-1">
+                  {d.pos}:{" "}
+                  {parsedTranslation ? (
+                    <ClickableText
+                      text={parsedTranslation.word}
+                      lang={lang}
+                      onWordClick={handlePopoverWordClick}
+                    />
+                  ) : (
+                    <ClickableText
+                      text={displayText}
+                      lang={lang}
+                      onWordClick={handlePopoverWordClick}
+                    />
+                  )}
                 </p>
-              )}
-              {useTarget && d.sense !== d.translatedSense && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
-                  <ClickableText
-                    text={d.sense}
-                    lang={lang}
-                    onWordClick={handlePopoverWordClick}
-                  />
-                </p>
-              )}
-              {d.examples.length > 0 && (
-                <ul className="list-disc list-inside space-y-0.5">
-                  {d.examples.map((ex, j) => (
-                    <li key={j} className="italic opacity-80">
-                      <ClickableText
-                        text={ex}
-                        lang={lang}
-                        onWordClick={handlePopoverWordClick}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+                {parsedTranslation && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    ({parsedTranslation.definition})
+                  </p>
+                )}
+                {!useTarget && d.translatedSense && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
+                    <ClickableText
+                      text={d.translatedSense}
+                      lang={lang}
+                      onWordClick={handlePopoverWordClick}
+                    />
+                  </p>
+                )}
+                {useTarget && d.sense !== d.translatedSense && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
+                    <ClickableText
+                      text={d.sense}
+                      lang={lang}
+                      onWordClick={handlePopoverWordClick}
+                    />
+                  </p>
+                )}
+                {d.examples.length > 0 && (
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {d.examples.map((ex, j) => (
+                      <li key={j} className="italic opacity-80">
+                        <ClickableText
+                          text={ex}
+                          lang={lang}
+                          onWordClick={handlePopoverWordClick}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -527,14 +586,7 @@ export function Word({
 
       try {
         // Use the new unified tokenizer
-        const tokens: TokenizedWord[] = await tokenizeText(text, { 
-          selectedLanguage: lang,
-          nativeLanguage: null,
-          nativeLanguageLabel: null,
-          selectedLanguageLabel: null,
-          selectedLevel: null,
-          interlocutor: null
-        });
+        const tokens = await tokenizeText(text, lang);
         console.log("[Word] Received tokens from tokenizer:", tokens);
 
         // Convert tokens to React elements with proper spacing

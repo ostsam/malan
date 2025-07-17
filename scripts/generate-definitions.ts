@@ -78,6 +78,34 @@ async function runOpenAiPrompt(prompt: string, temperature = 0.2) {
   return text.trim();
 }
 
+// Helper: detect rate limit error
+function isRateLimitError(err: any) {
+  return (
+    err?.response?.status === 429 ||
+    (typeof err?.message === "string" && err.message.toLowerCase().includes("rate limit"))
+  );
+}
+
+// Helper: run LLM prompt with retry and backoff
+async function runPromptWithRetry(fn: () => Promise<string>, maxRetries = 5) {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      if (isRateLimitError(err)) {
+        const waitMs = 30000 * (attempt + 1); // 30s, 60s, 90s, ...
+        console.warn(`Rate limit hit, pausing for ${waitMs / 1000}s...`);
+        await new Promise(res => setTimeout(res, waitMs));
+        attempt++;
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error("Max retries exceeded for LLM batch");
+}
+
 async function upsertWord(word: string, lang: string) {
   await db.insert(words).values({ word, lang }).onConflictDoNothing();
   const [{ id }] = await db
@@ -107,7 +135,7 @@ async function fetchDefsBatch(lang: string, batch: string[]) {
 
   // Try Gemini first
   try {
-    const geminiContent = await runGeminiPrompt(prompt, 0.2);
+    const geminiContent = await runPromptWithRetry(() => runGeminiPrompt(prompt, 0.2));
     if (geminiContent) {
       return JSON.parse(geminiContent.replace(/```json|```/g, ""));
     }
@@ -116,7 +144,7 @@ async function fetchDefsBatch(lang: string, batch: string[]) {
   }
 
   // Fallback to OpenAI
-  const openAiContent = await runOpenAiPrompt(prompt, 0.2);
+  const openAiContent = await runPromptWithRetry(() => runOpenAiPrompt(prompt, 0.2));
   return JSON.parse(openAiContent.replace(/```json|```/g, ""));
 }
 

@@ -4,7 +4,7 @@ import { useRTL } from "@/app/hooks/useRTL";
 import React, { useState, useEffect, useCallback } from "react";
 import { interfaceColor } from "@/lib/theme";
 import { Word } from "./Word";
-import { tokenizeText, TokenizedWord } from "@/lib/tokenizer";
+import { tokenizeText, TokenizedWord } from "@/lib/composable-tokenizer";
 import { formatDistanceToNow } from "date-fns";
 import type { ChatSettings } from "@/app/tools/chat-store";
 
@@ -50,7 +50,7 @@ function ChatMessageBase({
       setIsTokenizing(true);
 
       try {
-        const tokens: TokenizedWord[] = await tokenizeText(text, settings);
+        const tokens: TokenizedWord[] = await tokenizeText(text, langCode);
 
 
         const tokenElements: React.ReactNode[] = [];

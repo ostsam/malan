@@ -1,18 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  isChineseText,
-  extractChineseWords,
-} from "@/lib/chinese-tokenizer-server";
-import type { TokenizedWord } from "@/lib/chinese-tokenizer";
+import React, { useState, useEffect, useCallback } from "react";
+import { tokenizeText, TokenizedWord } from "../lib/composable-tokenizer";
+import { isChineseText } from "../lib/chinese-tokenizer";
 
 // Server-side safety check
 const isServer = typeof window === "undefined";
 
 // Dynamic import for client-side only
-let tokenizeChineseText: ((text: string) => Promise<TokenizedWord[]>) | null =
-  null;
 let pinyinPro: typeof import("pinyin-pro") | null = null;
 
 // Initialize client-side functions only when needed
@@ -21,7 +16,7 @@ const initializeClientFunctions = async () => {
 
   try {
     const chineseTokenizerModule = await import("@/lib/chinese-tokenizer");
-    tokenizeChineseText = chineseTokenizerModule.tokenizeChineseText;
+    // tokenizeChineseText = chineseTokenizerModule.tokenizeChineseText; // This line is removed
   } catch (error) {
     console.error("Failed to load chinese-tokenizer:", error);
   }
@@ -90,43 +85,43 @@ export function useCJKTokenizedTextWithPinyin(
     }
 
     // Only process Chinese text
-    const isChinese = isChineseText(text);
-    if (langCode !== "zh" && !isChinese) {
-      setTokens(null);
-      return;
-    }
-
-    // Check cache first
-    const cacheKey = `${PINYIN_CACHE_VERSION}:${text}:${langCode || "unknown"}:${JSON.stringify(pinyinOptions)}`;
-    if (tokenizationCache.has(cacheKey)) {
-      console.log("[useCJKTokenizedTextWithPinyin] Using cached result");
-      setTokens(tokenizationCache.get(cacheKey)!);
-      return;
-    }
+    const checkChinese = async () => {
+      if (!langCode) return false;
+      const tokens = await tokenizeText(text, langCode);
+      return tokens.some(t => t.isChinese);
+    };
 
     const tokenize = async () => {
+      const isChinese = await checkChinese();
+      if (langCode !== "zh" && !isChinese) {
+        setTokens(null);
+        return;
+      }
+
+      // Check cache first
+      const cacheKey = `${PINYIN_CACHE_VERSION}:${text}:${langCode || "unknown"}:${JSON.stringify(pinyinOptions)}`;
+      if (tokenizationCache.has(cacheKey)) {
+        console.log("[useCJKTokenizedTextWithPinyin] Using cached result");
+        setTokens(tokenizationCache.get(cacheKey)!);
+        return;
+      }
+
       console.log("[useCJKTokenizedTextWithPinyin] Starting tokenization...");
       setLoading(true);
       setError(null);
 
       try {
         // Initialize client functions if not already done
-        if (!tokenizeChineseText) {
-          await initializeClientFunctions();
-        }
         if (!pinyinPro) {
           await initializePinyinPro();
         }
 
-        if (!tokenizeChineseText) {
-          throw new Error("Failed to initialize tokenization function");
-        }
         if (!pinyinPro) {
           throw new Error("Failed to initialize pinyin function");
         }
 
         // Get tokenized words
-        const tokenizedWords = await tokenizeChineseText(text);
+        const tokenizedWords = await tokenizeText(text, langCode || "zh");
         console.log(
           "[useCJKTokenizedTextWithPinyin] Tokenization result:",
           tokenizedWords
@@ -230,7 +225,7 @@ export function useChinesePinyin(
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!enabled || !text || typeof text !== "string" || !isChineseText(text)) {
+    if (!enabled || !text || typeof text !== "string") {
       setPinyin("");
       return;
     }
@@ -250,19 +245,19 @@ export function useChinesePinyin(
         if (!pinyinPro) {
           await initializePinyinPro();
         }
-        if (!tokenizeChineseText) {
-          await initializeClientFunctions();
-        }
+        // if (!tokenizeChineseText) { // This line is removed
+        //   await initializeClientFunctions(); // This line is removed
+        // }
 
         if (!pinyinPro) {
           throw new Error("Failed to initialize pinyin-pro");
         }
-        if (!tokenizeChineseText) {
-          throw new Error("Failed to initialize tokenization function");
-        }
+        // if (!tokenizeChineseText) { // This line is removed
+        //   throw new Error("Failed to initialize tokenization function"); // This line is removed
+        // }
 
         // First tokenize with Jieba to get word boundaries
-        const tokenizedWords = await tokenizeChineseText(text);
+        const tokenizedWords = await tokenizeText(text, "zh");
 
         // Generate pinyin for each token
         const tokenPinyin = await Promise.all(
@@ -332,7 +327,21 @@ export function useChineseWordPinyin(
   loading: boolean;
   error: Error | null;
 } {
-  return useChinesePinyin(word, enabled && isChineseText(word), options);
+  const [isChinese, setIsChinese] = useState(false);
+
+  useEffect(() => {
+    const checkChinese = async () => {
+      if (!enabled || !word) {
+        setIsChinese(false);
+        return;
+      }
+      const tokens = await tokenizeText(word, "zh");
+      setIsChinese(tokens.some(t => t.isChinese));
+    };
+    checkChinese();
+  }, [word, enabled]);
+
+  return useChinesePinyin(word, enabled && isChinese, options);
 }
 
 /**
@@ -359,36 +368,33 @@ export function useCJKTokenizedText(
     }
 
     // Only process Chinese text
-    const isChinese = isChineseText(text);
-    if (langCode !== "zh" && !isChinese) {
-      setTokens(null);
-      return;
-    }
-
-    // Check cache first
-    const cacheKey = `${text}:${langCode || "unknown"}`;
-    if (tokenizationCache.has(cacheKey)) {
-      console.log("[useCJKTokenizedText] Using cached result");
-      setTokens(tokenizationCache.get(cacheKey)!);
-      return;
-    }
+    const checkChinese = async () => {
+      if (!langCode) return false;
+      const tokens = await tokenizeText(text, langCode);
+      return tokens.some(t => t.isChinese);
+    };
 
     const tokenize = async () => {
+      const isChinese = await checkChinese();
+      if (langCode !== "zh" && !isChinese) {
+        setTokens(null);
+        return;
+      }
+
+      // Check cache first
+      const cacheKey = `${text}:${langCode || "unknown"}`;
+      if (tokenizationCache.has(cacheKey)) {
+        console.log("[useCJKTokenizedText] Using cached result");
+        setTokens(tokenizationCache.get(cacheKey)!);
+        return;
+      }
+
       console.log("[useCJKTokenizedText] Starting tokenization...");
       setLoading(true);
       setError(null);
 
       try {
-        // Initialize client functions if not already done
-        if (!tokenizeChineseText) {
-          await initializeClientFunctions();
-        }
-
-        if (!tokenizeChineseText) {
-          throw new Error("Failed to initialize tokenization function");
-        }
-
-        const result = await tokenizeChineseText(text);
+        const result = await tokenizeText(text, langCode || "zh");
         console.log("[useCJKTokenizedText] Tokenization result:", result);
 
         // Cache the result
@@ -440,17 +446,24 @@ export function useChineseWordExtraction(
     }
 
     // Only process Chinese text
-    if (langCode !== "zh" && !isChineseText(text)) {
-      setWords([]);
-      return;
-    }
+    const checkChinese = async () => {
+      if (!langCode) return false;
+      const tokens = await tokenizeText(text, langCode);
+      return tokens.some(t => t.isChinese);
+    };
 
     const extract = async () => {
+      const isChinese = await checkChinese();
+      if (langCode !== "zh" && !isChinese) {
+        setWords([]);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       try {
-        const result = extractChineseWords(text);
-        setWords(result);
+        const result = await tokenizeText(text, langCode || "zh");
+        setWords(result.map(t => t.word));
       } catch (err) {
         console.error("[useChineseWordExtraction] Error:", err);
         setError(

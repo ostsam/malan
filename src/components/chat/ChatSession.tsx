@@ -34,17 +34,7 @@ export interface SerializableChatData {
   createdAt?: string;
 }
 
-import type { ChatSettings as ChatStoreSettings } from "@/app/tools/chat-store";
-
-export interface ChatSettings {
-  selectedLanguage?: string | null;
-  nativeLanguage?: string | null;
-  selectedLanguageLabel?: string | null;
-  nativeLanguageLabel?: string | null;
-  selectedLevel?: string | null;
-  interlocutor?: string | null;
-  name?: string | null;
-}
+import type { ChatSettings } from "@/app/tools/chat-store";
 
 export interface DemoSettings {
   nativeLanguage: string;
@@ -281,6 +271,21 @@ export function ChatSession({
     // The page refresh in the toggle component will handle the conversion
   };
 
+  // Before rendering, sort convertedMessages by createdAt and id
+  const sortedMessages = [...convertedMessages].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (aTime !== bTime) return aTime - bTime;
+    // If timestamps are equal, user comes before AI
+    if (a.role !== b.role) {
+      if (a.role === "user") return -1;
+      if (b.role === "user") return 1;
+    }
+    // Tiebreaker: sort by id (string compare)
+    if (a.id && b.id) return a.id.localeCompare(b.id);
+    return 0;
+  });
+
   return (
     <div className="flex flex-col w-full max-w-xl mx-auto h-screen text-lg bg-white dark:bg-black overflow-hidden font-inter">
       <style jsx>{`
@@ -404,9 +409,9 @@ export function ChatSession({
       </div>
 
       <div className="flex-grow w-full pt-4 px-4 pb-4 fade-in delay-1 overflow-y-auto">
-        {convertedMessages.length > 0 ? (
+        {sortedMessages.length > 0 ? (
           <div className="flex flex-col space-y-4">
-            {convertedMessages.map((m: Message) => (
+            {sortedMessages.map((m: Message) => (
               <ChatMessage
                 key={m.id}
                 message={m}
@@ -503,7 +508,7 @@ export function ChatSession({
         startRecording={startRecording}
         stopRecording={stopRecording}
         stopAudioPlayback={stopAudioPlayback}
-        selectedLanguage={(settings as ChatSettings)?.selectedLanguage}
+        selectedLanguage={(settings as ChatSettings)?.selectedLanguage || undefined}
         onScriptChange={handleScriptChange}
       />
       {/* Original conditional logic:

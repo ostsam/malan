@@ -13,8 +13,8 @@ import { translateDefinitions } from "@/server/dictionary/helpers";
 // Full set of languages present in the dictionary
 const LANGS = ["en", "es", "fr", "de", "it", "ja", "zh", "ko", "ru", "pt"];
 
-const BATCH_SIZE = 35; // number of definitions per LLM call
-const CONCURRENCY = 10; // parallel LLM calls / DB inserts
+const BATCH_SIZE = 25; // reduced batch size to minimize risk
+const CONCURRENCY = 10; // reduced concurrency to minimize risk
 
 /* -------------------------------------------------------------------------- */
 /*                               DB set-up                                    */
@@ -66,6 +66,34 @@ async function loadPendingDefinitionBatches(
   return batches;
 }
 
+// Helper: detect rate limit error
+function isRateLimitError(err: any) {
+  return (
+    err?.response?.status === 429 ||
+    (typeof err?.message === "string" && err.message.toLowerCase().includes("rate limit"))
+  );
+}
+
+// Helper: translate with retry and backoff
+async function translateBatchWithRetry(defs: any[], targetLang: string, maxRetries = 5) {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await translateDefinitions(defs, targetLang);
+    } catch (err: any) {
+      if (isRateLimitError(err)) {
+        const waitMs = 30000 * (attempt + 1); // 30s, 60s, 90s, ...
+        console.warn(`Rate limit hit, pausing for ${waitMs / 1000}s...`);
+        await new Promise(res => setTimeout(res, waitMs));
+        attempt++;
+      } else {
+        throw err;
+      }
+    }
+  }
+  throw new Error("Max retries exceeded for translation batch");
+}
+
 /* -------------------------------------------------------------------------- */
 /*                        Main translation routine per lang                    */
 /* -------------------------------------------------------------------------- */
@@ -89,34 +117,57 @@ async function translateInto(
     `▶️  Translating ${sourceLang} → ${targetLang} – ${batches.length} batches…`
   );
 
+  let inserted = 0;
+  let skipped = 0;
+  let failed = 0;
+
   const tasks: Promise<void>[] = [];
 
   batches.forEach(({ ids, defs }, batchIdx) => {
     tasks.push(
       limit(async () => {
         try {
-          const translated = await translateDefinitions(defs, targetLang);
-          // Insert each translation row
+          const translated = await translateBatchWithRetry(defs, targetLang);
+          let batchInserted = 0;
+          let batchSkipped = 0;
           for (let i = 0; i < ids.length; i++) {
             const defId = ids[i];
-            const tSense = translated[i]?.translatedSense || defs[i].sense;
-            await db
-              .insert(translations)
-              .values({
-                definitionId: defId,
-                targetLang,
-                translatedSense: tSense,
-                source: "ai",
-              })
-              .onConflictDoNothing();
+            const tSense = translated[i]?.translatedSense;
+            if (tSense && tSense !== defs[i].sense) {
+              await db
+                .insert(translations)
+                .values({
+                  definitionId: defId,
+                  targetLang,
+                  translatedSense: tSense,
+                  source: "ai",
+                })
+                .onConflictDoNothing();
+              inserted++;
+              batchInserted++;
+            } else {
+              skipped++;
+              batchSkipped++;
+              // Only log skipped if there was a real issue
+              if (!tSense) {
+                console.warn(
+                  `⚠️  Skipped: No translation for defId ${defId}`
+                );
+              } else if (tSense === defs[i].sense) {
+                console.warn(
+                  `⚠️  Skipped: Translation identical to source for defId ${defId}`
+                );
+              }
+            }
           }
+          // Concise batch progress
           console.log(
-            `✅  ${sourceLang}→${targetLang} batch ${batchIdx + 1}/${batches.length}`
+            `Batch ${batchIdx + 1}/${batches.length}: ${sourceLang} → ${targetLang} | Inserted: ${batchInserted}, Skipped: ${batchSkipped}`
           );
-        } catch (err) {
+        } catch (err: any) {
+          failed++;
           console.error(
-            `❌  ${sourceLang}→${targetLang} batch ${batchIdx + 1} failed`,
-            err
+            `❌  ${sourceLang}→${targetLang} batch ${batchIdx + 1} failed: ${err.message || err}`
           );
         }
       })
@@ -125,6 +176,7 @@ async function translateInto(
 
   await Promise.all(tasks);
   console.log(`🎉 Completed ${sourceLang} → ${targetLang}`);
+  console.log(`Summary: Inserted: ${inserted}, Skipped: ${skipped}, Failed: ${failed}`);
 }
 
 /* -------------------------------------------------------------------------- */

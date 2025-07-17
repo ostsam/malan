@@ -1,4 +1,6 @@
-import { TokenizedWord } from "./tokenizer";
+// DEPRECATED: Use composable-tokenizer.ts instead for all entry points. This file is still used internally for Japanese tokenization.
+// Do not import this file directly from UI or hooks.
+import { TokenizedWord } from "./composable-tokenizer";
 
 // Kuromoji token type (from kuromoji package)
 interface KuromojiToken {

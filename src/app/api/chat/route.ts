@@ -193,7 +193,7 @@ export async function POST(req: Request) {
               createdAt: (msg as any).createdAt || new Date(Date.now() + index * 100), // Ensure unique timestamps with 100ms spacing
             })) as Message[];
 
-          if (messagesToSaveThisTurn.length > 0) {
+          if (messagesToSaveThisTurn.length > 0 && chatId) {
             await appendNewMessages({
               id: chatId,
               newMessages: messagesToSaveThisTurn,

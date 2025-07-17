@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { tokenizeJapaneseServer } from "@/lib/server-tokenizer";
+import { tokenizeText } from "@/lib/composable-tokenizer";
 
 // Force dynamic rendering for this API route
 export const dynamic = "force-dynamic";
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     // Only handle Japanese on server, other languages should be handled client-side
     if (lang === "ja") {
-      const tokens = await tokenizeJapaneseServer(text);
+      const tokens = await tokenizeText(text, lang);
       console.log(
         "[API] Japanese tokenization result:",
         tokens.length,
