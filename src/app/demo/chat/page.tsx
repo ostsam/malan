@@ -34,10 +34,12 @@ export default function DemoChatPage() {
   };
 
   // Check if demo limit has been reached
+  // TEMPORARILY DISABLED FOR TESTING
   const isDemoLimitReached = (): boolean => {
-    if (typeof window === "undefined") return false;
-    const messageCount = localStorage.getItem("demoMessageCount");
-    return messageCount ? parseInt(messageCount) >= 6 : false;
+    // if (typeof window === "undefined") return false;
+    // const messageCount = localStorage.getItem("demoMessageCount");
+    // return messageCount ? parseInt(messageCount) >= 6 : false;
+    return false; // Always return false for testing
   };
 
   const demoSettings = getDemoSettings();

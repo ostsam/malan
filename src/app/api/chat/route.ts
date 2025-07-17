@@ -49,9 +49,14 @@ export async function POST(req: Request) {
     // Parse request data - AI SDK sends messages in a different format
     const rawData = await req.json();
 
+    // Check if this is a demo request
+    const isDemo = rawData.isDemo === true;
+
     // Extract the message content from the AI SDK format
     let userMessage: string;
     let chatId: string | undefined;
+    let settings: ChatSettings | undefined;
+    let messages: Message[] = [];
 
     if (
       rawData.messages &&
@@ -83,18 +88,41 @@ export async function POST(req: Request) {
       throw new Error("Message too long");
     }
 
-    // Get user session for streak updates
+    // Get user session for streak updates (only for non-demo mode)
     const session = await auth.api.getSession({ headers: req.headers });
     const userId = session?.user?.id;
 
-    if (!chatId) {
-      return new Response(JSON.stringify({ error: "Chat ID is required" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+    // For demo mode, use provided settings and empty messages
+    if (isDemo) {
+      settings = rawData.settings;
+      if (!settings) {
+        return new Response(JSON.stringify({ error: "Settings required for demo mode" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      // Demo mode uses empty messages array
+      messages = [];
+    } else {
+      // Regular mode - require authentication and chat ID
+      if (!userId) {
+        return new Response(JSON.stringify({ error: "Authentication required" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
 
-    const { settings, messages } = await loadChat(chatId);
+      if (!chatId) {
+        return new Response(JSON.stringify({ error: "Chat ID is required" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const chatData = await loadChat(chatId);
+      settings = chatData.settings;
+      messages = chatData.messages;
+    }
 
     const systemPrompt = formatSystemPrompt(settings);
 
@@ -103,6 +131,7 @@ export async function POST(req: Request) {
       id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       role: "user" as const,
       content: userMessage,
+      createdAt: new Date(),
     };
     const historyWithUserMsg = appendClientMessage({
       messages,
@@ -119,58 +148,62 @@ export async function POST(req: Request) {
         size: 16,
       }),
       async onFinish({ response }) {
-        const newAssistantMessages = response.messages
-          .filter((msg) =>
-            historyWithUserMsg.every((hMsg) => hMsg.id !== msg.id)
-          )
-          .map((msg) => {
-            // If content is not a string, try to join text parts
-            if (typeof msg.content === "string") {
-              return msg;
-            } else if (Array.isArray(msg.content)) {
-              // Only join text from parts that have a 'text' property
-              const text = msg.content
-                .map((part) =>
-                  typeof part === "object" &&
-                  "text" in part &&
-                  typeof part.text === "string"
-                    ? part.text
-                    : ""
-                )
-                .join("");
-              return { ...msg, content: text };
-            } else {
-              // Fallback: stringify or use placeholder
-              return { ...msg, content: "[Unsupported content]" };
-            }
-          });
+        // Only save messages and update streaks for non-demo mode
+        if (!isDemo) {
+          const newAssistantMessages = response.messages
+            .filter((msg) =>
+              historyWithUserMsg.every((hMsg) => hMsg.id !== msg.id)
+            )
+            .map((msg) => {
+              // If content is not a string, try to join text parts
+              if (typeof msg.content === "string") {
+                return msg;
+              } else if (Array.isArray(msg.content)) {
+                // Only join text from parts that have a 'text' property
+                const text = msg.content
+                  .map((part) =>
+                    typeof part === "object" &&
+                    "text" in part &&
+                    typeof part.text === "string"
+                      ? part.text
+                      : ""
+                  )
+                  .join("");
+                return { ...msg, content: text };
+              } else {
+                // Fallback: stringify or use placeholder
+                return { ...msg, content: "[Unsupported content]" };
+              }
+            });
 
-        const messagesToSaveThisTurn = [
-          ...(userMessage ? [userMessageObj] : []),
-          ...newAssistantMessages,
-        ]
-          .filter(
-            (msg) =>
-              (msg.role === "user" || msg.role === "assistant") &&
-              typeof msg.content === "string" &&
-              typeof msg.id === "string"
-          )
-          .map((msg) => ({
-            id: msg.id,
-            role: msg.role as "user" | "assistant",
-            content: msg.content as string,
-          })) as Message[];
+          const messagesToSaveThisTurn = [
+            ...(userMessage ? [userMessageObj] : []),
+            ...newAssistantMessages,
+          ]
+            .filter(
+              (msg) =>
+                (msg.role === "user" || msg.role === "assistant") &&
+                typeof msg.content === "string" &&
+                typeof msg.id === "string"
+            )
+            .map((msg, index) => ({
+              id: msg.id,
+              role: msg.role as "user" | "assistant",
+              content: msg.content as string,
+              createdAt: (msg as any).createdAt || new Date(Date.now() + index * 100), // Ensure unique timestamps with 100ms spacing
+            })) as Message[];
 
-        if (messagesToSaveThisTurn.length > 0) {
-          await appendNewMessages({
-            id: chatId,
-            newMessages: messagesToSaveThisTurn,
-          });
-        }
+          if (messagesToSaveThisTurn.length > 0) {
+            await appendNewMessages({
+              id: chatId,
+              newMessages: messagesToSaveThisTurn,
+            });
+          }
 
-        // Update streak when user sends a message
-        if (userId && userMessage) {
-          await updateUserStreak(userId);
+          // Update streak when user sends a message
+          if (userId && userMessage) {
+            await updateUserStreak(userId);
+          }
         }
       },
     });

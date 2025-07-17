@@ -40,14 +40,19 @@ async function ChatPageContent({ params }: ChatPageProps) {
     );
   }
 
-  // Normalize settings to convert null to undefined
+  // Normalize settings to convert undefined to null for SerializableChatData
   const normalizedChatObject = {
     ...chatObject,
     settings: {
       ...chatObject.settings,
-      selectedLanguage: chatObject.settings.selectedLanguage ?? undefined,
-      nativeLanguage: chatObject.settings.nativeLanguage ?? undefined,
+      selectedLanguage: chatObject.settings.selectedLanguage ?? null,
+      nativeLanguage: chatObject.settings.nativeLanguage ?? null,
     },
+    messages: chatObject.messages.map((message) => ({
+      ...message,
+      createdAt: message.createdAt ? new Date(message.createdAt).toISOString() : new Date().toISOString(),
+    })),
+    createdAt: chatObject.createdAt ? new Date(chatObject.createdAt).toISOString() : new Date().toISOString(),
   };
 
   return (

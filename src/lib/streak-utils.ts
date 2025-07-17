@@ -20,11 +20,13 @@ export async function updateUserStreak(userId: string) {
       .where(eq(userPreferences.userId, userId))
       .limit(1);
 
+    // Always use UTC date string
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Set to start of day
+    today.setUTCHours(0, 0, 0, 0);
+    const todayStr = today.toISOString().slice(0, 10);
 
     let newCurrentStreak = 1;
-    let newLongestStreak = 0;
+    let newLongestStreak = 1;
 
     if (currentPrefs.length > 0) {
       const prefs = currentPrefs[0];
@@ -32,41 +34,41 @@ export async function updateUserStreak(userId: string) {
 
       if (lastActivity) {
         const lastActivityDate = new Date(lastActivity);
-        lastActivityDate.setHours(0, 0, 0, 0);
+        lastActivityDate.setUTCHours(0, 0, 0, 0);
+        const lastActivityStr = lastActivityDate.toISOString().slice(0, 10);
+
+        if (lastActivityStr === todayStr) {
+          // Already updated today, do nothing
+          console.log(`[Streak] No update needed for user ${userId} (already updated today)`);
+          return {
+            currentStreak: prefs.currentStreak || 0,
+            longestStreak: prefs.longestStreak || 0,
+          };
+        }
 
         const daysDiff = Math.floor(
           (today.getTime() - lastActivityDate.getTime()) / (1000 * 60 * 60 * 24)
         );
 
-        if (daysDiff === 0) {
-          // Same day, don't update streak
-          return {
-            currentStreak: prefs.currentStreak || 0,
-            longestStreak: prefs.longestStreak || 0,
-          };
-        } else if (daysDiff === 1) {
+        if (daysDiff === 1) {
           // Consecutive day
           newCurrentStreak = (prefs.currentStreak || 0) + 1;
         } else {
           // Streak broken, start over
           newCurrentStreak = 1;
         }
+        newLongestStreak = Math.max(prefs.longestStreak || 0, newCurrentStreak);
       }
-
-      newLongestStreak = Math.max(prefs.longestStreak || 0, newCurrentStreak);
-    } else {
-      // First time user
-      newLongestStreak = 1;
     }
 
-    // Update user preferences
+    // Upsert user preferences atomically
     await db
       .insert(userPreferences)
       .values({
         userId,
         currentStreak: newCurrentStreak,
         longestStreak: newLongestStreak,
-        lastActivityDate: today.toISOString().slice(0, 10),
+        lastActivityDate: todayStr,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -74,10 +76,12 @@ export async function updateUserStreak(userId: string) {
         set: {
           currentStreak: newCurrentStreak,
           longestStreak: newLongestStreak,
-          lastActivityDate: today.toISOString().slice(0, 10),
+          lastActivityDate: todayStr,
           updatedAt: new Date(),
         },
       });
+
+    console.log(`[Streak] Updated for user ${userId}: current=${newCurrentStreak}, longest=${newLongestStreak}, date=${todayStr}`);
 
     return {
       currentStreak: newCurrentStreak,

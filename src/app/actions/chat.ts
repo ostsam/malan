@@ -101,10 +101,10 @@ export async function getChat(chatId: string) {
   // Return the full chat data with messages
   return {
     ...chatData,
-    createdAt: chatData.createdAt?.toISOString(),
+    createdAt: chatData.createdAt,
     messages: chatData.messages.map((message) => ({
       ...message,
-      createdAt: message.createdAt?.toISOString(),
+      createdAt: message.createdAt,
     })),
   };
 }

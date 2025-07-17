@@ -23,7 +23,9 @@ export const messagesTable = createTable(
     messageId: varchar("messageId", { length: 256 }).primaryKey(),
     chatId: varchar("chatId", { length: 256 }).notNull(),
     role: varchar("role", { length: 256 }),
-    createdAt: timestamp("createdAt", { withTimezone: true }),
+    createdAt: timestamp("createdAt", { withTimezone: true })
+      .default(sql`CURRENT_TIMESTAMP`)
+      .notNull(),
     parts: jsonb("parts").notNull(),
     content: text("content").notNull(),
   },

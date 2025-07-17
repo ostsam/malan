@@ -12,7 +12,8 @@
     "check-users": "tsx -r dotenv/config scripts/check-users.ts",
     "delete-user": "tsx -r dotenv/config scripts/check-users.ts delete",
     "optimize:db": "tsx -r dotenv/config scripts/apply-performance-indexes.ts",
-    "benchmark:wordlist": "tsx -r dotenv/config scripts/benchmark-wordlist-performance.ts"
+    "benchmark:wordlist": "tsx -r dotenv/config scripts/benchmark-wordlist-performance.ts",
+    "fix:message-ordering": "tsx -r dotenv/config scripts/fix-message-ordering.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^1.2.22",

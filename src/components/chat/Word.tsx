@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Definition } from "@/server/dictionary/types";
 import { interfaceColor } from "@/lib/theme";
+import { INTERACTIVE_STYLES } from "@/lib/constants";
 import Switch from "react-switch";
 import { Star, StarOff, Volume2 } from "lucide-react";
 import { useWordSaved } from "@/hooks/useWordlist";
@@ -28,6 +29,8 @@ interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** Prefetched or highlighted word */
   highlight?: boolean;
   isUser?: boolean;
+  /** Demo mode - uses demo wordlist functionality */
+  isDemo?: boolean;
   // inside WordProps add provider toggling state
 }
 
@@ -35,6 +38,49 @@ interface DictResponse {
   word: string;
   defs: Definition[];
   source: string;
+}
+
+// ClickableText component for rendering clickable words within popover content
+interface ClickableTextProps {
+  text: string;
+  lang: string;
+  onWordClick: (word: string) => void;
+  className?: string;
+}
+
+function ClickableText({ text, lang, onWordClick, className }: ClickableTextProps) {
+  // Simple word splitting - split on spaces and punctuation
+  const words = text.split(/(\s+|[.,!?;:()[\]{}"'`~@#$%^&*+=|\\/<>])/);
+  
+  return (
+    <span className={className}>
+      {words.map((word, index) => {
+        // Skip empty strings and pure whitespace
+        if (!word || /^\s+$/.test(word)) {
+          return <span key={index}>{word}</span>;
+        }
+        
+        // Check if it's a punctuation mark
+        if (/^[.,!?;:()[\]{}"'`~@#$%^&*+=|\\/<>]+$/.test(word)) {
+          return <span key={index}>{word}</span>;
+        }
+        
+        // It's a word - make it clickable
+        return (
+          <span
+            key={index}
+            className={cn(
+              INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
+              INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
+            )}
+            onClick={() => onWordClick(word.toLowerCase())}
+          >
+            {word}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 // Module-level cache shared across component instances
@@ -46,6 +92,7 @@ export function Word({
   targetLang,
   highlight,
   isUser = false,
+  isDemo = false,
   className,
   ...props
 }: WordProps) {
@@ -54,6 +101,7 @@ export function Word({
     lang,
     targetLang,
     isUser,
+    isDemo,
   });
 
   const [useTarget, setUseTarget] = useState(false);
@@ -72,7 +120,17 @@ export function Word({
   >("simplified");
   const [convertedWord, setConvertedWord] = useState<string>(initialWord);
 
-  const { saved, toggle } = useWordSaved(currentWord, lang);
+  // Use the same wordlist hook for both demo and regular modes
+  const { saved, toggle: originalToggle } = useWordSaved(currentWord, lang);
+  
+  // Wrap the toggle function to show demo message when in demo mode
+  const toggle = async () => {
+    if (isDemo) {
+      alert("Sign up to save words to your wordlist!");
+      return;
+    }
+    await originalToggle();
+  };
 
   // Chinese-specific features
   const isChinese = lang === "zh" || isChineseText(currentWord);
@@ -211,6 +269,14 @@ export function Word({
   };
 
   /* ------------------------------ Render ------------------------------ */
+  // Handler for when words are clicked within the popover
+  const handlePopoverWordClick = (word: string) => {
+    console.log("[Word] Word clicked in popover:", word);
+    setWordStack((s) => [...s, currentWord]);
+    setCurrentWord(word.toLowerCase());
+    setData(null);
+  };
+
   const renderContent = () => {
     if (loading && !data)
       return <p className="text-sm text-center">Loading…</p>;
@@ -270,6 +336,8 @@ export function Word({
               aria-label="Play pronunciation"
               onClick={async () => {
                 try {
+                  console.log("[Word] TTS button clicked for word:", convertedWord);
+                  
                   const res = await fetch("/api/chat/tts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -278,16 +346,54 @@ export function Word({
                       voice: "nova",
                     }),
                   });
-                  if (!res.ok) return;
-                  const blob = await res.blob();
+                  
+                  if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error("[Word] TTS API error:", res.status, errorText);
+                    return;
+                  }
+                  
+                  // Parse the JSON response with base64encoded chunks
+                  const data = await res.json();
+                  if (!data.chunks || !Array.isArray(data.chunks) || data.chunks.length === 0) {
+                    console.error("[Word] Invalid TTS response format or empty chunks");
+                    return;
+                  }
+                  
+                  // Convert the first chunk to blob (for single word, we only need one chunk)
+                  const base64Chunk = data.chunks[0];
+                  const binaryString = atob(base64Chunk);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  
+                  const blob = new Blob([bytes], { type: "audio/opus" });
+                  console.log("[Word] TTS blob created:", { size: blob.size, type: blob.type });
+                  
+                  if (blob.size === 0) {
+                    console.error("[Word] Empty audio blob created");
+                    return;
+                  }
+                  
                   const url = URL.createObjectURL(blob);
                   const audio = new Audio(url);
-                  audio.play();
-                  audio.addEventListener("ended", () =>
-                    URL.revokeObjectURL(url)
-                  );
+                  
+                  audio.addEventListener("loadstart", () => console.log("[Word] Audio loading started"));
+                  audio.addEventListener("canplay", () => console.log("[Word] Audio can play"));
+                  audio.addEventListener("play", () => console.log("[Word] Audio started playing"));
+                  audio.addEventListener("ended", () => {
+                    console.log("[Word] Audio ended");
+                    URL.revokeObjectURL(url);
+                  });
+                  audio.addEventListener("error", (e) => {
+                    console.error("[Word] Audio playback error:", e);
+                    URL.revokeObjectURL(url);
+                  });
+                  
+                  await audio.play();
                 } catch (e) {
-                  console.error("Failed to play TTS", e);
+                  console.error("[Word] Failed to play TTS:", e);
                 }
               }}
               className="text-white hover:text-gray-200 focus:outline-none"
@@ -342,25 +448,39 @@ export function Word({
             <div key={i} className="">
               <p className="font-semibold mb-1">
                 {d.pos}:{" "}
-                {getTokenizedText(
-                  useTarget && d.translatedSense ? d.translatedSense : d.sense
-                )}
+                <ClickableText
+                  text={useTarget && d.translatedSense ? d.translatedSense : d.sense}
+                  lang={lang}
+                  onWordClick={handlePopoverWordClick}
+                />
               </p>
               {!useTarget && d.translatedSense && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
-                  {d.translatedSense}
+                  <ClickableText
+                    text={d.translatedSense}
+                    lang={lang}
+                    onWordClick={handlePopoverWordClick}
+                  />
                 </p>
               )}
               {useTarget && d.sense !== d.translatedSense && (
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
-                  {d.sense}
+                  <ClickableText
+                    text={d.sense}
+                    lang={lang}
+                    onWordClick={handlePopoverWordClick}
+                  />
                 </p>
               )}
               {d.examples.length > 0 && (
                 <ul className="list-disc list-inside space-y-0.5">
                   {d.examples.map((ex, j) => (
                     <li key={j} className="italic opacity-80">
-                      {getTokenizedText(ex)}
+                      <ClickableText
+                        text={ex}
+                        lang={lang}
+                        onWordClick={handlePopoverWordClick}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -407,7 +527,14 @@ export function Word({
 
       try {
         // Use the new unified tokenizer
-        const tokens: TokenizedWord[] = await tokenizeText(text, lang);
+        const tokens: TokenizedWord[] = await tokenizeText(text, { 
+          selectedLanguage: lang,
+          nativeLanguage: null,
+          nativeLanguageLabel: null,
+          selectedLanguageLabel: null,
+          selectedLevel: null,
+          interlocutor: null
+        });
         console.log("[Word] Received tokens from tokenizer:", tokens);
 
         // Convert tokens to React elements with proper spacing
@@ -425,11 +552,8 @@ export function Word({
               key={idx}
               style={{ textDecoration: "none" }}
               className={cn(
-                "cursor-pointer",
-                isUser
-                  ? "hover:decoration-white hover:underline hover:decoration-2"
-                  : "hover:decoration-[#170664] hover:underline hover:decoration-2",
-                "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+                INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
+                INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
               )}
               onClick={() => {
                 setWordStack((s) => [...s, currentWord]);
@@ -466,88 +590,16 @@ export function Word({
   );
 
   // Effect to tokenize text when data changes
-  useEffect(() => {
-    if (!data || !open) return;
-
-    const tokenizeAllTexts = async () => {
-      const textsToTokenize: string[] = [];
-
-      // Collect all texts that need tokenization
-      data.defs.forEach((def) => {
-        const senseText =
-          useTarget && def.translatedSense ? def.translatedSense : def.sense;
-        if (senseText && !tokenizedTexts.has(senseText)) {
-          textsToTokenize.push(senseText);
-        }
-
-        def.examples.forEach((example) => {
-          if (example && !tokenizedTexts.has(example)) {
-            textsToTokenize.push(example);
-          }
-        });
-      });
-
-      if (textsToTokenize.length === 0) return;
-
-      // Mark texts as loading
-      textsToTokenize.forEach((text) => {
-        tokenizationLoading.add(text);
-      });
-
-      try {
-        // Tokenize all texts in parallel
-        const tokenizationPromises = textsToTokenize.map(async (text) => {
-          const result = await tokenizeDefAsync(text);
-          return { text, result };
-        });
-
-        const results = await Promise.all(tokenizationPromises);
-
-        // Update state with results
-        setTokenizedTexts((prev) => {
-          const newMap = new Map(prev);
-          results.forEach(({ text, result }) => {
-            newMap.set(text, result);
-          });
-          return newMap;
-        });
-      } catch (error) {
-        console.error("Error tokenizing texts:", error);
-      } finally {
-        // Clear loading state
-        textsToTokenize.forEach((text) => {
-          tokenizationLoading.delete(text);
-        });
-      }
-    };
-
-    tokenizeAllTexts();
-  }, [
-    data,
-    open,
-    useTarget,
-    tokenizedTexts,
-    tokenizationLoading,
-    tokenizeDefAsync,
-  ]);
+  // TEMPORARILY DISABLED to fix display issue
+  // useEffect(() => {
+  //   if (!data || !open) return;
+  //   // Tokenization logic temporarily disabled
+  // }, [data, open, useTarget, tokenizedTexts, tokenizationLoading, tokenizeDefAsync]);
 
   // Helper function to get tokenized text from cache or fallback
   const getTokenizedText = (text: string): React.ReactNode[] => {
-    if (tokenizedTexts.has(text)) {
-      return tokenizedTexts.get(text)!;
-    }
-
-    if (tokenizationLoading.has(text)) {
-      return [
-        <span key="loading" className="text-gray-400">
-          Loading...
-        </span>,
-      ];
-    }
-
-    // Fallback to original tokenizeDefAsync for immediate display
-    // This will trigger async tokenization and show loading state
-    tokenizeDefAsync(text).catch(console.error);
+    // For now, just return the text directly to fix the display issue
+    // TODO: Re-enable tokenization once the issue is resolved
     return [<span key="fallback">{text}</span>];
   };
 
@@ -556,11 +608,7 @@ export function Word({
   const interactiveClasses = cn(
     "relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring",
     highlight && "decoration-dotted underline",
-    isUser
-      ? "hover:decoration-white hover:underline hover:decoration-2"
-      : "hover:decoration-[#3C18D9] hover:underline hover:decoration-2",
-    // animated underline bar thicker; trigger on hover AND active (touch)
-    "after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+    INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
   );
 
   const animatedStyle = {
@@ -598,7 +646,6 @@ export function Word({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      {console.log("[Word] Rendering Word component for:", convertedWord)}
       <PopoverTrigger asChild>
         <span
           role="button"

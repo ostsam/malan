@@ -5,17 +5,16 @@ import React, { useState, useEffect, useCallback } from "react";
 import { interfaceColor } from "@/lib/theme";
 import { Word } from "./Word";
 import { tokenizeText, TokenizedWord } from "@/lib/tokenizer";
-
-interface ChatSettings {
-  selectedLanguage?: string;
-  nativeLanguage?: string;
-}
+import { formatDistanceToNow } from "date-fns";
+import type { ChatSettings } from "@/app/tools/chat-store";
 
 interface ChatMessageProps {
   message: Message;
   settings: ChatSettings;
   onSpeak: (text: string) => void;
   renderMessageContent: (content: Message["content"]) => string;
+  /** Demo mode - uses demo wordlist functionality */
+  isDemo?: boolean;
 }
 
 function ChatMessageBase({
@@ -23,6 +22,7 @@ function ChatMessageBase({
   settings,
   onSpeak,
   renderMessageContent,
+  isDemo = false,
 }: ChatMessageProps) {
   const { rtlStyles, languageCode } = useRTL({
     selectedLanguage: settings?.selectedLanguage,
@@ -46,12 +46,12 @@ function ChatMessageBase({
         return [];
       }
 
-      console.log("[ChatMessage] Tokenizing content:", { text, langCode });
+      
       setIsTokenizing(true);
 
       try {
-        const tokens: TokenizedWord[] = await tokenizeText(text, langCode);
-        console.log("[ChatMessage] Received tokens:", tokens);
+        const tokens: TokenizedWord[] = await tokenizeText(text, settings);
+
 
         const tokenElements: React.ReactNode[] = [];
 
@@ -63,8 +63,7 @@ function ChatMessageBase({
           (token) => token.start === undefined
         );
 
-        console.log("[ChatMessage] Positioned tokens:", positionedTokens);
-        console.log("[ChatMessage] Unpositioned tokens:", unpositionedTokens);
+
 
         if (positionedTokens.length > 0) {
           // Sort tokens by start position to ensure correct order
@@ -72,7 +71,7 @@ function ChatMessageBase({
             (a, b) => (a.start || 0) - (b.start || 0)
           );
 
-          console.log("[ChatMessage] Sorted tokens:", sortedTokens);
+  
 
           let lastEnd = 0;
 
@@ -80,37 +79,16 @@ function ChatMessageBase({
             const start = token.start || 0;
             const end = token.end || start + token.word.length;
 
-            console.log("[ChatMessage] Processing token:", {
-              token,
-              start,
-              end,
-              idx,
-            });
+
 
             // Skip if this token overlaps with the previous one
             if (start < lastEnd) {
-              console.log(
-                "[ChatMessage] Skipping overlapping token:",
-                token.word
-              );
               return;
             }
 
             // Add any text between the last token and this one (preserves original spacing)
             if (start > lastEnd) {
               const spacingText = text.slice(lastEnd, start);
-              console.log(
-                "[ChatMessage] Spacing text found:",
-                spacingText,
-                "for language:",
-                langCode,
-                "token language:",
-                token.language,
-                "isJapanese:",
-                token.isJapanese,
-                "isChinese:",
-                token.isChinese
-              );
 
               // Check if the current token contains non-Latin script characters
               const hasNonLatinScript =
@@ -120,26 +98,13 @@ function ChatMessageBase({
 
               // Only add spacing for Latin script tokens
               if (spacingText && !hasNonLatinScript) {
-                console.log(
-                  "[ChatMessage] Adding spacing text for Latin script:",
-                  spacingText
-                );
                 tokenElements.push(
                   <span key={`spacing-${idx}`}>{spacingText}</span>
-                );
-              } else if (spacingText && hasNonLatinScript) {
-                console.log(
-                  "[ChatMessage] Skipping spacing text for non-Latin script:",
-                  spacingText
                 );
               }
             }
 
             // Add the token
-            console.log(
-              "[ChatMessage] Creating Word component for:",
-              token.word
-            );
             tokenElements.push(
               <Word
                 key={idx}
@@ -147,6 +112,7 @@ function ChatMessageBase({
                 lang={langCode}
                 targetLang={settings?.nativeLanguage}
                 isUser={isUser}
+                isDemo={isDemo}
               >
                 {token.word}
               </Word>
@@ -158,28 +124,13 @@ function ChatMessageBase({
           // Add any remaining text after the last token
           if (lastEnd < text.length) {
             const remainingText = text.slice(lastEnd);
-            console.log(
-              "[ChatMessage] Remaining text found:",
-              remainingText,
-              "for language:",
-              langCode
-            );
             if (remainingText) {
-              console.log(
-                "[ChatMessage] Adding remaining text:",
-                remainingText
-              );
               tokenElements.push(<span key="remaining">{remainingText}</span>);
             }
           }
         } else if (unpositionedTokens.length > 0) {
           // Handle tokens without positions by placing them sequentially
-          console.log("[ChatMessage] Using unpositioned tokens sequentially");
           unpositionedTokens.forEach((token, idx) => {
-            console.log(
-              "[ChatMessage] Creating Word component for unpositioned token:",
-              token.word
-            );
             tokenElements.push(
               <Word
                 key={idx}
@@ -187,6 +138,7 @@ function ChatMessageBase({
                 lang={langCode}
                 targetLang={settings?.nativeLanguage}
                 isUser={isUser}
+                isDemo={isDemo}
               >
                 {token.word}
               </Word>
@@ -194,10 +146,6 @@ function ChatMessageBase({
           });
         } else {
           // Fallback: treat the entire text as a single word
-          console.log(
-            "[ChatMessage] No tokens found, treating as single word:",
-            text
-          );
           tokenElements.push(
             <Word
               key="fallback"
@@ -205,18 +153,19 @@ function ChatMessageBase({
               lang={langCode}
               targetLang={settings?.nativeLanguage}
               isUser={isUser}
+              isDemo={isDemo}
             >
               {text}
             </Word>
           );
         }
 
-        console.log(
-          "[ChatMessage] Created token elements:",
-          tokenElements.length,
-          "Elements:",
-          tokenElements
-        );
+        // console.log(
+        //   "[ChatMessage] Created token elements:",
+        //   tokenElements.length,
+        //   "Elements:",
+        //   tokenElements
+        // );
         return tokenElements;
       } catch (error) {
         console.error("[ChatMessage] Error tokenizing content:", error);
@@ -226,7 +175,7 @@ function ChatMessageBase({
         setIsTokenizing(false);
       }
     },
-    [langCode, settings?.nativeLanguage, isUser]
+    [settings, isUser]
   );
 
   // Tokenize content when it changes
@@ -248,12 +197,14 @@ function ChatMessageBase({
     }
   };
 
+  // Debug: Log message data - REMOVED
+  // Timestamp format updated - cache bust
+  // All console logs removed - final cleanup
+
   return (
-    <div
-      className={`flex flex-col my-2 ${isUser ? "items-end" : "items-start"}`}
-    >
+    <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
       <div
-        className={`relative group max-w-[85%] mb-1.5 rounded-2xl shadow-xs p-3 text-md break-words whitespace-pre-wrap border-1 ${
+        className={`relative group max-w-[85%] rounded-2xl shadow-xs p-3 text-md break-words whitespace-pre-wrap border-1 ${
           isUser
             ? "bg-[#3C18D9] text-white border-color-[#170664] rounded-br-none"
             : "bg-[#F1EFFC] dark:bg-[#170664 border-color-[#c4c7bd] rounded-bl-none"
@@ -275,6 +226,45 @@ function ChatMessageBase({
           <Volume2 className="h-4 w-4" />
         </button>
       </div>
+      {message.createdAt && (
+        <div 
+          className="text-xs text-muted-foreground mt-1 cursor-help" 
+          title={`${new Date(message.createdAt).toLocaleDateString('en-US', { 
+            weekday: 'long',
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })} at ${new Date(message.createdAt).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+          })}`}
+        >
+          {(() => {
+            const now = new Date();
+            const messageDate = new Date(message.createdAt);
+            const diffInHours = (now.getTime() - messageDate.getTime()) / (1000 * 60 * 60);
+            
+            if (diffInHours < 24) {
+              // Show time for messages within 24 hours
+              return messageDate.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+              });
+            } else {
+              // Show "X days ago" for older messages
+              const diffInDays = Math.floor(diffInHours / 24);
+              return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+            }
+          })()}
+        </div>
+      )}
+      {!message.createdAt && (
+        <div className={`text-xs opacity-60 mt-1`} style={{ color: "#666" }}>
+          No timestamp
+        </div>
+      )}
     </div>
   );
 }

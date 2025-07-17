@@ -314,7 +314,23 @@ function WordItem({
                     body: JSON.stringify({ text: entry.word, voice: "nova" }),
                   });
                   if (!res.ok) return;
-                  const blob = await res.blob();
+                  
+                  // Parse the JSON response with base64encoded chunks
+                  const data = await res.json();
+                  if (!data.chunks || !Array.isArray(data.chunks) || data.chunks.length === 0) {
+                    console.error("Invalid TTS response format or empty chunks");
+                    return;
+                  }
+                  
+                  // Convert the first chunk to blob (for single word, we only need one chunk)
+                  const base64Chunk = data.chunks[0];
+                  const binaryString = atob(base64Chunk);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  
+                  const blob = new Blob([bytes], { type: "audio/opus" });
                   const url = URL.createObjectURL(blob);
                   const audio = new Audio(url);
                   audio.play();

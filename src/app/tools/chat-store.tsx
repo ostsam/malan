@@ -122,13 +122,13 @@ export async function loadChat(id: string): Promise<ChatData> {
     .select()
     .from(messagesTable)
     .where(eq(messagesTable.chatId, id))
-    .orderBy(messagesTable.createdAt);
+    .orderBy(messagesTable.createdAt, messagesTable.messageId); // Add messageId as secondary sort for exact ordering
 
   const messages: Message[] = messageRecords.map((record) => ({
     id: record.messageId!,
     chatId: record.chatId!,
     role: record.role as Message["role"],
-    createdAt: record.createdAt || undefined,
+    createdAt: record.createdAt || new Date(), // Provide a fallback timestamp
     content: record.content!,
     parts: record.parts as Message["parts"],
   }));
@@ -158,7 +158,7 @@ export async function appendNewMessages({
     .from(messagesTable)
     .where(eq(messagesTable.chatId, id));
 
-  const messagesToInsert = newMessages.map((msg) => ({
+  const messagesToInsert = newMessages.map((msg, index) => ({
     messageId: msg.id,
     chatId: id,
     role: msg.role,
@@ -167,7 +167,7 @@ export async function appendNewMessages({
         ? msg.createdAt
         : msg.createdAt
           ? new Date(msg.createdAt)
-          : new Date(),
+          : new Date(Date.now() + index * 100), // Add 100ms spacing to prevent exact same timestamp
     parts: msg.parts || [], // Ensure parts is an array, even if undefined in msg
     content:
       typeof msg.content === "string"
