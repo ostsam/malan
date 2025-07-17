@@ -53,7 +53,7 @@ const wordlistSchema = z.object({
     .min(1, "Word is required")
     .max(100, "Word too long")
     .refine(
-      (word) => /^[\p{L}\p{M}\s'-]+$/u.test(word),
+      (word) => /^[\p{L}\p{M}\p{P}\s'-]+$/u.test(word),
       "Word contains invalid characters"
     ),
   lang: languageCodeSchema,
@@ -66,7 +66,7 @@ const dictionaryLookupSchema = z.object({
     .min(1, "Word is required")
     .max(100, "Word too long")
     .refine(
-      (word) => /^[\p{L}\p{M}\s'-]+$/u.test(word),
+      (word) => /^[\p{L}\p{M}\p{P}\s'-]+$/u.test(word),
       "Word contains invalid characters"
     ),
   lang: languageCodeSchema,

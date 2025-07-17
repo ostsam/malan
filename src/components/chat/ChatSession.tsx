@@ -10,7 +10,7 @@ import { createIdGenerator } from "ai";
 import { interfaceColor } from "@/lib/theme";
 import { useRTL } from "@/app/hooks/useRTL";
 import { useChatSlug } from "@/app/hooks/useChatSlug";
-import { useDemoChatSlug } from "@/app/hooks/useDemoChatSlug";
+
 import { useChatMessages } from "@/app/hooks/useChatMessages";
 import { useChatTTS } from "@/app/hooks/useChatTTS";
 import { useChatErrors } from "@/app/hooks/useChatErrors";
@@ -21,7 +21,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSession } from "@/lib/auth-client";
 import Link from "next/link";
 import Image from "next/image";
-
 import {
   convertChineseText,
   getUserChineseScriptPreference,
@@ -35,11 +34,7 @@ export interface SerializableChatData {
   createdAt?: string;
 }
 
-export interface ChatSettings {
-  selectedLanguage?: string;
-  nativeLanguage?: string;
-  [key: string]: unknown;
-}
+import type { ChatSettings } from "@/app/tools/chat-store";
 
 export interface DemoSettings {
   nativeLanguage: string;
@@ -68,12 +63,11 @@ export function ChatSession({
   messageLimit = 6,
   onSignupPrompt,
 }: ChatSessionProps) {
-  // Initialize hooks based on mode
-  const demoSlugHook = useDemoChatSlug("");
-  const realSlugHook = useChatSlug(chatObject?.slug, id);
-  const { slug, handleSlugUpdate, generateSlugFromMessage } = demoMode
-    ? demoSlugHook
-    : realSlugHook;
+  // Use the same chat slug hook for both demo and regular modes
+  const { slug, handleSlugUpdate, generateSlugFromMessage } = useChatSlug(
+    demoMode ? "" : chatObject?.slug, 
+    demoMode ? "demo" : id
+  );
 
   const { uiError, showError } = useChatErrors();
   const { ttsVoice } = useChatTTS(
@@ -111,6 +105,9 @@ export function ChatSession({
         createdAt: message.createdAt ? new Date(message.createdAt) : undefined,
       }));
 
+  // Debug: Log initial messages
+  
+
   const {
     messages,
     append,
@@ -119,7 +116,7 @@ export function ChatSession({
     isLoading: isChatLoading,
   } = useChat({
     id: demoMode ? "demo" : id,
-    api: demoMode ? "/api/chat/demo" : "/api/chat",
+    api: "/api/chat", // Use the same API route for both demo and regular modes
     initialMessages: demoMode ? undefined : initialMessages,
     sendExtraMessageFields: true,
     generateId: createIdGenerator({
@@ -129,9 +126,13 @@ export function ChatSession({
     body: demoMode
       ? {
           settings: demoSettings,
+          isDemo: true, // Flag to indicate demo mode to the API
         }
       : undefined,
   });
+
+  // Debug: Log messages from useChat
+  
 
   // Define settings before using it in useEffect
   const settings = demoMode ? demoSettings! : chatObject?.settings;
@@ -185,6 +186,9 @@ export function ChatSession({
     convertMessages();
   }, [messages, chineseScript, settings?.selectedLanguage]);
 
+  // Debug: Log converted messages
+  
+
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -211,10 +215,11 @@ export function ChatSession({
     }
 
     // Check message limit for demo mode
-    if (demoMode && messageCount >= messageLimit) {
-      showError("Demo limit reached. Please sign up to continue.");
-      return;
-    }
+    // TEMPORARILY DISABLED FOR TESTING
+    // if (demoMode && messageCount >= messageLimit) {
+    //   showError("Demo limit reached. Please sign up to continue.");
+    //   return;
+    // }
 
     // The AI SDK's append function handles adding a unique ID.
     await append(message);
@@ -265,6 +270,21 @@ export function ChatSession({
     setChineseScript(script);
     // The page refresh in the toggle component will handle the conversion
   };
+
+  // Before rendering, sort convertedMessages by createdAt and id
+  const sortedMessages = [...convertedMessages].sort((a, b) => {
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (aTime !== bTime) return aTime - bTime;
+    // If timestamps are equal, user comes before AI
+    if (a.role !== b.role) {
+      if (a.role === "user") return -1;
+      if (b.role === "user") return 1;
+    }
+    // Tiebreaker: sort by id (string compare)
+    if (a.id && b.id) return a.id.localeCompare(b.id);
+    return 0;
+  });
 
   return (
     <div className="flex flex-col w-full max-w-xl mx-auto h-screen text-lg bg-white dark:bg-black overflow-hidden font-inter">
@@ -389,20 +409,18 @@ export function ChatSession({
       </div>
 
       <div className="flex-grow w-full pt-4 px-4 pb-4 fade-in delay-1 overflow-y-auto">
-        {convertedMessages.length > 0 ? (
+        {sortedMessages.length > 0 ? (
           <div className="flex flex-col space-y-4">
-            {convertedMessages.map((m: Message) => (
+            {sortedMessages.map((m: Message) => (
               <ChatMessage
                 key={m.id}
                 message={m}
                 settings={
-                  settings as {
-                    selectedLanguage?: string;
-                    nativeLanguage?: string;
-                  }
+                  settings as ChatSettings
                 }
                 onSpeak={speak}
                 renderMessageContent={renderMessageContent}
+                isDemo={demoMode}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -431,7 +449,8 @@ export function ChatSession({
         )}
 
         {/* Signup prompt when limit reached (demo only) */}
-        {demoMode && messageCount >= messageLimit && (
+        {/* TEMPORARILY DISABLED FOR TESTING */}
+        {/* {demoMode && messageCount >= messageLimit && (
           <div className="mt-0">
             <Card className="border-[#3C18D9] bg-[#edebf3]">
               <CardHeader className="pb-3">
@@ -458,7 +477,7 @@ export function ChatSession({
               </CardContent>
             </Card>
           </div>
-        )}
+        )} */}
       </div>
 
       {uiError && <div className={errorMessageStyling}>{uiError}</div>}
@@ -479,6 +498,20 @@ export function ChatSession({
       )}
 
       {/* Chat Controls - disabled when limit reached in demo mode */}
+      {/* TEMPORARILY DISABLED FOR TESTING - always show controls */}
+      <ChatControls
+        isRecording={isRecording}
+        isTranscribing={isTranscribing}
+        status={status}
+        pushToTalk={pushToTalk}
+        setPushToTalk={setPushToTalk}
+        startRecording={startRecording}
+        stopRecording={stopRecording}
+        stopAudioPlayback={stopAudioPlayback}
+        selectedLanguage={(settings as ChatSettings)?.selectedLanguage || undefined}
+        onScriptChange={handleScriptChange}
+      />
+      {/* Original conditional logic:
       {(demoMode ? messageCount < messageLimit : true) ? (
         <ChatControls
           isRecording={isRecording}
@@ -493,6 +526,7 @@ export function ChatSession({
           onScriptChange={handleScriptChange}
         />
       ) : null}
+      */}
     </div>
   );
 }

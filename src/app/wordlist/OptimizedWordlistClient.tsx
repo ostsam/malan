@@ -110,7 +110,23 @@ const OptimizedWordItem = React.memo(function OptimizedWordItem({
                     body: JSON.stringify({ text: entry.word, voice: "nova" }),
                   });
                   if (!res.ok) return;
-                  const blob = await res.blob();
+                  
+                  // Parse the JSON response with base64encoded chunks
+                  const data = await res.json();
+                  if (!data.chunks || !Array.isArray(data.chunks) || data.chunks.length === 0) {
+                    console.error("Invalid TTS response format or empty chunks");
+                    return;
+                  }
+                  
+                  // Convert the first chunk to blob (for single word, we only need one chunk)
+                  const base64Chunk = data.chunks[0];
+                  const binaryString = atob(base64Chunk);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  
+                  const blob = new Blob([bytes], { type: "audio/opus" });
                   const url = URL.createObjectURL(blob);
                   const audio = new Audio(url);
                   audio.play();
@@ -177,11 +193,35 @@ const OptimizedWordItem = React.memo(function OptimizedWordItem({
                     {abbreviatePOS(d.pos)}
                   </span>
                   <span className="flex-1 break-words">
-                    {useTarget && d.translatedSense
-                      ? d.translatedSense
-                      : d.sense}
+                    {(() => {
+                      const displayText = useTarget && d.translatedSense
+                        ? d.translatedSense
+                        : d.sense;
+                      const parsedTranslation = parseTranslation(displayText);
+                      
+                      if (parsedTranslation) {
+                        return parsedTranslation.word;
+                      } else {
+                        return displayText;
+                      }
+                    })()}
                   </span>
                 </div>
+                {(() => {
+                  const displayText = useTarget && d.translatedSense
+                    ? d.translatedSense
+                    : d.sense;
+                  const parsedTranslation = parseTranslation(displayText);
+                  
+                  if (parsedTranslation) {
+                    return (
+                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1 ml-13">
+                        ({parsedTranslation.definition})
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
                 {open && d.examples.length > 0 && (
                   <div className="mt-1 ml-6 space-y-1">
                     {d.examples.map((ex, idx) => (
@@ -233,6 +273,18 @@ const posAbbrev: Record<string, string> = {
 function abbreviatePOS(pos: string) {
   const key = pos.toLowerCase();
   return posAbbrev[key] || pos.slice(0, 3).toUpperCase();
+}
+
+// Helper function to parse translatedSense format: "word (definition)"
+function parseTranslation(text: string): { word: string; definition: string } | null {
+  const match = text.match(/^(.+?)\s*\((.+)\)$/);
+  if (match) {
+    return {
+      word: match[1].trim(),
+      definition: match[2].trim()
+    };
+  }
+  return null;
 }
 
 // OPTIMIZATION: Main optimized wordlist client

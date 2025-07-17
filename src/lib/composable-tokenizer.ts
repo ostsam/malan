@@ -1,0 +1,139 @@
+// Composable, pluggable tokenizer system
+// Define TokenizedWord type locally
+export type TokenizedWord = {
+  word: string;
+  start?: number;
+  end?: number;
+  language?: string;
+  isChinese?: boolean;
+  isJapanese?: boolean;
+  isThai?: boolean;
+};
+
+// Tokenizer interface
+export interface Tokenizer {
+  supports(lang: string): boolean;
+  tokenize(text: string, lang: string): Promise<TokenizedWord[]>;
+}
+
+// --- Chinese Tokenizer ---
+const chineseTokenizer: Tokenizer = {
+  supports: (lang) => lang === "zh",
+  async tokenize(text, lang) {
+    try {
+      console.log("[composable-tokenizer] Chinese input:", text);
+      const { tokenizeChineseText } = await import("./chinese-tokenizer");
+      const tokens = await tokenizeChineseText(text);
+      console.log("[composable-tokenizer] Chinese tokens:", tokens);
+      return tokens;
+    } catch (e) {
+      console.warn("[composable-tokenizer] Chinese fallback triggered:", e);
+      // Fallback: character-based split
+      const tokens = Array.from(text).map((char, i) => ({
+        word: char,
+        start: i,
+        end: i + 1,
+        language: lang,
+        isChinese: true,
+      }));
+      console.log("[composable-tokenizer] Chinese fallback tokens:", tokens);
+      return tokens;
+    }
+  },
+};
+
+// --- Japanese Tokenizer ---
+const japaneseTokenizer: Tokenizer = {
+  supports: (lang) => lang === "ja",
+  async tokenize(text, lang) {
+    try {
+      console.log("[composable-tokenizer] Japanese input:", text);
+      // Only available server-side
+      const { tokenizeJapaneseServer } = await import("./server-tokenizer");
+      const tokens = await tokenizeJapaneseServer(text);
+      console.log("[composable-tokenizer] Japanese tokens:", tokens);
+      return tokens;
+    } catch (e) {
+      console.warn("[composable-tokenizer] Japanese fallback triggered:", e);
+      // Fallback: script-based split
+      const tokens = text.match(/([\u3040-\u309f]+|[\u30a0-\u30ff]+|[\u4e00-\u9fff]+|[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff\s]+)/g) || [];
+      let pos = 0;
+      const result = tokens.map((word) => {
+        const start = text.indexOf(word, pos);
+        const end = start + word.length;
+        pos = end;
+        return { word, start, end, language: lang, isJapanese: true };
+      });
+      console.log("[composable-tokenizer] Japanese fallback tokens:", result);
+      return result;
+    }
+  },
+};
+
+// --- Thai Tokenizer (placeholder) ---
+const thaiTokenizer: Tokenizer = {
+  supports: (lang) => lang === "th",
+  async tokenize(text, lang) {
+    // TODO: Replace with a real Thai segmenter
+    // Fallback: character-based split
+    return Array.from(text).map((char, i) => ({
+      word: char,
+      start: i,
+      end: i + 1,
+      language: lang,
+      isThai: true,
+    }));
+  },
+};
+
+// --- Tokenizer Registry ---
+const registeredTokenizers: Tokenizer[] = [
+  chineseTokenizer,
+  japaneseTokenizer,
+  thaiTokenizer,
+  // Add more tokenizers here
+];
+
+// --- Main Entry Point ---
+/**
+ * Tokenize text for a given language code using pluggable tokenizers.
+ * Always returns an array of tokens. Falls back to a single token for unsupported languages.
+ */
+export async function tokenizeText(text: string, lang: string): Promise<TokenizedWord[]> {
+  for (const tokenizer of registeredTokenizers) {
+    if (tokenizer.supports(lang)) {
+      try {
+        return await tokenizer.tokenize(text, lang);
+      } catch (e) {
+        // Log error and continue to fallback
+        console.error(`[tokenizeText] Error in ${lang} tokenizer:`, e);
+      }
+    }
+  }
+  // Default: split on whitespace, remove leading/trailing punctuation
+  const tokens: TokenizedWord[] = [];
+  let currentPos = 0;
+  const wordMatches = text.split(/\s+/).filter(word => word.trim().length > 0);
+  const cleanWords = wordMatches.map(word => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')).filter(word => word.length > 0);
+  cleanWords.forEach((word, index) => {
+    // Find the next occurrence of this word after the current position
+    let start = text.indexOf(word, currentPos);
+    // If we can't find the word, try to find it from the beginning
+    if (start === -1) {
+      start = text.indexOf(word);
+    }
+    if (start >= 0) {
+      tokens.push({
+        word,
+        language: lang,
+        start: start,
+        end: start + word.length,
+      });
+      currentPos = start + word.length;
+    }
+  });
+  return tokens;
+}
+
+// --- For future extensibility ---
+// To add a new language, implement a Tokenizer and add it to registeredTokenizers. 

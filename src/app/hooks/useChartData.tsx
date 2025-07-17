@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import useSWR from "swr";
 
 interface DailyData {
@@ -37,34 +37,12 @@ const chartFetcher = async (url: string): Promise<ChartData> => {
 };
 
 export function useChartData(timeRange: "7d" | "30d" | "90d" | "all-time") {
-  const [isVisible, setIsVisible] = useState(false);
-
-  // Use intersection observer to lazy load chart data
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1 }
-    );
-
-    // Observe the charts container
-    const chartsContainer = document.querySelector("[data-charts-container]");
-    if (chartsContainer) {
-      observer.observe(chartsContainer);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
+  // Intersection observer removed: always fetch on page load
   const { data, error, isLoading } = useSWR<ChartData>(
-    isVisible ? `/api/stats/charts?range=${timeRange}` : null,
+    `/api/stats/charts?range=${timeRange}`,
     chartFetcher,
     {
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
       revalidateOnReconnect: true,
       refreshInterval: 600000, // Refresh every 10 minutes
       dedupingInterval: 120000, // Dedupe requests within 2 minutes
@@ -80,6 +58,6 @@ export function useChartData(timeRange: "7d" | "30d" | "90d" | "all-time") {
     languageDistribution: data?.languageDistribution || [],
     loading: isLoading,
     error: error?.message || null,
-    isVisible,
+    isVisible: true, // Always true now
   };
 }

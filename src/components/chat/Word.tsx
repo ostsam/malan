@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Definition } from "@/server/dictionary/types";
 import { interfaceColor } from "@/lib/theme";
+import { INTERACTIVE_STYLES } from "@/lib/constants";
 import Switch from "react-switch";
 import { Star, StarOff, Volume2 } from "lucide-react";
 import { useWordSaved } from "@/hooks/useWordlist";
@@ -19,6 +20,7 @@ import {
   getUserChineseScriptPreference,
 } from "@/lib/chinese-converter";
 import { useOptimizedChineseWordPinyin } from "@/hooks/useOptimizedChineseTokenization";
+import { tokenizeText } from "@/lib/composable-tokenizer";
 
 interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   initialWord: string;
@@ -27,6 +29,8 @@ interface WordProps extends React.HTMLAttributes<HTMLSpanElement> {
   /** Prefetched or highlighted word */
   highlight?: boolean;
   isUser?: boolean;
+  /** Demo mode - uses demo wordlist functionality */
+  isDemo?: boolean;
   // inside WordProps add provider toggling state
 }
 
@@ -36,8 +40,92 @@ interface DictResponse {
   source: string;
 }
 
+// ClickableText component for rendering clickable words within popover content
+interface ClickableTextProps {
+  text: string;
+  lang: string;
+  onWordClick: (word: string) => void;
+  className?: string;
+}
+
+function ClickableText({ text, lang, onWordClick, className }: ClickableTextProps) {
+  const [tokens, setTokens] = React.useState<string[] | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (["zh", "ja", "th"].includes(lang)) {
+        const tokenObjs = await tokenizeText(text, lang);
+        if (!cancelled) setTokens(tokenObjs.map(t => t.word));
+      } else {
+        setTokens(null); // Use default split
+      }
+    }
+    run();
+    return () => { cancelled = true; };
+  }, [text, lang]);
+
+  if (tokens) {
+    return (
+      <span className={className}>
+        {tokens.map((word, index) => (
+          <span
+            key={index}
+            className={cn(
+              INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
+              INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
+            )}
+            onClick={() => onWordClick(word.toLowerCase())}
+          >
+            {word}
+          </span>
+        ))}
+      </span>
+    );
+  }
+
+  // Fallback: original logic for non-CJK/Thai
+  const words = text.split(/(\s+|[.,!?;:()[\]{}"'`~@#$%^&*+=|\\/<>])/);
+  return (
+    <span className={className}>
+      {words.map((word, index) => {
+        if (!word || /^\s+$/.test(word)) {
+          return <span key={index}>{word}</span>;
+        }
+        if (/^[.,!?;:()[\]{}"'`~@#$%^&*+=|\\/<>]+$/.test(word)) {
+          return <span key={index}>{word}</span>;
+        }
+        return (
+          <span
+            key={index}
+            className={cn(
+              INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
+              INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
+            )}
+            onClick={() => onWordClick(word.toLowerCase())}
+          >
+            {word}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
 // Module-level cache shared across component instances
 const dictCache = new Map<string, Promise<DictResponse>>();
+
+// Helper function to parse translatedSense format: "word (definition)"
+function parseTranslation(text: string): { word: string; definition: string } | null {
+  const match = text.match(/^(.+?)\s*\((.+)\)$/);
+  if (match) {
+    return {
+      word: match[1].trim(),
+      definition: match[2].trim()
+    };
+  }
+  return null;
+}
 
 export function Word({
   initialWord,
@@ -45,9 +133,18 @@ export function Word({
   targetLang,
   highlight,
   isUser = false,
+  isDemo = false,
   className,
   ...props
 }: WordProps) {
+  console.log("[Word] Component rendered with props:", {
+    initialWord,
+    lang,
+    targetLang,
+    isUser,
+    isDemo,
+  });
+
   const [useTarget, setUseTarget] = useState(false);
 
   const [source, setSource] = useState<string | null>(null);
@@ -64,7 +161,17 @@ export function Word({
   >("simplified");
   const [convertedWord, setConvertedWord] = useState<string>(initialWord);
 
-  const { saved, toggle } = useWordSaved(currentWord, lang);
+  // Use the same wordlist hook for both demo and regular modes
+  const { saved, toggle: originalToggle } = useWordSaved(currentWord, lang);
+  
+  // Wrap the toggle function to show demo message when in demo mode
+  const toggle = async () => {
+    if (isDemo) {
+      alert("Sign up to save words to your wordlist!");
+      return;
+    }
+    await originalToggle();
+  };
 
   // Chinese-specific features
   const isChinese = lang === "zh" || isChineseText(currentWord);
@@ -119,6 +226,13 @@ export function Word({
 
   /* ----------------------------- Fetching ----------------------------- */
   const fetchDefinition = useCallback(async () => {
+    console.log("[Word] fetchDefinition called with:", {
+      currentWord,
+      lang,
+      useTarget,
+      targetLang,
+    });
+
     let promise = dictCache.get(computeKey());
     if (!promise) {
       const url = new URL(`/api/dict`, window.location.origin);
@@ -128,6 +242,8 @@ export function Word({
         url.searchParams.set("target", targetLang);
       }
 
+      console.log("[Word] Making API call to:", url.toString());
+
       promise = fetch(url.toString()).then((res) =>
         res.json()
       ) as Promise<DictResponse>;
@@ -136,10 +252,14 @@ export function Word({
     setLoading(true);
     try {
       const resp = await promise;
+      console.log("[Word] API response:", resp);
       setData(resp);
       setSource(resp.source);
 
       return resp;
+    } catch (error) {
+      console.error("[Word] API error:", error);
+      throw error;
     } finally {
       setLoading(false);
     }
@@ -165,15 +285,24 @@ export function Word({
 
   /* ------------------------------ Events ------------------------------ */
   const openPopover = () => {
+    console.log("[Word] openPopover called with currentWord:", currentWord);
+    console.log("[Word] Component props:", {
+      initialWord,
+      lang,
+      targetLang,
+      isUser,
+    });
     setOpen(true);
     fetchDefinition();
   };
 
   // Long-press on touch devices
   const handleTouchStart = () => {
+    console.log("[Word] handleTouchStart called");
     longPressTimer.current = setTimeout(openPopover, 500);
   };
   const handleTouchEnd = () => {
+    console.log("[Word] handleTouchEnd called");
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
@@ -181,6 +310,14 @@ export function Word({
   };
 
   /* ------------------------------ Render ------------------------------ */
+  // Handler for when words are clicked within the popover
+  const handlePopoverWordClick = (word: string) => {
+    console.log("[Word] Word clicked in popover:", word);
+    setWordStack((s) => [...s, currentWord]);
+    setCurrentWord(word.toLowerCase());
+    setData(null);
+  };
+
   const renderContent = () => {
     if (loading && !data)
       return <p className="text-sm text-center">Loading…</p>;
@@ -240,6 +377,8 @@ export function Word({
               aria-label="Play pronunciation"
               onClick={async () => {
                 try {
+                  console.log("[Word] TTS button clicked for word:", convertedWord);
+                  
                   const res = await fetch("/api/chat/tts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -248,16 +387,54 @@ export function Word({
                       voice: "nova",
                     }),
                   });
-                  if (!res.ok) return;
-                  const blob = await res.blob();
+                  
+                  if (!res.ok) {
+                    const errorText = await res.text();
+                    console.error("[Word] TTS API error:", res.status, errorText);
+                    return;
+                  }
+                  
+                  // Parse the JSON response with base64encoded chunks
+                  const data = await res.json();
+                  if (!data.chunks || !Array.isArray(data.chunks) || data.chunks.length === 0) {
+                    console.error("[Word] Invalid TTS response format or empty chunks");
+                    return;
+                  }
+                  
+                  // Convert the first chunk to blob (for single word, we only need one chunk)
+                  const base64Chunk = data.chunks[0];
+                  const binaryString = atob(base64Chunk);
+                  const bytes = new Uint8Array(binaryString.length);
+                  for (let i = 0; i < binaryString.length; i++) {
+                    bytes[i] = binaryString.charCodeAt(i);
+                  }
+                  
+                  const blob = new Blob([bytes], { type: "audio/opus" });
+                  console.log("[Word] TTS blob created:", { size: blob.size, type: blob.type });
+                  
+                  if (blob.size === 0) {
+                    console.error("[Word] Empty audio blob created");
+                    return;
+                  }
+                  
                   const url = URL.createObjectURL(blob);
                   const audio = new Audio(url);
-                  audio.play();
-                  audio.addEventListener("ended", () =>
-                    URL.revokeObjectURL(url)
-                  );
+                  
+                  audio.addEventListener("loadstart", () => console.log("[Word] Audio loading started"));
+                  audio.addEventListener("canplay", () => console.log("[Word] Audio can play"));
+                  audio.addEventListener("play", () => console.log("[Word] Audio started playing"));
+                  audio.addEventListener("ended", () => {
+                    console.log("[Word] Audio ended");
+                    URL.revokeObjectURL(url);
+                  });
+                  audio.addEventListener("error", (e) => {
+                    console.error("[Word] Audio playback error:", e);
+                    URL.revokeObjectURL(url);
+                  });
+                  
+                  await audio.play();
                 } catch (e) {
-                  console.error("Failed to play TTS", e);
+                  console.error("[Word] Failed to play TTS:", e);
                 }
               }}
               className="text-white hover:text-gray-200 focus:outline-none"
@@ -308,35 +485,67 @@ export function Word({
 
         {/* Definitions list */}
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 text-left text-med">
-          {data.defs.map((d, i) => (
-            <div key={i} className="">
-              <p className="font-semibold mb-1">
-                {d.pos}:{" "}
-                {getTokenizedText(
-                  useTarget && d.translatedSense ? d.translatedSense : d.sense
+          {data.defs.map((d, i) => {
+            const displayText = useTarget && d.translatedSense ? d.translatedSense : d.sense;
+            const parsedTranslation = parseTranslation(displayText);
+            
+            return (
+              <div key={i} className="">
+                <p className="font-semibold mb-1">
+                  {d.pos}:{" "}
+                  {parsedTranslation ? (
+                    <ClickableText
+                      text={parsedTranslation.word}
+                      lang={lang}
+                      onWordClick={handlePopoverWordClick}
+                    />
+                  ) : (
+                    <ClickableText
+                      text={displayText}
+                      lang={lang}
+                      onWordClick={handlePopoverWordClick}
+                    />
+                  )}
+                </p>
+                {parsedTranslation && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    ({parsedTranslation.definition})
+                  </p>
                 )}
-              </p>
-              {!useTarget && d.translatedSense && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
-                  {d.translatedSense}
-                </p>
-              )}
-              {useTarget && d.sense !== d.translatedSense && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
-                  {d.sense}
-                </p>
-              )}
-              {d.examples.length > 0 && (
-                <ul className="list-disc list-inside space-y-0.5">
-                  {d.examples.map((ex, j) => (
-                    <li key={j} className="italic opacity-80">
-                      {getTokenizedText(ex)}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
+                {!useTarget && d.translatedSense && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
+                    <ClickableText
+                      text={d.translatedSense}
+                      lang={lang}
+                      onWordClick={handlePopoverWordClick}
+                    />
+                  </p>
+                )}
+                {useTarget && d.sense !== d.translatedSense && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
+                    <ClickableText
+                      text={d.sense}
+                      lang={lang}
+                      onWordClick={handlePopoverWordClick}
+                    />
+                  </p>
+                )}
+                {d.examples.length > 0 && (
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {d.examples.map((ex, j) => (
+                      <li key={j} className="italic opacity-80">
+                        <ClickableText
+                          text={ex}
+                          lang={lang}
+                          onWordClick={handlePopoverWordClick}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
@@ -349,77 +558,68 @@ export function Word({
     );
   };
 
-  // Async tokenization function that uses jieba for Chinese text
+  // Async tokenization function that uses the new tokenizer for all languages
   const tokenizeDefAsync = useCallback(
     async (text: string): Promise<React.ReactNode[]> => {
+      console.log("[Word] tokenizeDefAsync called with:", { text, lang });
+
       if (!text || typeof text !== "string") {
+        console.log("[Word] Empty or invalid text, returning empty array");
         return [];
       }
 
       // Check if we already have this text tokenized
       if (tokenizedTexts.has(text)) {
+        console.log("[Word] Using cached tokenization for:", text);
         return tokenizedTexts.get(text)!;
       }
 
       // Check if we're already tokenizing this text
       if (tokenizationLoading.has(text)) {
+        console.log("[Word] Tokenization already in progress for:", text);
         return [<span key="loading">Loading...</span>];
       }
 
       // Mark as loading
       setTokenizationLoading((prev) => new Set(prev).add(text));
+      console.log("[Word] Starting tokenization for:", text);
 
       try {
-        let tokens: string[];
-        const isNonLatin = isNonLatinScript(text);
-
-        // Use jieba for Chinese text if ready
-        if (isChineseText(text) && jiebaReady) {
-          console.log("[Word] Using jieba for Chinese text:", text);
-          tokens = await jiebaCut(text);
-        } else {
-          // Fallback to regex for non-Chinese or when jieba not ready
-          console.log("[Word] Using regex fallback for text:", text);
-          const parts = text.match(
-            /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+)/gu
-          ) || [text];
-          tokens = parts.filter(
-            (part) =>
-              /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
-                part
-              ) && part.length > 0
-          );
-        }
+        // Use the new unified tokenizer
+        const tokens = await tokenizeText(text, lang);
+        console.log("[Word] Received tokens from tokenizer:", tokens);
 
         // Convert tokens to React elements with proper spacing
         const tokenElements: React.ReactNode[] = [];
         tokens.forEach((token, idx) => {
-          // Add space before token if it's not a non-Latin script and not the first token
-          if (!isNonLatin && idx > 0) {
+          // Add space before token if it's not the first token
+          if (idx > 0) {
             tokenElements.push(<span key={`space-${idx}`}> </span>);
           }
 
+          // --- Furigana extension point ---
+          // If token.reading exists (Japanese), you can render furigana here in the future
           tokenElements.push(
             <span
               key={idx}
               style={{ textDecoration: "none" }}
               className={cn(
-                "cursor-pointer",
-                isUser
-                  ? "hover:decoration-white hover:underline hover:decoration-2"
-                  : "hover:decoration-[#170664] hover:underline hover:decoration-2",
-                "relative after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+                INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
+                INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
               )}
               onClick={() => {
                 setWordStack((s) => [...s, currentWord]);
-                setCurrentWord(token.toLowerCase());
+                setCurrentWord(token.word.toLowerCase());
                 setData(null);
               }}
             >
-              {token}
+              {/* For future: render <ruby>{token.word}<rt>{token.reading}</rt></ruby> if token.reading exists */}
+              {token.word}
             </span>
           );
         });
+
+        console.log("[Word] Created token elements:", tokenElements.length);
 
         // Cache the result
         setTokenizedTexts((prev) => new Map(prev).set(text, tokenElements));
@@ -435,101 +635,23 @@ export function Word({
           newSet.delete(text);
           return newSet;
         });
+        console.log("[Word] Tokenization completed for:", text);
       }
     },
-    [
-      jiebaCut,
-      jiebaReady,
-      tokenizedTexts,
-      tokenizationLoading,
-      isUser,
-      currentWord,
-    ]
+    [lang, tokenizedTexts, tokenizationLoading, isUser, currentWord]
   );
 
   // Effect to tokenize text when data changes
-  useEffect(() => {
-    if (!data || !open) return;
-
-    const tokenizeAllTexts = async () => {
-      const textsToTokenize: string[] = [];
-
-      // Collect all texts that need tokenization
-      data.defs.forEach((def) => {
-        const senseText =
-          useTarget && def.translatedSense ? def.translatedSense : def.sense;
-        if (senseText && !tokenizedTexts.has(senseText)) {
-          textsToTokenize.push(senseText);
-        }
-
-        def.examples.forEach((example) => {
-          if (example && !tokenizedTexts.has(example)) {
-            textsToTokenize.push(example);
-          }
-        });
-      });
-
-      if (textsToTokenize.length === 0) return;
-
-      // Mark texts as loading
-      textsToTokenize.forEach((text) => {
-        tokenizationLoading.add(text);
-      });
-
-      try {
-        // Tokenize all texts in parallel
-        const tokenizationPromises = textsToTokenize.map(async (text) => {
-          const result = await tokenizeDefAsync(text);
-          return { text, result };
-        });
-
-        const results = await Promise.all(tokenizationPromises);
-
-        // Update state with results
-        setTokenizedTexts((prev) => {
-          const newMap = new Map(prev);
-          results.forEach(({ text, result }) => {
-            newMap.set(text, result);
-          });
-          return newMap;
-        });
-      } catch (error) {
-        console.error("Error tokenizing texts:", error);
-      } finally {
-        // Clear loading state
-        textsToTokenize.forEach((text) => {
-          tokenizationLoading.delete(text);
-        });
-      }
-    };
-
-    tokenizeAllTexts();
-  }, [
-    data,
-    open,
-    useTarget,
-    tokenizedTexts,
-    tokenizationLoading,
-    tokenizeDefAsync,
-  ]);
+  // TEMPORARILY DISABLED to fix display issue
+  // useEffect(() => {
+  //   if (!data || !open) return;
+  //   // Tokenization logic temporarily disabled
+  // }, [data, open, useTarget, tokenizedTexts, tokenizationLoading, tokenizeDefAsync]);
 
   // Helper function to get tokenized text from cache or fallback
   const getTokenizedText = (text: string): React.ReactNode[] => {
-    if (tokenizedTexts.has(text)) {
-      return tokenizedTexts.get(text)!;
-    }
-
-    if (tokenizationLoading.has(text)) {
-      return [
-        <span key="loading" className="text-gray-400">
-          Loading...
-        </span>,
-      ];
-    }
-
-    // Fallback to original tokenizeDefAsync for immediate display
-    // This will trigger async tokenization and show loading state
-    tokenizeDefAsync(text).catch(console.error);
+    // For now, just return the text directly to fix the display issue
+    // TODO: Re-enable tokenization once the issue is resolved
     return [<span key="fallback">{text}</span>];
   };
 
@@ -538,11 +660,7 @@ export function Word({
   const interactiveClasses = cn(
     "relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring",
     highlight && "decoration-dotted underline",
-    isUser
-      ? "hover:decoration-white hover:underline hover:decoration-2"
-      : "hover:decoration-[#3C18D9] hover:underline hover:decoration-2",
-    // animated underline bar thicker; trigger on hover AND active (touch)
-    "after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full after:bg-current after:origin-left after:scale-x-0 hover:after:scale-x-100 active:after:scale-x-100 after:transition-all after:duration-300 after:ease-out"
+    INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
   );
 
   const animatedStyle = {
@@ -584,7 +702,11 @@ export function Word({
         <span
           role="button"
           tabIndex={0}
-          onClick={openPopover}
+          onClick={(e) => {
+            console.log("[Word] Click event triggered on word:", convertedWord);
+            console.log("[Word] Event target:", e.target);
+            openPopover();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault();

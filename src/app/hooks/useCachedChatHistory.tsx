@@ -33,14 +33,20 @@ export function useCachedChatHistory() {
 
   const [history, setHistory] = useState<Chat[]>(readCache());
   const [loading, setLoading] = useState<boolean>(history.length === 0);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState<boolean>(history.length > 0);
   const isFetching = useRef(false);
   const hasInitialized = useRef(false);
 
-  const refresh = async () => {
+  /**
+   * Refresh chat history from the server.
+   * @param onError Optional callback for error handling (e.g., show toast)
+   */
+  const refresh = async (onError?: (error: unknown) => void) => {
     if (!userId) return;
     if (isFetching.current) return;
     isFetching.current = true;
-    setLoading(true);
+    // Do not set loading to true for background refreshes
+    // setLoading(true);
 
     console.log(
       `[CLIENT_HOOK:useCachedChatHistory] Fetching chat history for user: ${userId}`
@@ -56,12 +62,13 @@ export function useCachedChatHistory() {
       const res = await fetch("/api/history", {
         credentials: "include",
         headers,
-        // Add a unique timestamp to prevent browser caching
         cache: "no-store",
       });
 
       if (res.status === 304) {
-        setLoading(false);
+        // setLoading(false);
+        isFetching.current = false;
+        setHasLoadedOnce(true);
         return;
       }
 
@@ -70,6 +77,7 @@ export function useCachedChatHistory() {
         const sessions: Chat[] = json.sessions ?? [];
         const etag = res.headers.get("etag") || undefined;
         setHistory(sessions);
+        setHasLoadedOnce(true);
         if (cacheKey) {
           const payload: CachedPayload = {
             data: sessions,
@@ -81,14 +89,17 @@ export function useCachedChatHistory() {
       }
     } catch (error) {
       console.error("Failed to fetch chat history:", error);
+      if (onError) onError(error);
+      // Do not set loading to false here, just keep UI as is
     } finally {
-      setLoading(false);
+      // setLoading(false);
       isFetching.current = false;
     }
   };
 
   const persist = (data: Chat[]) => {
     setHistory(data);
+    setHasLoadedOnce(true);
     if (cacheKey) {
       const payload: CachedPayload = { data, cachedAt: Date.now() };
       try {
@@ -106,6 +117,7 @@ export function useCachedChatHistory() {
     if (cached.length) {
       setHistory(cached);
       setLoading(false);
+      setHasLoadedOnce(true);
       // Only refresh in background if cache is stale (older than 5 minutes)
       const cacheAge =
         Date.now() -
@@ -115,7 +127,9 @@ export function useCachedChatHistory() {
       }
     } else {
       // Only fetch if cache empty
-      refresh();
+      setLoading(true);
+      refresh().then(() => setLoading(false));
+      setHasLoadedOnce(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
@@ -125,5 +139,6 @@ export function useCachedChatHistory() {
     loading,
     refresh,
     persist,
+    hasLoadedOnce,
   } as const;
 }

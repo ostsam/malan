@@ -1,21 +1,20 @@
 import { Message } from "ai";
 import { Volume2 } from "lucide-react";
 import { useRTL } from "@/app/hooks/useRTL";
-import React from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { interfaceColor } from "@/lib/theme";
 import { Word } from "./Word";
-import { useCJKTokenizedText } from "@/hooks/useChineseTokenizedText";
-
-interface ChatSettings {
-  selectedLanguage?: string;
-  nativeLanguage?: string;
-}
+import { tokenizeText, TokenizedWord } from "@/lib/composable-tokenizer";
+import { formatDistanceToNow } from "date-fns";
+import type { ChatSettings } from "@/app/tools/chat-store";
 
 interface ChatMessageProps {
   message: Message;
   settings: ChatSettings;
   onSpeak: (text: string) => void;
   renderMessageContent: (content: Message["content"]) => string;
+  /** Demo mode - uses demo wordlist functionality */
+  isDemo?: boolean;
 }
 
 function ChatMessageBase({
@@ -23,6 +22,7 @@ function ChatMessageBase({
   settings,
   onSpeak,
   renderMessageContent,
+  isDemo = false,
 }: ChatMessageProps) {
   const { rtlStyles, languageCode } = useRTL({
     selectedLanguage: settings?.selectedLanguage,
@@ -31,88 +31,165 @@ function ChatMessageBase({
 
   const isUser = message.role === "user";
   const rawContent = renderMessageContent(message.content);
-
   const langCode = settings?.selectedLanguage || "en";
 
-  // Use CJK tokenization for Chinese text
-  const { tokens: chineseTokens, loading: chineseLoading } =
-    useCJKTokenizedText(
-      typeof rawContent === "string" ? rawContent : "",
-      langCode
-    );
+  // State for tokenized content
+  const [tokenizedContent, setTokenizedContent] = useState<
+    React.ReactNode[] | null
+  >(null);
+  const [isTokenizing, setIsTokenizing] = useState(false);
 
-  const tokenize = (text: string) => {
-    console.log("[ChatMessage] Tokenizing text:", text, "langCode:", langCode);
-
-    // For Chinese text, use the CJK tokenizer with robust fallback
-    if (langCode === "zh") {
-      console.log(
-        "[ChatMessage] Chinese language detected, chineseLoading:",
-        chineseLoading,
-        "chineseTokens:",
-        chineseTokens
-      );
-
-      if (chineseLoading) {
-        // Show raw text while loading
-        console.log("[ChatMessage] Still loading, showing raw text");
-        return <span>{text}</span>;
+  // Tokenize content using the new unified tokenizer
+  const tokenizeContent = useCallback(
+    async (text: string) => {
+      if (!text || typeof text !== "string") {
+        return [];
       }
-      if (chineseTokens && chineseTokens.length > 0) {
-        console.log("[ChatMessage] Using Chinese tokens:", chineseTokens);
-        return chineseTokens.map((token, idx) => {
-          if (token.isChinese) {
-            return (
+
+      
+      setIsTokenizing(true);
+
+      try {
+        const tokens: TokenizedWord[] = await tokenizeText(text, langCode);
+
+
+        const tokenElements: React.ReactNode[] = [];
+
+        // Separate tokens with and without positions
+        const positionedTokens = tokens.filter(
+          (token) => token.start !== undefined
+        );
+        const unpositionedTokens = tokens.filter(
+          (token) => token.start === undefined
+        );
+
+
+
+        if (positionedTokens.length > 0) {
+          // Sort tokens by start position to ensure correct order
+          const sortedTokens = positionedTokens.sort(
+            (a, b) => (a.start || 0) - (b.start || 0)
+          );
+
+  
+
+          let lastEnd = 0;
+
+          sortedTokens.forEach((token, idx) => {
+            const start = token.start || 0;
+            const end = token.end || start + token.word.length;
+
+
+
+            // Skip if this token overlaps with the previous one
+            if (start < lastEnd) {
+              return;
+            }
+
+            // Add any text between the last token and this one (preserves original spacing)
+            if (start > lastEnd) {
+              const spacingText = text.slice(lastEnd, start);
+
+              // Check if the current token contains non-Latin script characters
+              const hasNonLatinScript =
+                /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]/.test(
+                  token.word
+                );
+
+              // Only add spacing for Latin script tokens
+              if (spacingText && !hasNonLatinScript) {
+                tokenElements.push(
+                  <span key={`spacing-${idx}`}>{spacingText}</span>
+                );
+              }
+            }
+
+            // Add the token
+            tokenElements.push(
               <Word
                 key={idx}
                 initialWord={token.word}
-                lang={settings?.selectedLanguage || "en"}
+                lang={langCode}
                 targetLang={settings?.nativeLanguage}
-                isUser={message.role === "user"}
+                isUser={isUser}
+                isDemo={isDemo}
               >
                 {token.word}
               </Word>
             );
+
+            lastEnd = end;
+          });
+
+          // Add any remaining text after the last token
+          if (lastEnd < text.length) {
+            const remainingText = text.slice(lastEnd);
+            if (remainingText) {
+              tokenElements.push(<span key="remaining">{remainingText}</span>);
+            }
           }
-          return <React.Fragment key={idx}>{token.word}</React.Fragment>;
-        });
+        } else if (unpositionedTokens.length > 0) {
+          // Handle tokens without positions by placing them sequentially
+          unpositionedTokens.forEach((token, idx) => {
+            tokenElements.push(
+              <Word
+                key={idx}
+                initialWord={token.word}
+                lang={langCode}
+                targetLang={settings?.nativeLanguage}
+                isUser={isUser}
+                isDemo={isDemo}
+              >
+                {token.word}
+              </Word>
+            );
+          });
+        } else {
+          // Fallback: treat the entire text as a single word
+          tokenElements.push(
+            <Word
+              key="fallback"
+              initialWord={text}
+              lang={langCode}
+              targetLang={settings?.nativeLanguage}
+              isUser={isUser}
+              isDemo={isDemo}
+            >
+              {text}
+            </Word>
+          );
+        }
+
+        // console.log(
+        //   "[ChatMessage] Created token elements:",
+        //   tokenElements.length,
+        //   "Elements:",
+        //   tokenElements
+        // );
+        return tokenElements;
+      } catch (error) {
+        console.error("[ChatMessage] Error tokenizing content:", error);
+        // Fallback to raw text
+        return [<span key="fallback">{text}</span>];
+      } finally {
+        setIsTokenizing(false);
       }
-      console.log(
-        "[ChatMessage] No Chinese tokens available, falling back to regex"
-      );
-      // Fallback: use regex-based tokenization if no tokens
+    },
+    [settings, isUser]
+  );
+
+  // Tokenize content when it changes
+  useEffect(() => {
+    if (typeof rawContent === "string") {
+      tokenizeContent(rawContent).then(setTokenizedContent);
+    } else {
+      setTokenizedContent(null);
     }
-
-    // Regex-based tokenization for all other cases
-    console.log("[ChatMessage] Using regex-based tokenization");
-    const parts = text.match(
-      /([a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?|\s+|[^\w\s\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+)/gu
-    ) || [text];
-
-    return parts.map((tok, idx) => {
-      const isWord =
-        /^[a-zA-Z\u00C0-\u017F\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\u0600-\u06FF\u0590-\u05FF\uAC00-\uD7AF\u0400-\u04FF\u0E00-\u0E7F\u0900-\u097F\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\u0A80-\u0AFF\u0A00-\u0A7F\u0370-\u03FF\u1F00-\u1FFF]+(?:'[a-zA-Z\u00C0-\u017F]+)?$/u.test(
-          tok
-        );
-      if (isWord && tok.length > 0) {
-        return (
-          <Word
-            key={idx}
-            initialWord={tok}
-            lang={settings?.selectedLanguage || "en"}
-            targetLang={settings?.nativeLanguage}
-            isUser={message.role === "user"}
-          >
-            {tok}
-          </Word>
-        );
-      }
-      return <React.Fragment key={idx}>{tok}</React.Fragment>;
-    });
-  };
+  }, [rawContent, tokenizeContent]);
 
   const messageContent =
-    typeof rawContent === "string" ? tokenize(rawContent) : rawContent;
+    tokenizedContent ||
+    (isTokenizing ? <span>Loading...</span> : <span>{rawContent}</span>);
 
   const handleSpeak = () => {
     if (typeof rawContent === "string" && rawContent.trim().length > 0) {
@@ -120,12 +197,14 @@ function ChatMessageBase({
     }
   };
 
+  // Debug: Log message data - REMOVED
+  // Timestamp format updated - cache bust
+  // All console logs removed - final cleanup
+
   return (
-    <div
-      className={`flex flex-col my-2 ${isUser ? "items-end" : "items-start"}`}
-    >
+    <div className={`flex flex-col ${isUser ? "items-end" : "items-start"}`}>
       <div
-        className={`relative group max-w-[85%] mb-1.5 rounded-2xl shadow-xs p-3 text-md break-words whitespace-pre-wrap border-1 ${
+        className={`relative group max-w-[85%] rounded-2xl shadow-xs p-3 text-md break-words whitespace-pre-wrap border-1 ${
           isUser
             ? "bg-[#3C18D9] text-white border-color-[#170664] rounded-br-none"
             : "bg-[#F1EFFC] dark:bg-[#170664 border-color-[#c4c7bd] rounded-bl-none"
@@ -147,6 +226,45 @@ function ChatMessageBase({
           <Volume2 className="h-4 w-4" />
         </button>
       </div>
+      {message.createdAt && (
+        <div 
+          className="text-xs text-muted-foreground mt-1 cursor-help" 
+          title={`${new Date(message.createdAt).toLocaleDateString('en-US', { 
+            weekday: 'long',
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+          })} at ${new Date(message.createdAt).toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit',
+            hour12: true 
+          })}`}
+        >
+          {(() => {
+            const now = new Date();
+            const messageDate = new Date(message.createdAt);
+            const diffInHours = (now.getTime() - messageDate.getTime()) / (1000 * 60 * 60);
+            
+            if (diffInHours < 24) {
+              // Show time for messages within 24 hours
+              return messageDate.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+              });
+            } else {
+              // Show "X days ago" for older messages
+              const diffInDays = Math.floor(diffInHours / 24);
+              return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+            }
+          })()}
+        </div>
+      )}
+      {!message.createdAt && (
+        <div className={`text-xs opacity-60 mt-1`} style={{ color: "#666" }}>
+          No timestamp
+        </div>
+      )}
     </div>
   );
 }

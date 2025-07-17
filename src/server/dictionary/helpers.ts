@@ -219,7 +219,7 @@ export async function translateDefinitions(
 ): Promise<Definition[]> {
   if (!targetLang || defs.length === 0) return defs;
 
-  // Helper to log translation attempts
+  // Helper to log translation attempts (minimal logging)
   function logTranslation({
     original,
     prompt,
@@ -233,13 +233,10 @@ export async function translateDefinitions(
     openaiResult?: string;
     used: "gemini" | "openai" | "none";
   }) {
-    console.log("[LLM_TRANSLATE]", {
-      original,
-      prompt,
-      geminiResult,
-      openaiResult,
-      used,
-    });
+    // Only log failures or if verbose logging is enabled
+    if (used === "none") {
+      console.warn(`[LLM_TRANSLATE] Failed to translate: "${original.substring(0, 50)}..."`);
+    }
   }
 
   try {
@@ -251,21 +248,22 @@ export async function translateDefinitions(
 
 Original definition: "${def.sense}"
 
-Provide the most natural, idiomatic equivalent in ${targetLang}. Think about how a native speaker would actually express this concept in everyday conversation, not how it would be literally translated. Return ONLY the most natural translation, nothing else.
+Provide the idiomatic translation of the word in ${targetLang} followed by a clear definition in parentheses. Format: "idiomatic_translation (clear definition in target language)". The idiomatic translation should be the natural way to express this concept. Preserve the register (formality level) of the original word. If the original is formal, use a formal equivalent. If it's casual, use a casual equivalent. Only simplify if the original is unnecessarily complex for learners.
+
+IMPORTANT: For function words (conjunctions, prepositions, articles, etc.), give the actual word that native speakers use, not a grammatical description. For example:
+- Use "and" not "conjunction"
+- Use "in" not "preposition"
+- Use "the" not "definite article"
+- Use "but" not "coordinating conjunction"
+
+Return ONLY the translation in this format, nothing else.
 
 Translation:`;
         let geminiResult: string | undefined = undefined;
         let openaiResult: string | undefined = undefined;
         let used: "gemini" | "openai" | "none" = "none";
         try {
-          console.log("[LLM_TRANSLATE] Attempting Gemini translation...");
           geminiResult = await runGeminiPrompt(prompt, 0.2);
-          console.log(
-            "[LLM_TRANSLATE] Gemini response:",
-            geminiResult
-              ? `"${geminiResult.substring(0, 100)}..."`
-              : "null/empty"
-          );
 
           if (geminiResult && geminiResult.trim()) {
             used = "gemini";

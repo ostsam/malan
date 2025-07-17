@@ -11,6 +11,7 @@ export function useChatTTS(settings: TTSSettings) {
   );
 
   let ttsVoice: "nova" | "ash" = "nova";
+  
   if (selectedLanguageData && settings.interlocutor) {
     if (settings.interlocutor === selectedLanguageData.interlocutors.male) {
       ttsVoice = "ash";
