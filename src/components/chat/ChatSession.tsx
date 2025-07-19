@@ -65,7 +65,7 @@ export function ChatSession({
 }: ChatSessionProps) {
   // Use the same chat slug hook for both demo and regular modes
   const { slug, handleSlugUpdate, generateSlugFromMessage } = useChatSlug(
-    demoMode ? "" : chatObject?.slug, 
+    demoMode ? "" : chatObject?.slug,
     demoMode ? "demo" : id
   );
 
@@ -106,7 +106,6 @@ export function ChatSession({
       }));
 
   // Debug: Log initial messages
-  
 
   const {
     messages,
@@ -132,7 +131,6 @@ export function ChatSession({
   });
 
   // Debug: Log messages from useChat
-  
 
   // Define settings before using it in useEffect
   const settings = demoMode ? demoSettings! : chatObject?.settings;
@@ -187,7 +185,6 @@ export function ChatSession({
   }, [messages, chineseScript, settings?.selectedLanguage]);
 
   // Debug: Log converted messages
-  
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -276,7 +273,7 @@ export function ChatSession({
     const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
     const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
     if (aTime !== bTime) return aTime - bTime;
-    // If timestamps are equal, user comes before AI
+    // If timestamps are equal, enforce user, AI, user, AI alternation
     if (a.role !== b.role) {
       if (a.role === "user") return -1;
       if (b.role === "user") return 1;
@@ -415,9 +412,7 @@ export function ChatSession({
               <ChatMessage
                 key={m.id}
                 message={m}
-                settings={
-                  settings as ChatSettings
-                }
+                settings={settings as ChatSettings}
                 onSpeak={speak}
                 renderMessageContent={renderMessageContent}
                 isDemo={demoMode}
@@ -508,7 +503,9 @@ export function ChatSession({
         startRecording={startRecording}
         stopRecording={stopRecording}
         stopAudioPlayback={stopAudioPlayback}
-        selectedLanguage={(settings as ChatSettings)?.selectedLanguage || undefined}
+        selectedLanguage={
+          (settings as ChatSettings)?.selectedLanguage || undefined
+        }
         onScriptChange={handleScriptChange}
       />
       {/* Original conditional logic:

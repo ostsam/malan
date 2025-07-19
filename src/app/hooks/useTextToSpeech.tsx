@@ -234,9 +234,11 @@ export function useTextToSpeech({
       const buffer = textBufferRef.current;
 
       if (!isLoading) {
+        // When not loading, process all remaining text
         textToProcess = buffer;
         textBufferRef.current = "";
       } else {
+        // When loading, try to process complete sentences
         const lastPeriod = buffer.lastIndexOf(". ");
         const lastQuestion = buffer.lastIndexOf("? ");
         const lastExclamation = buffer.lastIndexOf("! ");
@@ -253,6 +255,20 @@ export function useTextToSpeech({
         if (lastSentenceEnd !== -1) {
           textToProcess = buffer.substring(0, lastSentenceEnd + 1);
           textBufferRef.current = buffer.substring(lastSentenceEnd + 2);
+        } else {
+          // If no sentence boundary found, check if we have enough text to process
+          // Process text if it's longer than 50 characters or contains a comma
+          const hasComma = buffer.includes(", ");
+          const hasEnoughText = buffer.length > 50;
+          
+          if (hasComma || hasEnoughText) {
+            // Find the last comma or natural break point
+            const lastComma = buffer.lastIndexOf(", ");
+            const breakPoint = lastComma !== -1 ? lastComma + 1 : Math.floor(buffer.length * 0.8);
+            
+            textToProcess = buffer.substring(0, breakPoint);
+            textBufferRef.current = buffer.substring(breakPoint);
+          }
         }
       }
 
@@ -406,36 +422,62 @@ export function useTextToSpeech({
 
   // Producer: monitors messages and populates the text buffer
   useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-
-    if (lastMessage && lastMessage.role === "assistant") {
-      const rawContent = lastMessage.content;
-      
-      // Always use text extraction, but check if Arabic extraction is working properly
+    // Find all assistant messages that haven't been processed yet
+    const assistantMessages = messages.filter(msg => msg.role === "assistant");
+    
+    if (assistantMessages.length === 0) return;
+    
+    const lastMessage = assistantMessages[assistantMessages.length - 1];
+    const rawContent = lastMessage.content;
+    
+          // Always use text extraction, but check if Arabic extraction is working properly
       const newContent = getDisplayText(rawContent);
+    
+    if (lastMessage.id !== currentSpokenMessageId) {
+      // New message or different message, reset everything
+      stopAudioPlayback();
+      generationRef.current++;
+              // console.log(`TTS: Processing message ID: ${lastMessage.id}. Total assistant messages: ${assistantMessages.length}`);
+      setCurrentSpokenMessageId(lastMessage.id);
+      textBufferRef.current = newContent;
+      processedContentRef.current = newContent;
+      if (!isProcessingAudioRef.current) {
+        processQueue();
+      }
+    } else if (newContent.length > processedContentRef.current.length) {
+      // Streaming update to the current message
+      const newTextChunk = newContent.substring(
+        processedContentRef.current.length
+      );
       
-      
-
-      if (lastMessage.id !== currentSpokenMessageId) {
-        // New message, reset everything
-        stopAudioPlayback();
-        generationRef.current++;
-        // console.log(`TTS: New message ID: ${lastMessage.id}. Resetting.`);
-        setCurrentSpokenMessageId(lastMessage.id);
-        textBufferRef.current = newContent;
+      if (newTextChunk) {
+        textBufferRef.current += newTextChunk;
         processedContentRef.current = newContent;
         if (!isProcessingAudioRef.current) {
           processQueue();
         }
-      } else if (newContent.length > processedContentRef.current.length) {
-        // Streaming update to the current message
-        const newTextChunk = newContent.substring(
-          processedContentRef.current.length
-        );
+      }
+    }
+  }, [messages, currentSpokenMessageId, processQueue, stopAudioPlayback]);
+
+  // Effect to handle initial load of older chats with assistant messages
+  useEffect(() => {
+    // If we have messages but no current spoken message ID, this might be an initial load
+    if (messages.length > 0 && !currentSpokenMessageId && !isLoading) {
+      const assistantMessages = messages.filter(msg => msg.role === "assistant");
+      if (assistantMessages.length > 0) {
+        const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
+        // console.log(`TTS: Initial load detected. Processing last assistant message: ${lastAssistantMessage.id}`);
         
+        // Trigger processing of the last assistant message
+        const rawContent = lastAssistantMessage.content;
+        const newContent = getDisplayText(rawContent);
         
-        if (newTextChunk) {
-          textBufferRef.current += newTextChunk;
+        if (newContent.trim()) {
+          stopAudioPlayback();
+          generationRef.current++;
+          setCurrentSpokenMessageId(lastAssistantMessage.id);
+          textBufferRef.current = newContent;
           processedContentRef.current = newContent;
           if (!isProcessingAudioRef.current) {
             processQueue();
@@ -443,7 +485,37 @@ export function useTextToSpeech({
         }
       }
     }
-  }, [messages, currentSpokenMessageId, processQueue, stopAudioPlayback]);
+  }, [messages, currentSpokenMessageId, isLoading, processQueue, stopAudioPlayback]);
+
+  // Effect to ensure TTS starts for any assistant message when not loading
+  useEffect(() => {
+    // If we're not loading and have assistant messages but no audio is playing, start TTS
+    if (!isLoading && !isPlayingAudio && audioQueue.length === 0) {
+      const assistantMessages = messages.filter(msg => msg.role === "assistant");
+      if (assistantMessages.length > 0) {
+        const lastAssistantMessage = assistantMessages[assistantMessages.length - 1];
+        
+        // Only process if this message hasn't been processed yet
+        if (lastAssistantMessage.id !== currentSpokenMessageId) {
+          // console.log(`TTS: Auto-starting for assistant message: ${lastAssistantMessage.id}`);
+          
+          const rawContent = lastAssistantMessage.content;
+          const newContent = getDisplayText(rawContent);
+          
+          if (newContent.trim()) {
+            stopAudioPlayback();
+            generationRef.current++;
+            setCurrentSpokenMessageId(lastAssistantMessage.id);
+            textBufferRef.current = newContent;
+            processedContentRef.current = newContent;
+            if (!isProcessingAudioRef.current) {
+              processQueue();
+            }
+          }
+        }
+      }
+    }
+  }, [messages, isLoading, isPlayingAudio, audioQueue.length, currentSpokenMessageId, processQueue, stopAudioPlayback]);
 
   // Effect to process remaining buffer when loading is finished
   useEffect(() => {
@@ -453,9 +525,42 @@ export function useTextToSpeech({
       !isProcessingAudioRef.current
     ) {
       // console.log("TTS: Loading finished, processing remaining buffer.");
-      processQueue();
+      // Force process all remaining text when loading finishes
+      const remainingText = textBufferRef.current.trim();
+      if (remainingText) {
+        // console.log("TTS: Processing remaining text when loading finished:", remainingText.substring(0, 100) + (remainingText.length > 100 ? "..." : ""));
+        // Process the remaining text as a single sentence
+        const audioResult = generateSpeechAPI(
+          remainingText,
+          voice,
+          generationRef.current,
+          generationRef
+        ).then(result => {
+          const currentGeneration = generationRef.current;
+          if (result && currentGeneration === generationRef.current) {
+            const pauseAfterMs = 180;
+            result.urls.forEach((url, index) => {
+              const isLastChunk = index === result.urls.length - 1;
+              setAudioQueue((prev) => [
+                ...prev,
+                { 
+                  url, 
+                  textFragment: `${remainingText}${index > 0 ? ` (part ${index + 1})` : ''}`, 
+                  pauseAfterMs: isLastChunk ? pauseAfterMs : 50,
+                  format: result.format 
+                },
+              ]);
+            });
+          } else if (result) {
+            result.urls.forEach(url => URL.revokeObjectURL(url));
+          }
+        }).catch(error => {
+          console.error("TTS: Error processing remaining text:", error);
+        });
+      }
+      textBufferRef.current = "";
     }
-  }, [isLoading, processQueue]);
+  }, [isLoading, voice]);
 
   const speak = useCallback(
     async (text: string) => {

@@ -16,6 +16,7 @@ export interface TokenizedWord {
   word: string;
   language: string;
   isChinese?: boolean;
+  isPunctuation?: boolean;
 }
 
 /**
@@ -98,11 +99,15 @@ export async function tokenizeChineseText(
     console.log("[chinese-tokenizer] jieba-wasm cut result:", tokens);
 
     // Convert tokens to our format
-    const result = tokens.map((token: string) => ({
-      word: token,
-      language: "zh",
-      isChinese: isChineseText(token),
-    }));
+    const result = tokens.map((token: string) => {
+      const isPunctuation = /^[。，！？：；""''（）【】「」『』…—、；：！？]+$/.test(token);
+      return {
+        word: token,
+        language: "zh",
+        isChinese: isChineseText(token),
+        isPunctuation,
+      };
+    });
 
     console.log("[chinese-tokenizer] Final tokenization result:", result);
     return result;
