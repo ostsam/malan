@@ -96,13 +96,13 @@ function ChatMessageBase({
               }
             }
 
-            // Check if this is punctuation - only for Japanese (since Chinese handles punctuation differently)
-            const isJapanesePunctuation =
-              langCode === "ja" &&
-              /^[。、！？：；""''（）【】「」『』…—]+$/.test(token.word);
+            // Check if this is punctuation using the token's isPunctuation field or manual detection
+            const isPunctuation = token.isPunctuation || 
+              (langCode === "ja" && /^[。、！？：；""''（）【】「」『』…—]+$/.test(token.word)) ||
+              (langCode === "zh" && /^[。，！？：；""''（）【】「」『』…—、；：！？]+$/.test(token.word));
 
-            if (isJapanesePunctuation) {
-              // Display Japanese punctuation as plain text
+            if (isPunctuation) {
+              // Display punctuation as plain text
               tokenElements.push(<span key={idx}>{token.word}</span>);
             } else {
               // Display regular words as clickable Word components

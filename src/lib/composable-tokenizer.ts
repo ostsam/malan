@@ -8,6 +8,7 @@ export type TokenizedWord = {
   isChinese?: boolean;
   isJapanese?: boolean;
   isThai?: boolean;
+  isPunctuation?: boolean;
 };
 
 // Tokenizer interface
@@ -23,19 +24,41 @@ const chineseTokenizer: Tokenizer = {
     try {
       // console.log("[composable-tokenizer] Chinese input:", text);
       const { tokenizeChineseText } = await import("./chinese-tokenizer");
-      const tokens = await tokenizeChineseText(text);
+      const rawTokens = await tokenizeChineseText(text);
+
+      // Add position information to Chinese tokens
+      let currentPos = 0;
+      const tokens: TokenizedWord[] = [];
+
+      for (const token of rawTokens) {
+        const start = text.indexOf(token.word, currentPos);
+        if (start >= 0) {
+          tokens.push({
+            ...token,
+            start: start,
+            end: start + token.word.length,
+          });
+          currentPos = start + token.word.length;
+        }
+      }
+
       // console.log("[composable-tokenizer] Chinese tokens:", tokens);
       return tokens;
     } catch (e) {
       console.warn("[composable-tokenizer] Chinese fallback triggered:", e);
       // Fallback: character-based split
-      const tokens = Array.from(text).map((char, i) => ({
-        word: char,
-        start: i,
-        end: i + 1,
-        language: lang,
-        isChinese: true,
-      }));
+      const tokens = Array.from(text).map((char, i) => {
+        const isPunctuation =
+          /^[。，！？：；""''（）【】「」『』…—、；：！？]+$/.test(char);
+        return {
+          word: char,
+          start: i,
+          end: i + 1,
+          language: lang,
+          isChinese: true,
+          isPunctuation,
+        };
+      });
       // console.log("[composable-tokenizer] Chinese fallback tokens:", tokens);
       return tokens;
     }

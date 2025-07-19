@@ -10,6 +10,7 @@ export type TokenizedWord = {
   isChinese?: boolean;
   isJapanese?: boolean;
   isThai?: boolean;
+  isPunctuation?: boolean;
 };
 
 // Kuromoji token type (from kuromoji package)
@@ -155,7 +156,6 @@ function postProcessTokens(
     result.push({
       word: word,
       language: "ja",
-      reading: token.reading || undefined,
       isJapanese: true,
       start: token.word_position - 1 + offset,
       end: token.word_position - 1 + offset + word.length,
@@ -506,5 +506,6 @@ async function tokenizeJapaneseSegmentRaw(
   text: string
 ): Promise<KuromojiToken[]> {
   const { tokenize } = await import("kuromojin");
-  return await tokenize(text);
+  const tokens = await tokenize(text);
+  return Array.from(tokens); // Convert readonly array to mutable array
 }
