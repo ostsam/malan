@@ -46,12 +46,10 @@ function ChatMessageBase({
         return [];
       }
 
-      
       setIsTokenizing(true);
 
       try {
         const tokens: TokenizedWord[] = await tokenizeText(text, langCode);
-
 
         const tokenElements: React.ReactNode[] = [];
 
@@ -63,23 +61,17 @@ function ChatMessageBase({
           (token) => token.start === undefined
         );
 
-
-
         if (positionedTokens.length > 0) {
           // Sort tokens by start position to ensure correct order
           const sortedTokens = positionedTokens.sort(
             (a, b) => (a.start || 0) - (b.start || 0)
           );
 
-  
-
           let lastEnd = 0;
 
           sortedTokens.forEach((token, idx) => {
             const start = token.start || 0;
             const end = token.end || start + token.word.length;
-
-
 
             // Skip if this token overlaps with the previous one
             if (start < lastEnd) {
@@ -104,19 +96,29 @@ function ChatMessageBase({
               }
             }
 
-            // Add the token
-            tokenElements.push(
-              <Word
-                key={idx}
-                initialWord={token.word}
-                lang={langCode}
-                targetLang={settings?.nativeLanguage}
-                isUser={isUser}
-                isDemo={isDemo}
-              >
-                {token.word}
-              </Word>
-            );
+            // Check if this is punctuation - only for Japanese (since Chinese handles punctuation differently)
+            const isJapanesePunctuation =
+              langCode === "ja" &&
+              /^[。、！？：；""''（）【】「」『』…—]+$/.test(token.word);
+
+            if (isJapanesePunctuation) {
+              // Display Japanese punctuation as plain text
+              tokenElements.push(<span key={idx}>{token.word}</span>);
+            } else {
+              // Display regular words as clickable Word components
+              tokenElements.push(
+                <Word
+                  key={idx}
+                  initialWord={token.word}
+                  lang={langCode}
+                  targetLang={settings?.nativeLanguage}
+                  isUser={isUser}
+                  isDemo={isDemo}
+                >
+                  {token.word}
+                </Word>
+              );
+            }
 
             lastEnd = end;
           });
@@ -227,35 +229,36 @@ function ChatMessageBase({
         </button>
       </div>
       {message.createdAt && (
-        <div 
-          className="text-xs text-muted-foreground mt-1 cursor-help" 
-          title={`${new Date(message.createdAt).toLocaleDateString('en-US', { 
-            weekday: 'long',
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric' 
-          })} at ${new Date(message.createdAt).toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit',
-            hour12: true 
+        <div
+          className="text-xs text-muted-foreground mt-1 cursor-help"
+          title={`${new Date(message.createdAt).toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })} at ${new Date(message.createdAt).toLocaleTimeString("en-US", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
           })}`}
         >
           {(() => {
             const now = new Date();
             const messageDate = new Date(message.createdAt);
-            const diffInHours = (now.getTime() - messageDate.getTime()) / (1000 * 60 * 60);
-            
+            const diffInHours =
+              (now.getTime() - messageDate.getTime()) / (1000 * 60 * 60);
+
             if (diffInHours < 24) {
               // Show time for messages within 24 hours
-              return messageDate.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: true 
+              return messageDate.toLocaleTimeString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
               });
             } else {
               // Show "X days ago" for older messages
               const diffInDays = Math.floor(diffInHours / 24);
-              return `${diffInDays} day${diffInDays === 1 ? '' : 's'} ago`;
+              return `${diffInDays} day${diffInDays === 1 ? "" : "s"} ago`;
             }
           })()}
         </div>

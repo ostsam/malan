@@ -21,10 +21,10 @@ const chineseTokenizer: Tokenizer = {
   supports: (lang) => lang === "zh",
   async tokenize(text, lang) {
     try {
-      console.log("[composable-tokenizer] Chinese input:", text);
+      // console.log("[composable-tokenizer] Chinese input:", text);
       const { tokenizeChineseText } = await import("./chinese-tokenizer");
       const tokens = await tokenizeChineseText(text);
-      console.log("[composable-tokenizer] Chinese tokens:", tokens);
+      // console.log("[composable-tokenizer] Chinese tokens:", tokens);
       return tokens;
     } catch (e) {
       console.warn("[composable-tokenizer] Chinese fallback triggered:", e);
@@ -36,7 +36,7 @@ const chineseTokenizer: Tokenizer = {
         language: lang,
         isChinese: true,
       }));
-      console.log("[composable-tokenizer] Chinese fallback tokens:", tokens);
+      // console.log("[composable-tokenizer] Chinese fallback tokens:", tokens);
       return tokens;
     }
   },
@@ -47,16 +47,61 @@ const japaneseTokenizer: Tokenizer = {
   supports: (lang) => lang === "ja",
   async tokenize(text, lang) {
     try {
-      console.log("[composable-tokenizer] Japanese input:", text);
-      // Only available server-side
-      const { tokenizeJapaneseServer } = await import("./server-tokenizer");
-      const tokens = await tokenizeJapaneseServer(text);
-      console.log("[composable-tokenizer] Japanese tokens:", tokens);
-      return tokens;
+      // console.log("[composable-tokenizer] Japanese input:", text);
+
+      // Check if we're on the server side
+      if (typeof window === "undefined") {
+        // Server-side: use our database tokenizer
+        const { databaseTokenize } = await import("./database-tokenizer");
+        const dbTokens = await databaseTokenize(text);
+
+        // Convert database tokens to TokenizedWord format, preserving text structure
+        const tokens: TokenizedWord[] = [];
+        let currentPos = 0;
+
+        for (const token of dbTokens) {
+          const start = text.indexOf(token.surface, currentPos);
+          if (start >= 0) {
+            // Add all tokens (including punctuation) to preserve text structure
+            // The ChatMessage component will handle displaying them correctly
+            tokens.push({
+              word: token.surface,
+              start: start,
+              end: start + token.surface.length,
+              language: lang,
+              isJapanese: true,
+            });
+            currentPos = start + token.surface.length;
+          }
+        }
+
+        // console.log("[composable-tokenizer] Japanese database tokens:", tokens);
+        return tokens;
+      } else {
+        // Client-side: use API call to server
+        const response = await fetch("/api/tokenize", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text, lang }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Tokenization API failed: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        // console.log("[composable-tokenizer] Japanese tokens (client):", data.tokens);
+        return data.tokens || [];
+      }
     } catch (e) {
       console.warn("[composable-tokenizer] Japanese fallback triggered:", e);
-      // Fallback: script-based split
-      const tokens = text.match(/([\u3040-\u309f]+|[\u30a0-\u30ff]+|[\u4e00-\u9fff]+|[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff\s]+)/g) || [];
+      // Fallback: script-based split (works on both client and server)
+      const tokens =
+        text.match(
+          /([\u3040-\u309f]+|[\u30a0-\u30ff]+|[\u4e00-\u9fff]+|[^\u3040-\u309f\u30a0-\u30ff\u4e00-\u9fff\s]+)/g
+        ) || [];
       let pos = 0;
       const result = tokens.map((word) => {
         const start = text.indexOf(word, pos);
@@ -64,7 +109,7 @@ const japaneseTokenizer: Tokenizer = {
         pos = end;
         return { word, start, end, language: lang, isJapanese: true };
       });
-      console.log("[composable-tokenizer] Japanese fallback tokens:", result);
+      // console.log("[composable-tokenizer] Japanese fallback tokens:", result);
       return result;
     }
   },
@@ -99,7 +144,10 @@ const registeredTokenizers: Tokenizer[] = [
  * Tokenize text for a given language code using pluggable tokenizers.
  * Always returns an array of tokens. Falls back to a single token for unsupported languages.
  */
-export async function tokenizeText(text: string, lang: string): Promise<TokenizedWord[]> {
+export async function tokenizeText(
+  text: string,
+  lang: string
+): Promise<TokenizedWord[]> {
   for (const tokenizer of registeredTokenizers) {
     if (tokenizer.supports(lang)) {
       try {
@@ -113,8 +161,12 @@ export async function tokenizeText(text: string, lang: string): Promise<Tokenize
   // Default: split on whitespace, remove leading/trailing punctuation
   const tokens: TokenizedWord[] = [];
   let currentPos = 0;
-  const wordMatches = text.split(/\s+/).filter(word => word.trim().length > 0);
-  const cleanWords = wordMatches.map(word => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, '')).filter(word => word.length > 0);
+  const wordMatches = text
+    .split(/\s+/)
+    .filter((word) => word.trim().length > 0);
+  const cleanWords = wordMatches
+    .map((word) => word.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ""))
+    .filter((word) => word.length > 0);
   cleanWords.forEach((word, index) => {
     // Find the next occurrence of this word after the current position
     let start = text.indexOf(word, currentPos);
@@ -136,4 +188,4 @@ export async function tokenizeText(text: string, lang: string): Promise<Tokenize
 }
 
 // --- For future extensibility ---
-// To add a new language, implement a Tokenizer and add it to registeredTokenizers. 
+// To add a new language, implement a Tokenizer and add it to registeredTokenizers.

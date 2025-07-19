@@ -4,7 +4,12 @@ import { Inter } from "next/font/google";
 import LazyToaster from "@/components/LazyToaster";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+  preload: true,
+});
 
 export default function RootLayout({
   children,

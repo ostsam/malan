@@ -247,6 +247,29 @@ export const userPreferences = pgTable("user_preferences", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+export const japaneseTokens = pgTable(
+  "japanese_tokens",
+  {
+    id: serial("id").primaryKey(),
+    kanji: text("kanji"), // The kanji form (can be null for kana-only words)
+    reading: text("reading").notNull(), // The reading (hiragana/katakana)
+    frequency: integer("frequency").notNull(), // Frequency rank (negative = more frequent)
+    partOfSpeech: text("part_of_speech").notNull(), // noun, verb, adjective, etc.
+    isPriority: boolean("is_priority").default(false), // Priority words (marked with ★)
+    entryId: integer("entry_id"), // Original JMdict entry ID for reference
+    fileCount: integer("file_count").default(1), // How many files this token appeared in
+  },
+  (t) => ({
+    // Indexes for efficient tokenization queries
+    readingIdx: index("reading_idx").on(t.reading),
+    kanjiIdx: index("kanji_idx").on(t.kanji),
+    frequencyIdx: index("frequency_idx").on(t.frequency),
+    posIdx: index("pos_idx").on(t.partOfSpeech),
+    // Composite index for common queries
+    readingKanjiIdx: index("reading_kanji_idx").on(t.reading, t.kanji),
+  })
+);
+
 export const schema = {
   user,
   session,
@@ -259,4 +282,5 @@ export const schema = {
   translations,
   wordlist,
   userPreferences,
+  japaneseTokens,
 };

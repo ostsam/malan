@@ -9,7 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Definition } from "@/server/dictionary/types";
 import { interfaceColor } from "@/lib/theme";
-import { INTERACTIVE_STYLES } from "@/lib/constants";
+import { INTERACTIVE_STYLES, TTS_TEXT_CLEANING } from "@/lib/constants";
 import Switch from "react-switch";
 import { Star, StarOff, Volume2 } from "lucide-react";
 import { useWordSaved } from "@/hooks/useWordlist";
@@ -48,7 +48,12 @@ interface ClickableTextProps {
   className?: string;
 }
 
-function ClickableText({ text, lang, onWordClick, className }: ClickableTextProps) {
+function ClickableText({
+  text,
+  lang,
+  onWordClick,
+  className,
+}: ClickableTextProps) {
   const [tokens, setTokens] = React.useState<string[] | null>(null);
 
   React.useEffect(() => {
@@ -56,56 +61,135 @@ function ClickableText({ text, lang, onWordClick, className }: ClickableTextProp
     async function run() {
       if (["zh", "ja", "th"].includes(lang)) {
         const tokenObjs = await tokenizeText(text, lang);
-        if (!cancelled) setTokens(tokenObjs.map(t => t.word));
+        if (!cancelled) setTokens(tokenObjs.map((t) => t.word));
       } else {
         setTokens(null); // Use default split
       }
     }
     run();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [text, lang]);
 
+  // Helper to check if a string is punctuation (includes non-English marks)
+  const PUNCTUATION_CHARS = [
+    ...Object.keys(TTS_TEXT_CLEANING.PUNCTUATION_NORMALIZATION),
+    ".",
+    ",",
+    "!",
+    "?",
+    ";",
+    ":",
+    "(",
+    ")",
+    "[",
+    "]",
+    "{",
+    "}",
+    "'",
+    '"',
+    "`",
+    "~",
+    "@",
+    "#",
+    "$",
+    "%",
+    "^",
+    "&",
+    "*",
+    "+",
+    "=",
+    "|",
+    "\\",
+    "/",
+    "<",
+    ">",
+    "-",
+  ];
+  const PUNCTUATION_REGEX = new RegExp(
+    `^[${PUNCTUATION_CHARS.map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`).join("")}]+$`
+  );
+  const isPunctuation = (word: string) => PUNCTUATION_REGEX.test(word);
+
   if (tokens) {
-    return (
-      <span className={className}>
-        {tokens.map((word, index) => (
-          <span
-            key={index}
-            className={cn(
-              INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
-              INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
-            )}
-            onClick={() => onWordClick(word.toLowerCase())}
-          >
-            {word}
-          </span>
-        ))}
-      </span>
-    );
+    // For CJK/Thai languages, render tokens without spaces
+    if (["zh", "ja", "th"].includes(lang)) {
+      return (
+        <span className={className}>
+          {tokens.map((word, index) => {
+            if (isPunctuation(word)) {
+              // Show punctuation but don't make it clickable
+              return <span key={index}>{word}</span>;
+            }
+            return (
+              <span
+                key={index}
+                className={cn(
+                  INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
+                  INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
+                )}
+                onClick={() => onWordClick(word.toLowerCase())}
+              >
+                {word}
+              </span>
+            );
+          })}
+        </span>
+      );
+    } else {
+      // For non-CJK languages, render tokens with spaces
+      return (
+        <span className={className}>
+          {tokens.map((word, index) => {
+            if (isPunctuation(word)) {
+              return <span key={index}>{word}</span>;
+            }
+            return (
+              <React.Fragment key={index}>
+                {index > 0 && <span> </span>}
+                <span
+                  className={cn(
+                    INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
+                    INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
+                  )}
+                  onClick={() => onWordClick(word.toLowerCase())}
+                >
+                  {word}
+                </span>
+              </React.Fragment>
+            );
+          })}
+        </span>
+      );
+    }
   }
 
   // Fallback: original logic for non-CJK/Thai
-  const words = text.split(/(\s+|[.,!?;:()[\]{}"'`~@#$%^&*+=|\\/<>])/);
+  const words = text.split(/(\s+|[.,!?;:()[\]{}"'`~@#$%^&*+=|\\/<>-])/);
   return (
     <span className={className}>
       {words.map((word, index) => {
         if (!word || /^\s+$/.test(word)) {
           return <span key={index}>{word}</span>;
         }
-        if (/^[.,!?;:()[\]{}"'`~@#$%^&*+=|\\/<>]+$/.test(word)) {
+        if (isPunctuation(word)) {
           return <span key={index}>{word}</span>;
         }
+        // Add a space before each word except the first (for non-CJK/Thai)
         return (
-          <span
-            key={index}
-            className={cn(
-              INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
-              INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
-            )}
-            onClick={() => onWordClick(word.toLowerCase())}
-          >
-            {word}
-          </span>
+          <React.Fragment key={index}>
+            {index > 0 && !/^\s+$/.test(words[index - 1]) && <span> </span>}
+            <span
+              className={cn(
+                INTERACTIVE_STYLES.UNDERLINE_CLASSES.base,
+                INTERACTIVE_STYLES.UNDERLINE_CLASSES.animated
+              )}
+              onClick={() => onWordClick(word.toLowerCase())}
+            >
+              {word}
+            </span>
+          </React.Fragment>
         );
       })}
     </span>
@@ -116,12 +200,14 @@ function ClickableText({ text, lang, onWordClick, className }: ClickableTextProp
 const dictCache = new Map<string, Promise<DictResponse>>();
 
 // Helper function to parse translatedSense format: "word (definition)"
-function parseTranslation(text: string): { word: string; definition: string } | null {
+function parseTranslation(
+  text: string
+): { word: string; definition: string } | null {
   const match = text.match(/^(.+?)\s*\((.+)\)$/);
   if (match) {
     return {
       word: match[1].trim(),
-      definition: match[2].trim()
+      definition: match[2].trim(),
     };
   }
   return null;
@@ -163,7 +249,7 @@ export function Word({
 
   // Use the same wordlist hook for both demo and regular modes
   const { saved, toggle: originalToggle } = useWordSaved(currentWord, lang);
-  
+
   // Wrap the toggle function to show demo message when in demo mode
   const toggle = async () => {
     if (isDemo) {
@@ -311,7 +397,51 @@ export function Word({
 
   /* ------------------------------ Render ------------------------------ */
   // Handler for when words are clicked within the popover
+  // Helper to check if a string is punctuation (includes non-English marks)
+  const PUNCTUATION_CHARS = [
+    ...Object.keys(TTS_TEXT_CLEANING.PUNCTUATION_NORMALIZATION),
+    ".",
+    ",",
+    "!",
+    "?",
+    ";",
+    ":",
+    "(",
+    ")",
+    "[",
+    "]",
+    "{",
+    "}",
+    "'",
+    '"',
+    "`",
+    "~",
+    "@",
+    "#",
+    "$",
+    "%",
+    "^",
+    "&",
+    "*",
+    "+",
+    "=",
+    "|",
+    "\\",
+    "/",
+    "<",
+    ">",
+    "-",
+  ];
+  const PUNCTUATION_REGEX = new RegExp(
+    `^[${PUNCTUATION_CHARS.map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, "0")}`).join("")}]+$`
+  );
+  const isPunctuation = (w: string) => PUNCTUATION_REGEX.test(w);
+
   const handlePopoverWordClick = (word: string) => {
+    if (isPunctuation(word)) {
+      // Ignore punctuation clicks
+      return;
+    }
     console.log("[Word] Word clicked in popover:", word);
     setWordStack((s) => [...s, currentWord]);
     setCurrentWord(word.toLowerCase());
@@ -377,8 +507,11 @@ export function Word({
               aria-label="Play pronunciation"
               onClick={async () => {
                 try {
-                  console.log("[Word] TTS button clicked for word:", convertedWord);
-                  
+                  console.log(
+                    "[Word] TTS button clicked for word:",
+                    convertedWord
+                  );
+
                   const res = await fetch("/api/chat/tts", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
@@ -387,20 +520,30 @@ export function Word({
                       voice: "nova",
                     }),
                   });
-                  
+
                   if (!res.ok) {
                     const errorText = await res.text();
-                    console.error("[Word] TTS API error:", res.status, errorText);
+                    console.error(
+                      "[Word] TTS API error:",
+                      res.status,
+                      errorText
+                    );
                     return;
                   }
-                  
+
                   // Parse the JSON response with base64encoded chunks
                   const data = await res.json();
-                  if (!data.chunks || !Array.isArray(data.chunks) || data.chunks.length === 0) {
-                    console.error("[Word] Invalid TTS response format or empty chunks");
+                  if (
+                    !data.chunks ||
+                    !Array.isArray(data.chunks) ||
+                    data.chunks.length === 0
+                  ) {
+                    console.error(
+                      "[Word] Invalid TTS response format or empty chunks"
+                    );
                     return;
                   }
-                  
+
                   // Convert the first chunk to blob (for single word, we only need one chunk)
                   const base64Chunk = data.chunks[0];
                   const binaryString = atob(base64Chunk);
@@ -408,21 +551,30 @@ export function Word({
                   for (let i = 0; i < binaryString.length; i++) {
                     bytes[i] = binaryString.charCodeAt(i);
                   }
-                  
+
                   const blob = new Blob([bytes], { type: "audio/opus" });
-                  console.log("[Word] TTS blob created:", { size: blob.size, type: blob.type });
-                  
+                  console.log("[Word] TTS blob created:", {
+                    size: blob.size,
+                    type: blob.type,
+                  });
+
                   if (blob.size === 0) {
                     console.error("[Word] Empty audio blob created");
                     return;
                   }
-                  
+
                   const url = URL.createObjectURL(blob);
                   const audio = new Audio(url);
-                  
-                  audio.addEventListener("loadstart", () => console.log("[Word] Audio loading started"));
-                  audio.addEventListener("canplay", () => console.log("[Word] Audio can play"));
-                  audio.addEventListener("play", () => console.log("[Word] Audio started playing"));
+
+                  audio.addEventListener("loadstart", () =>
+                    console.log("[Word] Audio loading started")
+                  );
+                  audio.addEventListener("canplay", () =>
+                    console.log("[Word] Audio can play")
+                  );
+                  audio.addEventListener("play", () =>
+                    console.log("[Word] Audio started playing")
+                  );
                   audio.addEventListener("ended", () => {
                     console.log("[Word] Audio ended");
                     URL.revokeObjectURL(url);
@@ -431,7 +583,7 @@ export function Word({
                     console.error("[Word] Audio playback error:", e);
                     URL.revokeObjectURL(url);
                   });
-                  
+
                   await audio.play();
                 } catch (e) {
                   console.error("[Word] Failed to play TTS:", e);
@@ -486,9 +638,10 @@ export function Word({
         {/* Definitions list */}
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-3 text-left text-med">
           {data.defs.map((d, i) => {
-            const displayText = useTarget && d.translatedSense ? d.translatedSense : d.sense;
+            const displayText =
+              useTarget && d.translatedSense ? d.translatedSense : d.sense;
             const parsedTranslation = parseTranslation(displayText);
-            
+
             return (
               <div key={i} className="">
                 <p className="font-semibold mb-1">
@@ -496,27 +649,33 @@ export function Word({
                   {parsedTranslation ? (
                     <ClickableText
                       text={parsedTranslation.word}
-                      lang={lang}
+                      lang={useTarget && targetLang ? targetLang : lang}
                       onWordClick={handlePopoverWordClick}
                     />
                   ) : (
                     <ClickableText
                       text={displayText}
-                      lang={lang}
+                      lang={useTarget && targetLang ? targetLang : lang}
                       onWordClick={handlePopoverWordClick}
                     />
                   )}
                 </p>
                 {parsedTranslation && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
-                    ({parsedTranslation.definition})
+                    (
+                    <ClickableText
+                      text={parsedTranslation.definition}
+                      lang={useTarget && targetLang ? targetLang : lang}
+                      onWordClick={handlePopoverWordClick}
+                    />
+                    )
                   </p>
                 )}
                 {!useTarget && d.translatedSense && (
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 italic">
                     <ClickableText
                       text={d.translatedSense}
-                      lang={lang}
+                      lang={targetLang || lang}
                       onWordClick={handlePopoverWordClick}
                     />
                   </p>
@@ -536,7 +695,7 @@ export function Word({
                       <li key={j} className="italic opacity-80">
                         <ClickableText
                           text={ex}
-                          lang={lang}
+                          lang={useTarget && targetLang ? targetLang : lang}
                           onWordClick={handlePopoverWordClick}
                         />
                       </li>
@@ -642,16 +801,46 @@ export function Word({
   );
 
   // Effect to tokenize text when data changes
-  // TEMPORARILY DISABLED to fix display issue
-  // useEffect(() => {
-  //   if (!data || !open) return;
-  //   // Tokenization logic temporarily disabled
-  // }, [data, open, useTarget, tokenizedTexts, tokenizationLoading, tokenizeDefAsync]);
+  useEffect(() => {
+    if (!data || !open) return;
+    // For each definition, tokenize the main word/phrase and translation if present
+    const tokenizeAll = async () => {
+      if (!data) return;
+      for (const d of data.defs) {
+        const displayText =
+          useTarget && d.translatedSense ? d.translatedSense : d.sense;
+        if (!tokenizedTexts.has(displayText)) {
+          await tokenizeDefAsync(displayText);
+        }
+        if (d.translatedSense && !tokenizedTexts.has(d.translatedSense)) {
+          await tokenizeDefAsync(d.translatedSense);
+        }
+        if (d.sense && !tokenizedTexts.has(d.sense)) {
+          await tokenizeDefAsync(d.sense);
+        }
+        for (const ex of d.examples) {
+          if (!tokenizedTexts.has(ex)) {
+            await tokenizeDefAsync(ex);
+          }
+        }
+      }
+    };
+    tokenizeAll();
+  }, [
+    data,
+    open,
+    useTarget,
+    tokenizedTexts,
+    tokenizationLoading,
+    tokenizeDefAsync,
+  ]);
 
   // Helper function to get tokenized text from cache or fallback
   const getTokenizedText = (text: string): React.ReactNode[] => {
-    // For now, just return the text directly to fix the display issue
-    // TODO: Re-enable tokenization once the issue is resolved
+    if (tokenizedTexts.has(text)) {
+      return tokenizedTexts.get(text)!;
+    }
+    // Fallback: show plain text
     return [<span key="fallback">{text}</span>];
   };
 
